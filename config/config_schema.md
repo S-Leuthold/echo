@@ -21,6 +21,13 @@ Validation is enforced via `yamllint` (syntax) and a custom `lint-config` script
 
 ---
 
+## Routines
+
+Routines are expressed via `weekly_schedule` anchors and `defaults.activities`.  
+There is currently no top-level `routines:` section.
+
+---
+
 ## ⛓ Schema Table
 
 | YAML Path                              | Type         | Description                                                                 | Validation / Notes                                                                 |
@@ -107,3 +114,9 @@ profiles:
     overrides:
       time_anchors:
         wake: "06:30"
+      activities:
+        ride:
+          earliest_start: "08:00"
+```
+
+---
