@@ -11,7 +11,7 @@ defaults:
       dinner: "18:30–19:30"
     reading_block: "05:25–06:00"
     evening_wrap: "21:30"
-    wind_down_buffer: 30  # minutes
+    wind_down_buffer: 30
 
   block_parameters:
     default_length: 90
@@ -158,9 +158,24 @@ weekly_schedule:
         first_occurrence: "2025-06-15"
     notes: []
 
+# ---------- projects ----------
+projects:
+  MIR_stack:
+    name: "MIR Ensemble Modeling"
+    deadline: "2025-08-07"
+    status: "Model tuning phase"
+    priority: "high"
+    tags: ["soil", "MIR"]
+
+  microagg:
+    name: "Microaggregate Fractionation Study"
+    deadline: "2025-09-30"
+    status: "Data cleaning"
+    tags: ["MAOM", "soil"]
+
 # ---------- profiles ----------
 profiles:
   travel:
     overrides:
       time_anchors:
-        wake: "06:30"  # later wake time while traveling
+        wake: "06:30"
