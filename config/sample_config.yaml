@@ -1,94 +1,9 @@
-# ---------- defaults ----------
 defaults:
+  
+  timezone: "America/Chicago"
+  wake_time: "05:25"
+  sleep_time: "22:00"
 
-  time_anchors:
-    timezone: "America/Chicago"
-    wake: "05:25"
-    sleep: "22:00"
-    meals:
-      breakfast: "07:00–07:30"
-      lunch: "12:00–13:00"
-      dinner: "18:30–19:30"
-    reading_block: "05:25–06:00"
-    evening_wrap: "21:30"
-    wind_down_buffer: 30
-
-  block_parameters:
-    default_length: 90
-    min_length: 30
-    transition_buffer: 15
-    types:
-      deep:
-        length: 90
-        transition_after: 15
-      admin:
-        length: 45
-        transition_after: 10
-      personal:
-        length: 30
-        transition_after: 10
-
-  focus_profiles:
-    weekday:
-      morning: "deep"
-      midday: "admin"
-      afternoon: "flex"
-      evening: "personal"
-    weekend:
-      morning: "personal"
-      midday: "flex"
-      evening: "admin"
-
-  activities:
-    ride:
-      duration: 60
-      cooldown: 10
-      preferred_time: "morning"
-      earliest_start: "07:15"
-    gym:
-      duration: 75
-      cooldown: 15
-      preferred_time: "afternoon"
-      post_therapy_priority: true
-    walk:
-      default_after_meals: true
-    recovery:
-      include: true
-      preferred_time: "evening"
-
-  locations:
-    home:
-      commute: 0
-    guild_row:
-      commute: 30
-      prep_buffer: 10
-
-  idle_time:
-    allow: true
-    strategies:
-      - "suggest journaling"
-      - "schedule admin"
-      - "prompt reflection"
-    idle_window_cap: 45
-    minimum_rest_ratio: 0.15
-
-  preferences:
-    morning_person: true
-    prefers_ride_morning: true
-    prefers_gym_afternoon: true
-    default_recovery_ratio: 0.15
-    preferred_pacing: "balanced"
-    reflection_required: true
-
-  ui_options:
-    scaffold_format: "hourly"
-    include_context_summary: true
-    include_timecode_in_log: true
-    log_format: "markdown"
-    verbosity: "medium"
-    daily_log_header: "Echo: Today’s Scaffold"
-
-# ---------- weekly_schedule ----------
 weekly_schedule:
 
   monday:
@@ -99,7 +14,7 @@ weekly_schedule:
         recurrence: "weekly"
         first_occurrence: "2025-06-16"
     notes: []
-
+  
   tuesday:
     location: guild_row
     anchors:
@@ -108,7 +23,7 @@ weekly_schedule:
         recurrence: "biweekly"
         first_occurrence: "2025-06-17"
     notes:
-      - "Make sure to schedule 40–60 minutes of meeting prep before any meeting with F. Cotrufo"
+      - "Make sure to schedule 40-60 minutes of meeting prep before any meeting with F. Cotrufo"
 
   wednesday:
     location: home
@@ -118,7 +33,6 @@ weekly_schedule:
         recurrence: "weekly"
         first_occurrence: "2025-06-18"
     notes:
-      - "Therapy downtown -- need to plan how to get there and back."
 
   thursday:
     location: guild_row
@@ -139,17 +53,17 @@ weekly_schedule:
   saturday:
     location: home
     anchors: []
-    notes: []
+    notes:
 
   sunday:
     location: home
     anchors:
-      - time: "08:30–09:15"
-        task: "Plan meals for the week"
-        recurrence: "weekly"
-        first_occurrence: "2025-06-15"
       - time: "10:00–13:00"
         task: "Walk with H. Howe"
+        recurrence: "weekly"
+        first_occurrence: "2025-06-15"
+      - time: "08:30–09:15"
+        task: "Plan meals for the week"
         recurrence: "weekly"
         first_occurrence: "2025-06-15"
       - time: "20:00–21:00"
@@ -158,24 +72,88 @@ weekly_schedule:
         first_occurrence: "2025-06-15"
     notes: []
 
-# ---------- projects ----------
-projects:
-  MIR_stack:
-    name: "MIR Ensemble Modeling"
-    deadline: "2025-08-07"
-    status: "Model tuning phase"
-    priority: "high"
-    tags: ["soil", "MIR"]
+projects: {}
+profiles: {}
 
-  microagg:
-    name: "Microaggregate Fractionation Study"
-    deadline: "2025-09-30"
-    status: "Data cleaning"
-    tags: ["MAOM", "soil"]
+# time_anchors:
+#     meals:
+#       breakfast: "07:00–07:30"
+#       lunch: "12:00–13:00"
+#       dinner: "18:30–19:30"
+#     reading_block: "05:25–06:00"
+#     evening_wrap: "21:30"
+#     wind_down_buffer: 30          
 
-# ---------- profiles ----------
-profiles:
-  travel:
-    overrides:
-      time_anchors:
-        wake: "06:30"
+# block_parameters:
+#     default_length: 90
+#     min_length: 30
+#     transition_buffer: 15
+#     types:
+#       deep:
+#         length: 90
+#         transition_after: 15
+#       admin:
+#         length: 45
+#         transition_after: 10
+#       personal:
+#         length: 30
+#         transition_after: 10
+
+# focus_profiles:
+#     weekday:
+#       morning: "deep"
+#       midday: "admin"
+#       afternoon: "flex"
+#       evening: "personal"
+#     weekend:
+#       morning: "personal"
+#       midday: "flex"
+#       evening: "admin"
+
+# activities:
+#     ride:
+#       duration: 60
+#       cooldown: 10
+#       preferred_time: "morning"
+#       earliest_start: "07:15"
+#     gym:
+#       duration: 75
+#       cooldown: 15
+#       preferred_time: "afternoon"
+#     walk:
+#       default_after_meals: true
+#     recovery:
+#       include: true
+#       preferred_time: "evening"
+
+# locations:
+#     home:
+#       commute: 0
+#     guild_row:
+#       commute: 30
+#       prep_buffer: 10
+
+# idle_time:
+#     allow: true
+#     strategies:
+#       - "suggest journaling"
+#       - "schedule admin"
+#       - "prompt reflection"
+#     idle_window_cap: 45
+#     minimum_rest_ratio: 0.15
+
+# preferences:
+#     morning_person: true
+#     prefers_ride_morning: true
+#     prefers_gym_afternoon: true
+#     default_recovery_ratio: 0.15
+#     preferred_pacing: "balanced"
+#     reflection_required: true
+
+# ui_options:
+#     scaffold_format: "hourly"
+#     include_context_summary: true
+#     include_timecode_in_log: true
+#     log_format: "markdown"
+#     verbosity: medium
+#     daily_log_header: "Echo: Today’s Scaffold"

@@ -1,0 +1,12 @@
+# tests/fixtures/bad_missing_key.yaml
+#
+# Purpose: Loader should raise ConfigKeyError because the *projects* key
+#          is missing from the top-level mapping.
+
+defaults:
+  wake_time:  "05:25"
+  sleep_time: "22:00"
+  timezone:   "America/Chicago"
+
+weekly_schedule: {}
+profiles: {}

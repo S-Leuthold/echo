@@ -1,0 +1,26 @@
+# pyproject.toml  -- minimal, PEP 621 compliant
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "echo"            
+version = "0.0.1"
+description = "Deterministic daily-planning assistant"
+authors = [{ name = "Sam Leuthold", email = "sam.leuthold@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pyyaml",
+  "dataclasses-json",
+  "ruff",
+  "black",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["echo"]
