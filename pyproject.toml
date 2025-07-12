@@ -17,10 +17,11 @@ dependencies = []
 dev = [
   "pytest",
   "pyyaml",
-  "dataclasses-json",
-  "ruff",
+  "openai",       
   "black",
+  "ruff"
 ]
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["echo"]
