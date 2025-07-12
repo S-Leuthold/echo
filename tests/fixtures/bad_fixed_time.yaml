@@ -1,0 +1,14 @@
+defaults:
+  wake_time: "05:25"
+  sleep_time: "22:00"
+  timezone:  "America/Chicago"
+
+weekly_schedule:
+  monday:
+    anchors: []
+    fixed:
+      - time: "13:00–13:60"      # bad minute
+        label: "Bad fixed"
+projects: {}
+profiles: {}
+

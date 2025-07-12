@@ -1,0 +1,15 @@
+defaults:
+  wake_time: "05:25"
+  sleep_time: "22:00"
+  timezone:  "America/Chicago"
+
+weekly_schedule:
+  monday:
+    anchors:
+      - time: "08:00–09:00"
+        task: "Reading"
+    fixed:
+      - time: "08:30–09:15"
+        label: "Conflicting Meeting"
+projects: {}
+profiles: {}

@@ -9,12 +9,16 @@ weekly_schedule:
   monday:
     location: guild_row
     anchors:
+      - time: "05:25–06:00"
+        task: "Reading block"
+        recurrence: "daily"
+    fixed:                         # ← NEW bucket
       - time: "08:00–08:15"
-        task: "Meeting with P. Lewis"
-        recurrence: "weekly"
-        first_occurrence: "2025-06-16"
+        label: "Meeting with P. Lewis"
+        source: "calendar"         # optional meta field
+        first_occurrence: "2025-06-17"
     notes: []
-  
+
   tuesday:
     location: guild_row
     anchors:
@@ -22,8 +26,12 @@ weekly_schedule:
         task: "Meeting with F. Cotrufo"
         recurrence: "biweekly"
         first_occurrence: "2025-06-17"
+    fixed:
+      - time: "13:00–14:00"
+        label: "Dept Lab Meeting"
+        source: "calendar"
     notes:
-      - "Make sure to schedule 40-60 minutes of meeting prep before any meeting with F. Cotrufo"
+      - "Schedule 40-60 min prep before F. Cotrufo meeting"
 
   wednesday:
     location: home
@@ -32,44 +40,49 @@ weekly_schedule:
         task: "Therapy with K. Jasko"
         recurrence: "weekly"
         first_occurrence: "2025-06-18"
-    notes:
+    fixed: []
+    notes: []
 
   thursday:
     location: guild_row
     anchors:
       - time: "10:00–11:45"
-        task: "Coworking with P. Hansen, E. Patterson, and A. Prairie"
+        task: "Coworking trio"
         recurrence: "weekly"
         first_occurrence: "2025-06-19"
+    fixed: []
     notes: []
 
   friday:
     location: guild_row
     anchors: []
+    fixed:
+      - time: "11:30–12:00"
+        label: "Campus tour"
+        source: "calendar"
     notes:
-      - "Default to admin or finishing touches"
-      - "Monthly sync last Friday of month"
+      - "Monthly sync last Friday"
 
   saturday:
     location: home
     anchors: []
-    notes:
+    fixed: []
+    notes: []
 
   sunday:
     location: home
     anchors:
+      - time: "08:30–09:15"
+        task: "Plan meals"
+        recurrence: "weekly"
+        first_occurrence: "2025-06-15"
       - time: "10:00–13:00"
         task: "Walk with H. Howe"
         recurrence: "weekly"
-        first_occurrence: "2025-06-15"
-      - time: "08:30–09:15"
-        task: "Plan meals for the week"
-        recurrence: "weekly"
-        first_occurrence: "2025-06-15"
       - time: "20:00–21:00"
         task: "Sunday Sync"
         recurrence: "weekly"
-        first_occurrence: "2025-06-15"
+    fixed: []
     notes: []
 
 projects: {}
