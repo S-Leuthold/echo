@@ -12,10 +12,10 @@ weekly_schedule:
       - time: "05:25–06:00"
         task: "Reading block"
         recurrence: "daily"
-    fixed:                         # ← NEW bucket
+    fixed:                         
       - time: "08:00–08:15"
         label: "Meeting with P. Lewis"
-        source: "calendar"         # optional meta field
+        source: "calendar"         
         first_occurrence: "2025-06-17"
     notes: []
 
@@ -65,7 +65,10 @@ weekly_schedule:
 
   saturday:
     location: home
-    anchors: []
+    anchors:
+      - time: "08:30–09:15"
+        task: "Plan meals"
+        recurrence: "weekly"
     fixed: []
     notes: []
 

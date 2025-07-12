@@ -14,3 +14,4 @@ def test_invalid_fixed_time_raises():
 def test_overlap_raises():
     with pytest.raises(ConfigValidationError):
         load_config("tests/fixtures/bad_overlap.yaml")
+
