@@ -1,0 +1,92 @@
+# ==============================================================================
+# CANONICAL TEST FIXTURE
+#
+# This file is the single source of truth for test data. It is designed to
+# test the core functionality of the config loader and validators.
+# ==============================================================================
+
+defaults:
+  timezone: "America/Chicago"
+  wake_time: "06:00"
+  sleep_time: "22:00"
+
+# ------------------------------------------------------------------------------
+
+weekly_schedule:
+  
+  monday:
+    anchors:
+      - time: "06:00–06:30"
+        task: "Morning Reading"
+    fixed:
+      - time: "12:00–12:30"
+        label: "Team Standup"
+        source: "gcal"
+
+  tuesday:
+    anchors:
+      - time: "06:00–06:30"
+        task: "Morning Reading"
+
+  wednesday:
+    anchors: []
+    fixed: []
+    
+  thursday:
+    anchors:
+      - time: "06:00–06:30"
+        task: "Morning Reading"
+    fixed:
+      - time: "17:00–18:00"
+        label: "Therapy"
+
+  friday:
+    anchors:
+      - time: "06:00–06:30"
+        task: "Morning Reading"
+    fixed: []
+
+  saturday:
+    anchors:
+      - time: "08:00–09:00"
+        task: "Weekend Reading"
+      - time: "19:00–21:00"
+        task: "Dinner with Friends"
+    fixed: []
+
+  sunday:
+    anchors:
+      - time: "20:00–20:30"
+        task: "Weekly Review"
+    fixed: []
+
+
+# ------------------------------------------------------------------------------
+
+projects:
+  # A fully-featured active project with a deadline and milestones.
+  echo_dev:
+    name: "Echo Development"
+    status: "active"
+    current_focus: "Refactor the test suite to be robust and comprehensive."
+    deadline: "2025-07-31"
+    milestones:
+      - description: "Complete core module refactoring"
+        due_date: "2025-07-15"
+      - description: "Implement 'The Archivist' (logging)"
+        due_date: "2025-07-22"
+
+  # An on-hold project that should be ignored by some parts of the system.
+  grant_proposal:
+    name: "NIH Grant Proposal"
+    status: "on_hold"
+    current_focus: "Waiting for feedback from collaborators."
+
+# ------------------------------------------------------------------------------
+
+profiles:
+  # A simple profile for testing overrides.
+  travel:
+    overrides:
+      defaults:
+        wake_time: "08:00"

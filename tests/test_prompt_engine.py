@@ -1,27 +1,116 @@
-import json, pytest
-from datetime import date
-from echo.config_loader import load_config
-from echo.scheduler     import build_schedule
-from echo.prompt_engine import build_prompt, parse_response
+# ==============================================================================
+# FILE: tests/test_prompt_engine.py
+# AUTHOR: Dr. Sam Leuthold & Echo Prime
+# PROJECT: Echo
+#
+# PURPOSE:
+#   Tests the `echo.prompt_engine` module, ensuring that both the Planner
+#   and Enricher personas build correct prompts and parse responses reliably.
+# ==============================================================================
 
-CFG     = load_config("config/sample_config.yaml")
-PARTIAL = build_schedule(CFG, date(2025, 6, 16))
-NOTES   = {
-    "Priority": "Deep work on MIR methods",
-    "Energy":   "Feeling fresh after rest day",
-    "Constraints": "Call with mom at 19:00",
-}
+import pytest
+from pathlib import Path
+from datetime import date, time
+import json
 
-def test_prompt_includes_notes_and_blocks():
-    prompt = build_prompt(CFG, PARTIAL, NOTES, date(2025, 6, 16))
-    assert "Deep work on MIR methods" in prompt
-    assert "Meeting with P. Lewis" in prompt
+from echo import (
+    load_config,
+    build_schedule,
+    Block,
+    BlockType,
+    Config,
+    build_planner_prompt,
+    parse_planner_response,
+    build_enricher_prompt,
+    parse_enricher_response,
+)
 
-def test_parse_roundtrip():
-    sample = json.dumps([{
-        "start":"09:00","end":"10:30","emoji":"📝",
-        "title":"Deep Work — MIR","note":"Write abstract","type":"flex"
-    }])
-    blocks = parse_response(sample)
-    assert blocks[0].label.startswith("📝 Deep Work")
-    assert blocks[0].meta["note"] == "Write abstract"
+# --- Fixtures ---------------------------------------------------------------
+
+@pytest.fixture
+def cfg() -> Config:
+    """Provides a fully loaded and validated Config object."""
+    config_path = Path(__file__).parent / "fixtures" / "sample_config.yaml"
+    return load_config(config_path)
+
+@pytest.fixture
+def partial_plan(cfg: Config) -> list[Block]:
+    """Provides a sample partial plan for a standard Monday."""
+    target_date = date(2025, 7, 14) # A Monday
+    return build_schedule(cfg, target_date)
+
+# --- Planner Persona Tests --------------------------------------------------
+
+def test_build_planner_prompt_structure(cfg, partial_plan):
+    """Tests the Planner prompt contains the right sections and an example."""
+    notes = {"Priority": "Test the planner."}
+    prompt = build_planner_prompt(cfg, partial_plan, notes, date.today())
+    assert "## Rules" in prompt
+    assert "## Example of a valid output object:" in prompt
+    assert "## Known Schedule (Do NOT include these in your output)" in prompt
+    assert "Morning Reading" in prompt # From partial_plan
+
+def test_parse_planner_response_success():
+    """Tests that a valid, minimal JSON from the Planner is parsed correctly."""
+    json_text = """
+    [
+      {
+        "start": "09:00",
+        "end": "10:30",
+        "title": "Deep Work",
+        "type": "flex"
+      }
+    ]
+    """
+    blocks = parse_planner_response(json_text)
+    assert len(blocks) == 1
+    assert blocks[0].start == time(9, 0)
+    assert blocks[0].end == time(10, 30)
+    assert blocks[0].label == "Deep Work"
+
+def test_parse_planner_response_fails_on_missing_key():
+    """Tests that the strict planner parser fails if 'start' is missing."""
+    json_text = '[{"end": "10:30", "title": "Bad Block"}]'
+    with pytest.raises(ValueError, match="Failed to parse Planner LLM response"):
+        parse_planner_response(json_text)
+
+# --- Enricher Persona Tests -------------------------------------------------
+
+@pytest.fixture
+def full_plan():
+    """Provides a sample full plan to be enriched."""
+    return [
+        Block(start=time(9, 0), end=time(10, 30), label="Deep Work", type=BlockType.FLEX),
+        Block(start=time(12, 0), end=time(12, 30), label="Team Standup", type=BlockType.FIXED),
+    ]
+
+def test_build_enricher_prompt_structure(full_plan):
+    """Tests that the Enricher prompt contains the plan to be enriched."""
+    prompt = build_enricher_prompt(full_plan)
+    assert "## Your Task" in prompt
+    assert "## Schedule to Enrich:" in prompt
+    assert '"label": "Deep Work"' in prompt # Check that the plan is in the prompt
+
+def test_parse_enricher_response_success(full_plan):
+    """Tests that the enricher's response correctly modifies the original plan."""
+    enriched_json_text = json.dumps([
+        {
+            "start": "09:00", "end": "10:30", "label": "Deep Work", "type": "flex",
+            "emoji": "💡", "note": "This is the note for deep work."
+        },
+        {
+            "start": "12:00", "end": "12:30", "label": "Team Standup", "type": "fixed",
+            "emoji": "🤝", "note": "This is the note for the standup."
+        }
+    ])
+
+    # The parse function modifies the list in place
+    enriched_plan = parse_enricher_response(enriched_json_text, full_plan)
+
+    assert len(enriched_plan) == 2
+    # Check the first block
+    assert enriched_plan[0].label == "💡 Deep Work"
+    assert enriched_plan[0].meta.get("note") == "This is the note for deep work."
+    # Check the second block
+    assert enriched_plan[1].label == "🤝 Team Standup"
+    assert enriched_plan[1].meta.get("note") == "This is the note for the standup."

@@ -1,15 +1,15 @@
+# tests/fixtures/bad_overlap.yaml
 defaults:
-  wake_time: "05:25"
+  timezone: "America/Chicago"
+  wake_time: "06:00"
   sleep_time: "22:00"
-  timezone:  "America/Chicago"
 
 weekly_schedule:
   monday:
-    anchors:
-      - time: "08:00–09:00"
-        task: "Reading"
     fixed:
-      - time: "08:30–09:15"
-        label: "Conflicting Meeting"
+      - time: "09:00–10:00"
+        label: "Meeting A"
+      - time: "09:30–10:30"  # This overlaps with Meeting A
+        label: "Meeting B"
 projects: {}
 profiles: {}

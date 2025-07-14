@@ -1,0 +1,15 @@
+# .gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+
+# Secrets - DO NOT COMMIT
+.env
+gcal_token.pickle
+gcal_credentials.json
