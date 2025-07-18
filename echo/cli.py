@@ -4,35 +4,26 @@
 # PROJECT: Echo
 #
 # PURPOSE:
-#   The main command-line interface (CLI) for the Echo system. It uses
-#   argparse to handle different sub-commands for various workflows like
-#   daily planning, starting a work session, and ending a work session.
+#   The main command-line interface (CLI) for the Echo system. Handles
+#   sub-commands for daily planning and interactive work sessions.
 # ==============================================================================
 
 import argparse
 import os
 import openai
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from dotenv import load_dotenv
 
 from . import (
-    load_config,
-    build_schedule,
-    merge_plan,
-    push_plan_to_gcal,
-    build_planner_prompt,
-    parse_planner_response,
-    build_enricher_prompt,
-    parse_enricher_response,
-    write_initial_log,
-    append_work_log_entry,
-    load_session,
-    clear_session,
-    SessionState,
+    load_config, build_schedule, merge_plan, push_plan_to_gcal,
+    build_planner_prompt, parse_planner_response,
+    build_enricher_prompt, parse_enricher_response,
+    write_initial_log, append_work_log_entry,
+    load_session, clear_session, SessionState,
+    build_session_crafter_prompt, parse_session_crafter_response,
+    get_session_context, Block
 )
-# We will create this module next
-# from .log_reader import get_session_context
 
 def _get_openai_client():
     load_dotenv()
@@ -41,61 +32,107 @@ def _get_openai_client():
         raise ValueError("OPENAI_API_KEY not found in .env file.")
     return openai.OpenAI(api_key=api_key)
 
-def _get_current_block(cfg: 'Config') -> 'Block':
-    """Finds the current block in the schedule based on the current time."""
-    # This is a placeholder for the logic that reads the daily plan
-    # and finds the block corresponding to the current system time.
-    # For now, we'll return a mock block.
-    from .models import Block, BlockType
-    return Block(start=datetime.now().time(), end=datetime.now().time(), label="Placeholder | Task", type=BlockType.FLEX)
+def _call_llm(client: openai.OpenAI, prompt: str) -> str:
+    """Helper function to make the API call to the LLM."""
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            response_format={"type": "json_object"},
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        raise ConnectionError(f"API call failed: {e}") from e
 
+def _get_current_block(cfg: 'Config') -> Optional[Block]:
+    """Finds the current block in the schedule based on the current time."""
+    now = datetime.now().time()
+    todays_plan = build_schedule(cfg, date.today())
+    for block in todays_plan:
+        if block.start <= now < block.end:
+            return block
+    return None
+
+# --- Main Commands ---
 
 def run_daily_planning_session(args):
     """Orchestrates the main daily planning session."""
     print("🚀 Starting Echo daily planning session...")
-    # This function will contain the logic from our previous run_echo.py
-    # ... (omitted for brevity, we'll add it back later)
-    print("✅ Daily planning complete.")
+    client = _get_openai_client()
+    cfg = load_config(args.config)
+    partial_plan = build_schedule(cfg, date.today())
+    print(f"✅ Loaded config and built partial plan with {len(partial_plan)} item(s).")
+
+    # For now, we'll use a placeholder for interactive notes.
+    planning_notes = {"Priority": "Execute the plan for the day."}
+    
+    print("🤖 Sending prompt to Planner persona...")
+    planner_prompt = build_planner_prompt(cfg, partial_plan, planning_notes, date.today())
+    planner_response = _call_llm(client, planner_prompt)
+    llm_blocks = parse_planner_response(planner_response)
+    print(f"✅ Planner returned {len(llm_blocks)} new block(s).")
+    
+    merged_plan = merge_plan(partial_plan, llm_blocks)
+    print("✅ Merged deterministic plan with planner's output.")
+
+    print("🎨 Sending complete plan to Enricher persona...")
+    enricher_prompt = build_enricher_prompt(merged_plan)
+    enricher_response = _call_llm(client, enricher_prompt)
+    final_plan = parse_enricher_response(enricher_response, merged_plan)
+    print("✅ Plan enriched with notes and emojis.")
+
+    print("✍️  Writing daily log...")
+    write_initial_log(final_plan, cfg, log_dir="logs")
+    push_plan_to_gcal(final_plan, cfg)
+    print("\n🎉 Echo planning session complete!")
 
 
 def start_work_session(args):
     """Initiates an interactive work session spin-up."""
     print("🚀 Starting a new work session spin-up...")
 
-    # 1. Check for an existing session
     if load_session() is not None:
         print("❌ Error: A work session is already in progress. Use 'echo end' to finish it.")
         return
+        
+    cfg = load_config(args.config)
+    current_block = _get_current_block(cfg)
+    if current_block is None:
+        print("
+        return
 
-    # 2. Get User Input
+    print(f"Current Block: {current_block.label}")
+    project_name = current_block.label.split('|')[0].strip()
+
     goal = input("1/3: What is your primary goal for this session? > ")
-    tasks_raw = input("2/3: What are the specific tasks to make that possible? (comma-separated) > ")
+    tasks_raw = input("2/3: What are the specific tasks? (comma-separated) > ")
     obstacle = input("3/3: What's one potential obstacle? > ")
     initial_tasks = [t.strip() for t in tasks_raw.split(',')]
 
-    # 3. Get Context and Enhance with AI
     print("\n🤖 Asking the Wise Cofounder to sharpen the plan...")
+    context = get_session_context(project_name)
     client = _get_openai_client()
-    # context = get_session_context() # We'll uncomment this when the log_reader is built
-    context = "No historical context available yet."
+    prompt = build_session_crafter_prompt(goal, initial_tasks, obstacle, context)
+    response = _call_llm(client, prompt)
+    session_plan = parse_session_crafter_response(response)
 
-    # TODO: We need to build the "Session Crafter" persona and call it here.
-    # For now, we'll just use the user's initial tasks.
-    enhanced_tasks = initial_tasks
-
-    # 4. User Approval & Save State
     print("\n--- Proposed Session Plan ---")
-    for task in enhanced_tasks:
+    print(f"🎯 Goal: {session_plan['session_goal']}")
+    print("📝 Tasks:")
+    for task in session_plan['tasks']:
         print(f"  - {task}")
+    print("🚧 Obstacles:")
+    for obs in session_plan['potential_obstacles']:
+        print(f"  - {obs}")
     print("--------------------------")
     
     choice = input("Accept this plan? (Y/n) > ").lower()
     if choice in ['y', 'yes', '']:
-        current_block = _get_current_block(load_config("tests/fixtures/sample_config.yaml"))
         SessionState.start_new(
             current_block_label=current_block.label,
-            session_goal=goal,
-            tasks=enhanced_tasks
+            session_goal=session_plan['session_goal'],
+            tasks=session_plan['tasks']
         )
         print("\n✅ Plan accepted. Session started. Let's get to work.")
     else:
@@ -111,9 +148,9 @@ def end_work_session(args):
         print("❌ Error: No active work session to end.")
         return
 
-    # TODO: Add spin-down questions, call the "Log Crafter" AI,
-    # and append the result to the daily log file.
     print(f"Spinning down session for: {session.current_block_label}")
+    # TODO: Add spin-down questions, call a new "Log Crafter" AI,
+    # and use `append_work_log_entry` to save the result.
     
     clear_session()
     print("✅ Session ended and log entry saved.")
@@ -122,18 +159,20 @@ def end_work_session(args):
 def main():
     """The main entry point for the Echo CLI."""
     parser = argparse.ArgumentParser(description="Echo: Your personal AI for thought and planning.")
+    parser.add_argument(
+        '-c', '--config', 
+        default="tests/fixtures/sample_config.yaml", 
+        help="Path to the configuration file."
+    )
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
-    # The 'plan' command
     plan_parser = subparsers.add_parser("plan", help="Run the main daily planning and scheduling workflow.")
     plan_parser.set_defaults(func=run_daily_planning_session)
 
-    # The 'start' command
-    start_parser = subparsers.add_parser("start", help="Start an interactive work session for the current time block.")
+    start_parser = subparsers.add_parser("start", help="Start an interactive work session.")
     start_parser.set_defaults(func=start_work_session)
 
-    # The 'end' command
-    end_parser = subparsers.add_parser("end", help="End the current interactive work session and log your progress.")
+    end_parser = subparsers.add_parser("end", help="End the current work session and log your progress.")
     end_parser.set_defaults(func=end_work_session)
 
     args = parser.parse_args()
