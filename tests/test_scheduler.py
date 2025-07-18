@@ -39,13 +39,13 @@ def test_build_schedule_for_monday(cfg):
 
     # Check the first block (anchor)
     assert plan[0].type == BlockType.ANCHOR
-    assert plan[0].label == "Morning Reading"
+    assert plan[0].label == "Personal | Morning Reading"
     assert plan[0].start == time(6, 0)
     assert plan[0].end == time(6, 30)
 
     # Check the second block (fixed)
     assert plan[1].type == BlockType.FIXED
-    assert plan[1].label == "Team Standup"
+    assert plan[1].label == "Echo Development | Team Standup"
     assert plan[1].start == time(12, 0)
     assert plan[1].end == time(12, 30)
     assert plan[1].meta.get("source") == "gcal"
@@ -62,7 +62,7 @@ def test_build_schedule_for_tuesday(cfg):
     # --- Assertions ---
     assert len(plan) == 1
     assert plan[0].type == BlockType.ANCHOR
-    assert plan[0].label == "Morning Reading"
+    assert plan[0].label == "Personal | Morning Reading"
 
 def test_build_schedule_for_empty_day(cfg):
     """

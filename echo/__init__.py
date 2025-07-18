@@ -1,6 +1,6 @@
 # ==============================================================================
 # FILE: echo/__init__.py
-# AUTHOR: Dr. Sam Leuthold & Echo Prime
+# AUTHOR: Dr. Sam Leuthold
 # PROJECT: Echo
 #
 # PURPOSE:
@@ -15,14 +15,16 @@ from .scheduler import build_schedule
 from .plan_utils import merge_plan
 from .gcal_writer import push_plan_to_gcal
 from .log_writer import write_initial_log, append_work_log_entry
+from .session import SessionState, load_session, clear_session # <-- Added
 
-
-# Import the new, specialized prompt engine functions
+# Import the specialized prompt engine functions
 from .prompt_engine import (
     build_planner_prompt,
     parse_planner_response,
     build_enricher_prompt,
     parse_enricher_response,
+    build_session_crafter_prompt,
+    parse_session_crafter_response
 )
 
 # Core data models
@@ -51,6 +53,12 @@ __all__ = [
     "parse_planner_response",
     "build_enricher_prompt",
     "parse_enricher_response",
+    "build_session_crafter_prompt",
+    "parse_session_crafter_response",
+    # Session Management
+    "SessionState",
+    "load_session",
+    "clear_session",
     # Models
     "Config",
     "Block",

@@ -91,8 +91,12 @@ def main():
         return
         
     # --- Step 5: Write log and Push to Calendar ---
-    write_initial_log(final_plan, cfg, log_dir="logs")
+    print("✍️  Writing daily plan to local log...")
+    write_initial_log(final_plan, cfg, log_dir="logs") # <-- THIS IS THE NEW LINE
+    
+    print("🗓️  Pushing final plan to Google Calendar...")
     push_plan_to_gcal(final_plan, cfg)
+    
     print("\n🎉 Echo planning session complete!")
 
 if __name__ == "__main__":

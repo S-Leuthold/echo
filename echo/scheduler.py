@@ -26,6 +26,8 @@ from .models import Block, BlockType, Config
 from .plan_utils import parse_time_span
 
 
+# In echo/scheduler.py
+
 def _create_blocks_from_config(
     event_list: List[Dict[str, Any]], block_type: BlockType
 ) -> List[Block]:
@@ -40,11 +42,10 @@ def _create_blocks_from_config(
             Block(
                 start=start_t,
                 end=end_t,
-                # The config might use 'task' or 'label', so we check for both.
                 label=event_data.get("task") or event_data.get("label"),
                 type=block_type,
-                # Pass through any other keys as metadata.
-                meta={k: v for k, v in event_data.items() if k not in ['time', 'task', 'label']}
+                # Correctly unpack the meta field from the config
+                meta=event_data.get("meta", {})
             )
         )
     return blocks
