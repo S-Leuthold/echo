@@ -13,3 +13,7 @@ __pycache__/
 .env
 gcal_token.pickle
 gcal_credentials.json
+
+# Test Logs 
+
+/logs
