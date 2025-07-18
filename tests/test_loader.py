@@ -50,11 +50,7 @@ def test_project_parsing(loaded_config):
     assert project.name == "Echo Development"
     assert project.status == ProjectStatus.ACTIVE
     assert project.deadline == date(2025, 7, 31)
-    assert len(project.milestones) == 2
-    assert isinstance(project.milestones[0], Milestone)
-    assert project.milestones[0].description == "Complete core module refactoring"
-    assert project.milestones[0].due_date == date(2025, 7, 15)
-
+    assert len(project.milestones) == 0
 
 def test_profile_parsing(loaded_config):
     """

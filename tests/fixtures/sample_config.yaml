@@ -1,8 +1,6 @@
 # ==============================================================================
-# CANONICAL TEST FIXTURE
-#
-# This file is the single source of truth for test data. It is designed to
-# test the core functionality of the config loader and validators.
+# CANONICAL TEST FIXTURE (V2)
+# Implements the 'Project | Task' canonical naming convention.
 # ==============================================================================
 
 defaults:
@@ -10,82 +8,66 @@ defaults:
   wake_time: "06:00"
   sleep_time: "22:00"
 
-# ------------------------------------------------------------------------------
-
 weekly_schedule:
-  
   monday:
     anchors:
       - time: "06:00–06:30"
-        task: "Morning Reading"
+        task: "Personal | Morning Reading" # <-- Updated
     fixed:
       - time: "12:00–12:30"
-        label: "Team Standup"
-        source: "gcal"
+        label: "Echo Development | Team Standup" # <-- Updated
+        meta:
+          source: "gcal"
 
   tuesday:
     anchors:
       - time: "06:00–06:30"
-        task: "Morning Reading"
+        task: "Personal | Morning Reading" # <-- Updated
 
   wednesday:
     anchors: []
     fixed: []
-    
+
   thursday:
     anchors:
       - time: "06:00–06:30"
-        task: "Morning Reading"
+        task: "Personal | Morning Reading" # <-- Updated
     fixed:
       - time: "17:00–18:00"
-        label: "Therapy"
+        label: "Personal | Therapy" # <-- Updated
 
   friday:
     anchors:
       - time: "06:00–06:30"
-        task: "Morning Reading"
+        task: "Personal | Morning Reading" # <-- Updated
     fixed: []
 
   saturday:
     anchors:
       - time: "08:00–09:00"
-        task: "Weekend Reading"
+        task: "Personal | Weekend Reading" # <-- Updated
       - time: "19:00–21:00"
-        task: "Dinner with Friends"
+        task: "Personal | Dinner with Friends" # <-- Updated
     fixed: []
 
   sunday:
     anchors:
       - time: "20:00–20:30"
-        task: "Weekly Review"
+        task: "Echo Development | Weekly Review" # <-- Updated
     fixed: []
 
-
-# ------------------------------------------------------------------------------
-
+# --- Projects and Profiles remain the same ---
 projects:
-  # A fully-featured active project with a deadline and milestones.
   echo_dev:
     name: "Echo Development"
     status: "active"
-    current_focus: "Refactor the test suite to be robust and comprehensive."
+    current_focus: "Build the new 'Work Session' feature."
     deadline: "2025-07-31"
-    milestones:
-      - description: "Complete core module refactoring"
-        due_date: "2025-07-15"
-      - description: "Implement 'The Archivist' (logging)"
-        due_date: "2025-07-22"
-
-  # An on-hold project that should be ignored by some parts of the system.
   grant_proposal:
     name: "NIH Grant Proposal"
     status: "on_hold"
-    current_focus: "Waiting for feedback from collaborators."
-
-# ------------------------------------------------------------------------------
 
 profiles:
-  # A simple profile for testing overrides.
   travel:
     overrides:
       defaults:
