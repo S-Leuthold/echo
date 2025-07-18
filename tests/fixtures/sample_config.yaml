@@ -22,8 +22,8 @@ weekly_schedule:
   tuesday:
     anchors:
       - time: "06:00–06:30"
-        task: "Personal | Morning Reading" # <-- Updated
-
+        task: "Personal | Morning Reading"
+        
   wednesday:
     anchors: []
     fixed: []
@@ -31,23 +31,25 @@ weekly_schedule:
   thursday:
     anchors:
       - time: "06:00–06:30"
-        task: "Personal | Morning Reading" # <-- Updated
+        task: "Personal | Morning Reading"
     fixed:
       - time: "17:00–18:00"
-        label: "Personal | Therapy" # <-- Updated
+        label: "Personal | Therapy"
 
   friday:
     anchors:
       - time: "06:00–06:30"
-        task: "Personal | Morning Reading" # <-- Updated
-    fixed: []
+        task: "Personal | Morning Reading"
+    fixed:
+      - time: "09:00–16:00"
+        label: "Echo Development | Core Feature Work"
 
   saturday:
     anchors:
       - time: "08:00–09:00"
-        task: "Personal | Weekend Reading" # <-- Updated
+        task: "Personal | Weekend Reading"
       - time: "19:00–21:00"
-        task: "Personal | Dinner with Friends" # <-- Updated
+        task: "Personal | Dinner with Friends"
     fixed: []
 
   sunday:
