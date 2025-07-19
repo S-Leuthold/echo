@@ -16,7 +16,8 @@ from .prompt_engine import (
     build_planner_prompt, parse_planner_response,
     build_enricher_prompt, parse_enricher_response,
     build_session_crafter_prompt, parse_session_crafter_response,
-    build_log_crafter_prompt, parse_log_crafter_response 
+    build_log_crafter_prompt, parse_log_crafter_response,
+    append_to_project_log
 )
 
 # Core data models
@@ -36,6 +37,7 @@ __all__ = [
     "build_enricher_prompt", "parse_enricher_response",
     "build_session_crafter_prompt", "parse_session_crafter_response",
     "build_log_crafter_prompt", "parse_log_crafter_response",
+    "append_to_project_log",
     # Session
     "SessionState", "load_session", "clear_session",
     # Models

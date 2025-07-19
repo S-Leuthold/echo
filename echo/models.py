@@ -46,7 +46,6 @@ class BlockType(str, Enum):
     ANCHOR = "anchor"   # A fixed, non-negotiable event (e.g., wake-up, sleep)
     FIXED  = "fixed"    # A scheduled appointment with a hard start/end time
     FLEX   = "flex"     # A task that can be moved by the LLM (e.g., deep work)
-    BUFFER = "buffer"   # Time reserved for transitions, meals, or breaks
 
 
 @dataclass
@@ -121,6 +120,41 @@ class Profile:
 
 
 @dataclass
+class Categories:
+    """
+    User-defined categories for time tracking and analytics.
+    Maps project names to category names for consistent reporting.
+    """
+    # Default categories that users can override
+    default_categories: Dict[str, str] = field(default_factory=lambda: {
+        "Echo": "Development",
+        "Work": "Development",
+        "Personal": "Personal",
+        "Admin": "Admin",
+        "Health": "Health",
+        "Learning": "Learning",
+        "Research": "Research",
+        "Writing": "Writing",
+        "Planning": "Planning"
+    })
+
+    # User can override any of these mappings
+    custom_mappings: Dict[str, str] = field(default_factory=dict)
+
+    def get_category(self, project_name: str) -> str:
+        """Get the category for a project, using custom mappings first, then defaults."""
+        # Check custom mappings first
+        if project_name in self.custom_mappings:
+            return self.custom_mappings[project_name]
+
+        # Check default categories
+        if project_name in self.default_categories:
+            return self.default_categories[project_name]
+
+        # If no mapping found, use the project name as the category
+        return project_name
+
+@dataclass
 class Config:
     """
     The root configuration object for the entire Echo system. It is constructed
@@ -131,3 +165,4 @@ class Config:
     weekly_schedule: Dict[str, List[Dict]]
     projects:        Dict[str, Project]
     profiles:        Dict[str, Profile]
+    categories:      Categories = field(default_factory=Categories)
