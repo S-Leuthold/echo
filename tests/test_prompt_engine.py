@@ -30,7 +30,7 @@ from echo import (
 @pytest.fixture
 def cfg() -> Config:
     """Provides a fully loaded and validated Config object."""
-    config_path = Path(__file__).parent / "fixtures" / "sample_config.yaml"
+    config_path = str(Path(__file__).parent / "fixtures" / "sample_config.yaml")
     return load_config(config_path)
 
 @pytest.fixture
@@ -41,14 +41,20 @@ def partial_plan(cfg: Config) -> list[Block]:
 
 # --- Planner Persona Tests --------------------------------------------------
 
-def test_build_planner_prompt_structure(cfg, partial_plan):
+def test_build_planner_prompt_structure(cfg):
     """Tests the Planner prompt contains the right sections and an example."""
-    notes = {"Priority": "Test the planner."}
-    prompt = build_planner_prompt(cfg, partial_plan, notes, date.today())
+    prompt = build_planner_prompt(
+        most_important="Test the planner",
+        todos=["Task 1", "Task 2"],
+        energy_level="High",
+        non_negotiables="None",
+        avoid_today="None",
+        fixed_events=[],
+        config=cfg
+    )
     assert "## Rules" in prompt
-    assert "## Example of a valid output object:" in prompt
-    assert "## Known Schedule (Do NOT include these in your output)" in prompt
-    assert "Morning Reading" in prompt # From partial_plan
+    assert "## Example Output:" in prompt
+    assert "## User's Most Important Work:" in prompt
 
 def test_parse_planner_response_success():
     """Tests that a valid, minimal JSON from the Planner is parsed correctly."""

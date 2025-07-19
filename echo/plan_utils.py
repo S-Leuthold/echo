@@ -18,10 +18,11 @@
 # ==============================================================================
 
 from __future__ import annotations
-from datetime import time
+from datetime import time, datetime, timedelta
 from typing import List, Tuple
 
-from .models import Block
+from .models import Block, BlockType
+import re
 
 # --------------------------------------------------------------------------- #
 # Custom Exception for Clear Error Reporting
@@ -106,3 +107,111 @@ def merge_plan(base_schedule: List[Block], new_blocks: List[Block]) -> List[Bloc
     assert_no_overlap(combined, "final plan")
 
     return sorted(combined, key=lambda b: b.start)
+
+
+def fill_gaps_with_unplanned(plan: List[Block], wake_time: str, sleep_time: str) -> List[Block]:
+    """
+    Ensures the plan covers every minute from wake_time to sleep_time.
+    If any gaps exist, fills them with an 'Unplanned' flex block.
+    """
+    if not plan:
+        return plan
+
+    # Convert wake/sleep to time objects
+    wake = datetime.strptime(wake_time, "%H:%M").time()
+    sleep = datetime.strptime(sleep_time, "%H:%M").time()
+
+    # Sort plan by start time
+    plan = sorted(plan, key=lambda b: b.start)
+    filled_plan = []
+    prev_end = wake
+
+    for block in plan:
+        if block.start > prev_end:
+            # There is a gap
+            filled_plan.append(Block(
+                start=prev_end,
+                end=block.start,
+                label="Unplanned",
+                type=BlockType.FLEX,
+                meta={"note": "No meaningful work suggested for this gap."}
+            ))
+        filled_plan.append(block)
+        prev_end = block.end
+
+    # Check for gap at the end
+    if prev_end < sleep:
+        filled_plan.append(Block(
+            start=prev_end,
+            end=sleep,
+            label="Unplanned",
+            type=BlockType.FLEX,
+            meta={"note": "No meaningful work suggested for this gap."}
+        ))
+    return filled_plan
+
+
+def enforce_block_constraints(blocks, wake_time, sleep_time):
+    """
+    Enforce canonical naming, block length (min 45, max 120), and full-day coverage.
+    Returns a repaired list of blocks.
+    """
+    # Convert wake/sleep to time objects if needed
+    if isinstance(wake_time, str):
+        wake_time = datetime.strptime(wake_time, "%H:%M").time()
+    if isinstance(sleep_time, str):
+        sleep_time = datetime.strptime(sleep_time, "%H:%M").time()
+
+    # Sort blocks by start time
+    blocks = sorted(blocks, key=lambda b: b.start)
+    repaired = []
+    current = wake_time
+    min_len = timedelta(minutes=45)
+    max_len = timedelta(minutes=120)
+
+    for block in blocks:
+        # Fix canonical naming
+        if '|' not in block.label:
+            if block.type == BlockType.ANCHOR:
+                block.label = f"Personal | {block.label.strip()}"
+            else:
+                block.label = f"Echo | {block.label.strip()}"
+        else:
+            # Canonicalize spacing
+            parts = [p.strip() for p in block.label.split('|', 1)]
+            block.label = f"{parts[0]} | {parts[1]}"
+
+        # Snap start to current if there's a gap
+        if block.start > current:
+            gap = datetime.combine(datetime.today(), block.start) - datetime.combine(datetime.today(), current)
+            while gap >= min_len:
+                end = (datetime.combine(datetime.today(), current) + min(max_len, gap)).time()
+                repaired.append(Block(start=current, end=end, label="Echo | Unplanned", type=BlockType.FLEX))
+                current = end
+                gap = datetime.combine(datetime.today(), block.start) - datetime.combine(datetime.today(), current)
+        # Truncate block if too long
+        block_len = datetime.combine(datetime.today(), block.end) - datetime.combine(datetime.today(), block.start)
+        while block_len > max_len:
+            mid = (datetime.combine(datetime.today(), block.start) + max_len).time()
+            repaired.append(Block(start=block.start, end=mid, label=block.label, type=block.type))
+            block.start = mid
+            block_len = datetime.combine(datetime.today(), block.end) - datetime.combine(datetime.today(), block.start)
+        # Skip blocks that are too short
+        if block_len < min_len:
+            continue
+        # Snap start to current
+        block = Block(start=current, end=block.end, label=block.label, type=block.type)
+        repaired.append(block)
+        current = block.end
+
+    # Fill any remaining time
+    while current < sleep_time:
+        end = (datetime.combine(datetime.today(), current) + max_len).time()
+        if end > sleep_time:
+            end = sleep_time
+        block_len = datetime.combine(datetime.today(), end) - datetime.combine(datetime.today(), current)
+        if block_len >= min_len:
+            repaired.append(Block(start=current, end=end, label="Echo | Unplanned", type=BlockType.FLEX))
+        current = end
+
+    return repaired

@@ -25,9 +25,6 @@ from typing import List, Dict, Any
 from .models import Block, BlockType, Config
 from .plan_utils import parse_time_span
 
-
-# In echo/scheduler.py
-
 def _create_blocks_from_config(
     event_list: List[Dict[str, Any]], block_type: BlockType
 ) -> List[Block]:

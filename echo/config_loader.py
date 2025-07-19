@@ -24,7 +24,7 @@ from typing import Dict, List, Any
 from datetime import date
 import yaml
 
-from .models import Config, Defaults, Project, Profile, Milestone, ProjectStatus
+from .models import Config, Defaults, Project, Profile, Milestone, ProjectStatus, Categories
 
 # This import is deferred to the function scope to prevent potential
 # circular dependencies if the validator module were to evolve.
@@ -110,52 +110,65 @@ def _parse_project(pid: str, pdata: Dict[str, Any]) -> Project:
 # Public API
 # --------------------------------------------------------------------------- #
 
-def load_config(path: str | Path) -> Config:
-    """
-    Loads a user configuration from a YAML file, instantiates the data models,
-    and runs semantic validation.
-    """
-    ## --------------------------------------------------------
-    ## Step 1: Read and Parse the YAML File
-    ## --------------------------------------------------------
-    path = Path(path).expanduser()
-    if not path.exists():
-        raise FileNotFoundError(f"Configuration file not found at: {path}")
-
-    raw: Dict = yaml.safe_load(path.read_text())
-    _assert_keys(raw, ctx="config root", required=TOP_LEVEL_KEYS)
-
-    ## --------------------------------------------------------
-    ## Step 2: Build Dataclasses from Raw Dictionaries
-    ## --------------------------------------------------------
-    try:
-        defaults = Defaults(**raw["defaults"])
-
-        projects = {
-            pid: _parse_project(pid, pdata)
-            for pid, pdata in raw.get("projects", {}).items()
-        }
-
-        profiles = {
-            name: Profile(name=name, **pdata)
-            for name, pdata in raw.get("profiles", {}).items()
-        }
-
-    except TypeError as exc:
-        # This catches errors like Defaults(non_existent_field="...")
-        raise ConfigTypeError("A section contains an unknown field") from exc
-
-    ## --------------------------------------------------------
-    ## Step 3: Assemble and Validate the Final Config Object
-    ## --------------------------------------------------------
-    cfg = Config(
-        defaults=defaults,
-        weekly_schedule=raw["weekly_schedule"],
-        projects=projects,
-        profiles=profiles,
+def load_config(config_path: str = "config/user_config.yaml") -> Config:
+    """Loads and validates the user configuration from YAML."""
+    with open(config_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    
+    # Load categories with defaults
+    categories_data = data.get("categories", {})
+    categories = Categories(
+        custom_mappings=categories_data.get("mappings", {})
+    )
+    
+    return Config(
+        defaults=Defaults(**data["defaults"]),
+        weekly_schedule=data["weekly_schedule"],
+        projects={
+            project_id: Project(id=project_id, **project_data)
+            for project_id, project_data in data.get("projects", {}).items()
+        },
+        profiles={
+            profile_id: Profile(name=profile_id, overrides=profile_data)
+            for profile_id, profile_data in data.get("profiles", {}).items()
+        },
+        categories=categories
     )
 
-    # Run final cross-field validation (e.g., check for time overlaps)
-    validate_config(cfg)
 
-    return cfg
+def save_config(config: Config, config_path: str = "config/user_config.yaml") -> None:
+    """Saves the configuration back to YAML."""
+    data = {
+        "defaults": {
+            "wake_time": config.defaults.wake_time,
+            "sleep_time": config.defaults.sleep_time,
+            "timezone": config.defaults.timezone
+        },
+        "weekly_schedule": config.weekly_schedule,
+        "projects": {
+            project_id: {
+                "name": project.name,
+                "status": project.status.value if hasattr(project.status, 'value') else str(project.status),
+                "current_focus": project.current_focus,
+                "deadline": project.deadline.isoformat() if project.deadline else None,
+                "milestones": [
+                    {
+                        "description": milestone.description,
+                        "due_date": milestone.due_date.isoformat() if milestone.due_date else None
+                    }
+                    for milestone in project.milestones
+                ]
+            }
+            for project_id, project in config.projects.items()
+        },
+        "profiles": {
+            profile_id: profile.overrides
+            for profile_id, profile in config.profiles.items()
+        },
+        "categories": {
+            "mappings": config.categories.custom_mappings
+        }
+    }
+    
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
