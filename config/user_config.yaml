@@ -56,16 +56,14 @@ profiles:
 
 # Email Integration Settings
 email:
-  # Microsoft Graph API Configuration (like Motion uses)
-  graph_api:
-    client_id: ${ECHO_GRAPH_CLIENT_ID}
-    client_secret: ${ECHO_GRAPH_CLIENT_SECRET}
-    redirect_uri: ${ECHO_GRAPH_REDIRECT_URI}
-    scopes:
-      - "Mail.Read"
-      - "Mail.ReadWrite"
-      - "User.Read"
-  
+  # IMAP Configuration
+  imap:
+    provider: "outlook"
+    server: "outlook.office365.com"
+    port: 993
+    username: ${ECHO_IMAP_USERNAME}
+    password: ${ECHO_IMAP_PASSWORD}
+    use_ssl: true
   # Email Processing Settings
   important_senders:
     - "ceo@company.com"
