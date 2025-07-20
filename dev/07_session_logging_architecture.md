@@ -76,66 +76,80 @@ no_hallucination_rules:
   - "No subjective assessments"
 ```
 
-## External Tool Integration
+## External Tool Data Integration
 
-### 1. Git Integration
+### Manual Data Entry Approach
+Users can paste summaries from external tools during session end prompts. The system will parse and integrate this data.
+
+### 1. Git Summary Entry
 ```python
-def capture_git_activity(session_start, session_end):
-    """Capture actual git activity during session."""
+def prompt_for_git_summary():
+    """Prompt user to paste git activity summary."""
     return {
-        "commits": get_commits_between(session_start, session_end),
-        "files_changed": get_files_changed(),
-        "lines_added": get_lines_added(),
-        "lines_deleted": get_lines_deleted(),
-        "branches_created": get_branches_created()
+        "prompt": "Paste your git activity summary (commits, files changed, etc.):",
+        "example": """
+        Commits: feat: add session logging, fix: emoji handling
+        Files: echo/session.py, echo/models.py
+        Lines: +45, -12
+        Branch: feature/session-logging
+        """
     }
 ```
 
-### 2. Browser Integration
+### 2. Browser Summary Entry
 ```python
-def capture_browser_activity(session_start, session_end):
-    """Capture browser activity during session."""
+def prompt_for_browser_summary():
+    """Prompt user to paste browser activity summary."""
     return {
-        "tabs_opened": get_tabs_opened(),
-        "time_on_sites": get_time_on_sites(),
-        "searches_performed": get_search_history(),
-        "bookmarks_added": get_bookmarks_added()
+        "prompt": "Paste your browser activity summary (tabs, time spent, etc.):",
+        "example": """
+        Tabs: github.com/echo, docs.swift.org, stackoverflow.com
+        Time: 20min on GitHub, 10min on docs
+        Searches: "session logging architecture", "swiftui external tools"
+        """
     }
 ```
 
-### 3. IDE Integration
+### 3. IDE Summary Entry
 ```python
-def capture_ide_activity(session_start, session_end):
-    """Capture IDE activity during session."""
+def prompt_for_ide_summary():
+    """Prompt user to paste IDE activity summary."""
     return {
-        "files_edited": get_files_edited(),
-        "time_in_files": get_time_in_files(),
-        "functions_created": get_functions_created(),
-        "errors_encountered": get_errors_encountered()
+        "prompt": "Paste your IDE activity summary (files edited, functions, etc.):",
+        "example": """
+        Files: echo/session.py, echo/models.py, tests/test_session.py
+        Functions: log_session(), parse_external_data(), validate_session()
+        Time: 45min in session.py, 30min in models.py
+        """
     }
 ```
 
-### 4. Calendar Integration
+### 4. Calendar Summary Entry
 ```python
-def capture_calendar_activity(session_start, session_end):
-    """Capture calendar events during session."""
+def prompt_for_calendar_summary():
+    """Prompt user to paste calendar activity summary."""
     return {
-        "meetings": get_meetings_between(session_start, session_end),
-        "interruptions": get_interruptions(),
-        "breaks_taken": get_breaks_taken()
+        "prompt": "Paste your calendar activity summary (meetings, interruptions, etc.):",
+        "example": """
+        Meetings: Standup 09:15-09:30, 1:1 with Sam 14:00-14:30
+        Interruptions: 2 (Slack messages, phone call)
+        Breaks: Lunch 12:00-12:30
+        """
     }
 ```
 
-### 5. Manual Entry
+### 5. Manual Task Entry
 ```python
-def capture_manual_activity():
-    """Capture user-provided activity data."""
+def prompt_for_manual_summary():
+    """Prompt user for manual task and activity summary."""
     return {
-        "tasks_completed": prompt_for_tasks_completed(),
-        "tasks_started": prompt_for_tasks_started(),
-        "blockers": prompt_for_blockers(),
-        "energy_level": prompt_for_energy_level(),
-        "focus_quality": prompt_for_focus_quality()
+        "prompt": "What did you accomplish? What did you start? Any blockers?",
+        "example": """
+        Completed: Session logging design, External tool research
+        Started: Git integration implementation, Browser tracking research
+        Blockers: Need to research browser extension APIs
+        Energy: High focus, good flow
+        """
     }
 ```
 

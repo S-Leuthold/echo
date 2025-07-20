@@ -63,3 +63,43 @@ profiles:
     overrides:
       defaults:
         wake_time: "08:00"
+
+# Email Integration Settings
+email:
+  # IMAP Configuration (Universal - works with any email provider)
+  imap:
+    provider: "outlook"  # Options: outlook, gmail, yahoo, icloud
+    server: "outlook.office365.com"  # Auto-filled based on provider
+    port: 993
+    username: "your-email@university.edu"
+    password: "your-app-password"  # Use app password for security
+    use_ssl: true
+  
+  # Email Processing Settings
+  important_senders:
+    - "ceo@company.com"
+    - "manager@company.com"
+    - "client@company.com"
+    - "professor@university.edu"
+    - "advisor@university.edu"
+  
+  urgent_keywords:
+    - "urgent"
+    - "asap"
+    - "deadline"
+    - "important"
+    - "critical"
+    - "emergency"
+    - "immediate"
+  
+  action_keywords:
+    - "please"
+    - "can you"
+    - "need"
+    - "review"
+    - "send"
+    - "schedule"
+    - "meeting"
+    - "respond"
+    - "reply"
+    - "follow up"

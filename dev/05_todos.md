@@ -44,11 +44,11 @@
   - [ ] Integration with daily planning workflow
   - [ ] Historical journal search and analysis
 
-- [ ] **Robust Session Logging**: External tool integration
-  - [ ] Git activity capture (commits, files changed)
-  - [ ] Browser usage tracking (tabs, time spent)
-  - [ ] IDE activity monitoring (files edited, functions)
-  - [ ] Calendar event integration
+- [ ] **Robust Session Logging**: Manual external tool data entry
+  - [ ] Git summary prompts (commits, files changed)
+  - [ ] Browser summary prompts (tabs, time spent)
+  - [ ] IDE summary prompts (files edited, functions)
+  - [ ] Calendar summary prompts (meetings, interruptions)
   - [ ] Anti-hallucination measures
   - [ ] Canonical session log format
 
