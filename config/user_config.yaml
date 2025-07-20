@@ -1,93 +1,96 @@
-# Echo User Configuration
-# This file defines your personal schedule, projects, and preferences.
+# Echo Configuration File
+# Copy this to config/user_config.yaml and update with your settings
 
+# Default Schedule Settings
 defaults:
-  wake_time: "06:00"
+  wake_time: "07:00"
   sleep_time: "22:00"
-  timezone: "America/Chicago"
 
-# User-defined categories for time tracking
-categories:
-  mappings:
-    # Override defaults or add new mappings
-    "Echo": "Development"
-    "Work": "Development"
-    "Client Work": "Client Work"
-    "Learning": "Learning"
-    "Health": "Health"
-    "Admin": "Admin"
-
+# Weekly Schedule (simplified for testing)
 weekly_schedule:
   monday:
-    anchors:
-      - time: "06:00-07:00"
-        task: "Morning Routine"
-        meta:
-          note: "Start the day with intention"
-    fixed: []
-
+    - name: "Morning Routine"
+      start_time: "07:00"
+      duration: 60
+      category: "personal"
+    - name: "Work"
+      start_time: "08:00"
+      duration: 480
+      category: "work"
+    - name: "Evening Routine"
+      start_time: "18:00"
+      duration: 120
+      category: "personal"
+  
   tuesday:
-    anchors:
-      - time: "06:00-07:00"
-        task: "Morning Routine"
-    fixed: []
+    - name: "Morning Routine"
+      start_time: "07:00"
+      duration: 60
+      category: "personal"
+    - name: "Work"
+      start_time: "08:00"
+      duration: 480
+      category: "work"
+    - name: "Evening Routine"
+      start_time: "18:00"
+      duration: 120
+      category: "personal"
 
-  wednesday:
-    anchors:
-      - time: "06:00-07:00"
-        task: "Morning Routine"
-    fixed: []
-
-  thursday:
-    anchors:
-      - time: "06:00-07:00"
-        task: "Morning Routine"
-    fixed: []
-
-  friday:
-    anchors:
-      - time: "06:00-07:00"
-        task: "Morning Routine"
-    fixed: []
-
-  saturday:
-    anchors:
-      - time: "08:00-09:00"
-        task: "Weekend Reading"
-      - time: "19:00-21:00"
-        task: "Dinner with Friends"
-    fixed: []
-
-  sunday:
-    anchors:
-      - time: "08:00-09:00"
-        task: "Weekend Reading"
-      - time: "19:00-21:00"
-        task: "Dinner with Friends"
-    fixed: []
-
+# Projects (simplified for testing)
 projects:
   echo:
     name: "Echo Development"
     status: "active"
-    current_focus: "Build the new 'Work Session' feature"
-    deadline: "2025-07-31"
-    milestones:
-      - description: "Complete prompt engine refactor"
-        due_date: "2025-07-20"
-      - description: "Implement analytics dashboard"
-        due_date: "2025-07-25"
-      - description: "Add project tracking features"
-        due_date: "2025-07-31"
+    current_focus: "Email integration testing"
+  
+  personal:
+    name: "Personal Projects"
+    status: "active"
+    current_focus: "General productivity"
 
+# Profiles (simplified for testing)
 profiles:
-  travel:
-    name: "Travel Mode"
-    overrides:
-      wake_time: "07:00"
-      sleep_time: "23:00"
-  sick:
-    name: "Sick Day"
-    overrides:
-      wake_time: "08:00"
-      sleep_time: "21:00"
+  default:
+    name: "Default Profile"
+    overrides: {}
+
+# Email Integration Settings
+email:
+  # Microsoft Graph API Configuration (like Motion uses)
+  graph_api:
+    client_id: ${ECHO_GRAPH_CLIENT_ID}
+    client_secret: ${ECHO_GRAPH_CLIENT_SECRET}
+    redirect_uri: ${ECHO_GRAPH_REDIRECT_URI}
+    scopes:
+      - "Mail.Read"
+      - "Mail.ReadWrite"
+      - "User.Read"
+  
+  # Email Processing Settings
+  important_senders:
+    - "ceo@company.com"
+    - "manager@company.com"
+    - "client@company.com"
+    - "professor@colostate.edu"
+    - "advisor@colostate.edu"
+  
+  urgent_keywords:
+    - "urgent"
+    - "asap"
+    - "deadline"
+    - "important"
+    - "critical"
+    - "emergency"
+    - "immediate"
+  
+  action_keywords:
+    - "please"
+    - "can you"
+    - "need"
+    - "review"
+    - "send"
+    - "schedule"
+    - "meeting"
+    - "respond"
+    - "reply"
+    - "follow up"

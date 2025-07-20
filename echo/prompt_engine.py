@@ -14,7 +14,7 @@ from   __future__ import annotations
 import json
 import re
 from   datetime   import date, time, datetime
-from   typing import List, Dict, Any
+from   typing import List, Dict, Any, Optional
 from  .models import Block, BlockType, Config
 from  .plan_utils import parse_time_span
 from  .session import SessionState
@@ -562,7 +562,10 @@ def build_session_crafter_prompt(goal: str, tasks: List[str], obstacle: str, con
 def parse_session_crafter_response(json_text: str) -> Dict[str, Any]:
     """Parses the Session Crafter's structured JSON response."""
     try:
-        clean_json_text = re.search(r"\{.*\}", json_text, re.DOTALL).group(0)
+        match = re.search(r"\{.*\}", json_text, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON object found in response")
+        clean_json_text = match.group(0)
         data = json.loads(clean_json_text)
         # Basic validation
         required_keys = {"project", "session_goal", "tasks", "potential_obstacles"}
@@ -631,38 +634,678 @@ def parse_log_crafter_response(response_text: str) -> str:
     return response_text.strip()
 
 def append_to_project_log(project_id: str, session_summary: str) -> None:
-    """Append a work session summary to the project's log file."""
+    """Append session summary to project log."""
     from pathlib import Path
-    from datetime import date
     
-    project_file = Path("projects") / f"{project_id}.md"
+    project_log_path = Path("projects") / f"{project_id}.md"
+    if project_log_path.exists():
+        with open(project_log_path, "a", encoding="utf-8") as f:
+            f.write(f"\n\n## Session Summary - {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+            f.write(session_summary)
+
+
+def build_journal_aware_planner_prompt(
+    most_important: str,
+    todos: List[str],
+    energy_level: str,
+    non_negotiables: str,
+    avoid_today: str,
+    fixed_events: List[Dict],
+    config: Config,
+    journal_context: Optional[Dict[str, str]] = None,
+    recent_trends: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Build the planner prompt with journal context for enhanced planning.
     
-    if not project_file.exists():
-        print(f"Warning: Project log file {project_file} does not exist.")
-        return
+    Args:
+        most_important: User's most important work
+        todos: List of todos
+        energy_level: User's energy level
+        non_negotiables: Non-negotiable commitments
+        avoid_today: Things to avoid
+        fixed_events: Fixed events from config
+        config: User configuration
+        journal_context: Planning context from recent reflections
+        recent_trends: Energy/mood trends from recent reflections
+        
+    Returns:
+        Enhanced planner prompt with journal context
+    """
     
+    # Load project context filtered by user input
+    user_input = f"{most_important} {' '.join(todos)}"
+    project_context, projects_found, unassigned_tasks = _get_filtered_project_context(config, user_input)
+    
+    # Build fixed events string
+    fixed_events_str = ""
+    if fixed_events:
+        fixed_events_str = "\n## Fixed Events (do not change):\n"
+        for event in fixed_events:
+            fixed_events_str += f"- {event}\n"
+    
+    # Build todos string
+    todos_str = ", ".join(todos) if todos else "None"
+    
+    # Build journal context section
+    journal_context_str = ""
+    if journal_context:
+        journal_context_str = "\n## Journal-Based Planning Context:\n"
+        if "tomorrow_focus" in journal_context:
+            journal_context_str += f"- **Tomorrow's Focus**: {journal_context['tomorrow_focus']}\n"
+        if "tomorrow_energy" in journal_context:
+            journal_context_str += f"- **Expected Energy**: {journal_context['tomorrow_energy']}\n"
+        if "non_negotiables" in journal_context:
+            journal_context_str += f"- **Non-Negotiables**: {journal_context['non_negotiables']}\n"
+        if "avoid_tomorrow" in journal_context:
+            journal_context_str += f"- **Avoid**: {journal_context['avoid_tomorrow']}\n"
+        if "tomorrow_priorities" in journal_context:
+            journal_context_str += f"- **Top Priorities**: {journal_context['tomorrow_priorities']}\n"
+        if "patterns_noticed" in journal_context:
+            journal_context_str += f"- **Patterns Noticed**: {journal_context['patterns_noticed']}\n"
+        if "learnings" in journal_context:
+            journal_context_str += f"- **Recent Learnings**: {journal_context['learnings']}\n"
+    
+    # Build trends section
+    trends_str = ""
+    if recent_trends:
+        trends_str = "\n## Recent Patterns & Trends:\n"
+        if "energy_trend" in recent_trends:
+            trends_str += f"- **Energy Trend**: {recent_trends['energy_trend']}\n"
+        if "mood_trend" in recent_trends:
+            trends_str += f"- **Mood Trend**: {recent_trends['mood_trend']}\n"
+        if "recent_energy" in recent_trends:
+            trends_str += f"- **Recent Energy**: {recent_trends['recent_energy']}\n"
+        if "recent_mood" in recent_trends:
+            trends_str += f"- **Recent Mood**: {recent_trends['recent_mood']}\n"
+    
+    prompt = f"""You are a JSON API that generates a complete daily schedule with enhanced context from the user's recent reflections.
+
+## Rules
+1. Return ONLY a valid JSON array of objects.
+2. Each object MUST have "start", "end", "title", and "type" keys.
+3. "type" must be either "anchor" (for fixed events) or "flex" (for work blocks).
+4. The schedule MUST cover every minute from 06:00 to 22:00 with NO gaps.
+5. No block may be longer than 120 minutes or shorter than 45 minutes.
+6. All block titles MUST use the canonical format: "Project | Block Title" (e.g., "Echo | Prompt Development", "Personal | Morning Routine").
+7. Include all fixed events exactly as provided below.
+8. Schedule the user's most important work as early as possible, unless energy is low.
+9. Schedule all user-supplied to-dos, breaking them into blocks as needed.
+10. Include at least one "Admin | Email & Admin" block, usually late in the day.
+11. Never schedule more than two consecutive 120-minute work blocks.
+12. If energy is low, schedule lighter or creative work in the morning.
+13. Respect all non-negotiable commitments.
+14. Do not leave any gaps in the schedule.
+15. Use project context below to suggest relevant work that advances specific projects.
+16. **NEW**: Incorporate journal-based planning context and recent patterns to create a more personalized schedule.
+
+{project_context}
+
+## User's Most Important Work:
+{most_important}
+
+## User's To-Dos:
+{todos_str}
+
+## User's Energy Level:
+{energy_level}
+
+## Non-Negotiables:
+{non_negotiables}
+
+## Avoid Today:
+{avoid_today}
+
+{journal_context_str}
+
+{trends_str}
+
+{fixed_events_str}
+
+## Example Output:
+[
+  {{"start": "06:00", "end": "08:00", "title": "Personal | Morning Routine", "type": "anchor"}},
+  {{"start": "08:00", "end": "10:00", "title": "Echo | Prompt Development", "type": "flex"}},
+  ...
+]
+
+Your Task:
+Generate a JSON array of blocks for the entire day, following the rules above. Use the project context to suggest work that advances specific projects and milestones. **Pay special attention to the journal-based planning context and recent patterns to create a schedule that aligns with the user's recent insights and preferences.**
+"""
+    
+    return prompt
+
+
+def build_tomorrow_planning_prompt(
+    reflection_entry: Dict[str, str],
+    config: Config,
+    recent_trends: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Build a planning prompt specifically for tomorrow based on evening reflection.
+    
+    Args:
+        reflection_entry: Evening reflection entry with planning context
+        config: User configuration
+        recent_trends: Energy/mood trends from recent reflections
+        
+    Returns:
+        Planning prompt for tomorrow
+    """
+    
+    # Extract planning context from reflection
+    tomorrow_focus = reflection_entry.get("tomorrow_focus", "")
+    tomorrow_energy = reflection_entry.get("tomorrow_energy", "")
+    non_negotiables = reflection_entry.get("non_negotiables", "")
+    avoid_tomorrow = reflection_entry.get("avoid_tomorrow", "")
+    tomorrow_priorities = reflection_entry.get("tomorrow_priorities", "")
+    
+    # Build trends section
+    trends_str = ""
+    if recent_trends:
+        trends_str = "\n## Recent Patterns & Trends:\n"
+        if "energy_trend" in recent_trends:
+            trends_str += f"- **Energy Trend**: {recent_trends['energy_trend']}\n"
+        if "mood_trend" in recent_trends:
+            trends_str += f"- **Mood Trend**: {recent_trends['mood_trend']}\n"
+    
+    # Get project context
+    user_input = f"{tomorrow_focus} {tomorrow_priorities}"
+    project_context, projects_found, unassigned_tasks = _get_filtered_project_context(config, user_input)
+    
+    prompt = f"""You are a JSON API that generates tomorrow's schedule based on the user's evening reflection.
+
+## Rules
+1. Return ONLY a valid JSON array of objects.
+2. Each object MUST have "start", "end", "title", and "type" keys.
+3. "type" must be either "anchor" (for fixed events) or "flex" (for work blocks).
+4. The schedule MUST cover every minute from 06:00 to 22:00 with NO gaps.
+5. No block may be longer than 120 minutes or shorter than 45 minutes.
+6. All block titles MUST use the canonical format: "Project | Block Title".
+7. Schedule based on the user's evening reflection insights.
+8. Respect energy predictions and avoid patterns.
+9. Include all non-negotiables as fixed blocks.
+
+{project_context}
+
+## Tomorrow's Focus:
+{tomorrow_focus}
+
+## Tomorrow's Priorities:
+{tomorrow_priorities}
+
+## Expected Energy Level:
+{tomorrow_energy}
+
+## Non-Negotiables:
+{non_negotiables}
+
+## Things to Avoid:
+{avoid_tomorrow}
+
+{trends_str}
+
+## Example Output:
+[
+  {{"start": "06:00", "end": "08:00", "title": "Personal | Morning Routine", "type": "anchor"}},
+  {{"start": "08:00", "end": "10:00", "title": "Project | Priority Work", "type": "flex"}},
+  ...
+]
+
+Your Task:
+Generate a JSON array of blocks for tomorrow, incorporating the user's evening reflection insights and recent patterns. Create a schedule that aligns with their energy predictions, focuses on their stated priorities, and avoids their identified patterns.
+"""
+    
+    return prompt
+
+
+def parse_tomorrow_planning_response(json_text: str) -> List[Block]:
+    """
+    Parse the tomorrow planning response into a list of Block objects.
+    
+    Args:
+        json_text: JSON response from LLM
+        
+    Returns:
+        List of Block objects for tomorrow's schedule
+    """
+    return parse_planner_response(json_text)  # Reuse existing parser
+
+
+def build_morning_adjustment_prompt(
+    original_blocks: List[Block],
+    morning_context: Dict[str, str],
+    config: Config,
+    recent_trends: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Build a prompt for adjusting today's plan based on morning energy and mood.
+    
+    Args:
+        original_blocks: The original plan blocks for today
+        morning_context: Morning energy and mood assessment
+        config: User configuration
+        recent_trends: Energy/mood trends from recent reflections
+        
+    Returns:
+        Morning adjustment planning prompt
+    """
+    
+    # Format original blocks
+    original_blocks_str = ""
+    for i, block in enumerate(original_blocks, 1):
+        original_blocks_str += f"{i:2d}. {block.start.strftime('%H:%M')}-{block.end.strftime('%H:%M')} | {block.label} | {block.type.value}\n"
+    
+    # Build trends section
+    trends_str = ""
+    if recent_trends:
+        trends_str = "\n## Recent Patterns & Trends:\n"
+        if "energy_trend" in recent_trends:
+            trends_str += f"- **Energy Trend**: {recent_trends['energy_trend']}\n"
+        if "mood_trend" in recent_trends:
+            trends_str += f"- **Mood Trend**: {recent_trends['mood_trend']}\n"
+    
+    # Get project context
+    user_input = "morning adjustment"
+    project_context, projects_found, unassigned_tasks = _get_filtered_project_context(config, user_input)
+    
+    prompt = f"""You are a JSON API that adjusts today's schedule based on the user's morning energy and mood.
+
+## Rules
+1. Return ONLY a valid JSON array of objects.
+2. Each object MUST have "start", "end", "title", and "type" keys.
+3. "type" must be either "anchor" (for fixed events) or "flex" (for work blocks).
+4. The schedule MUST cover every minute from 06:00 to 22:00 with NO gaps.
+5. No block may be longer than 120 minutes or shorter than 45 minutes.
+6. All block titles MUST use the canonical format: "Project | Block Title".
+7. Adjust the original plan based on morning energy and mood.
+8. If energy is low, move lighter work to the morning.
+9. If readiness is low, consider reducing workload or adding breaks.
+10. Respect all non-negotiable commitments.
+
+{project_context}
+
+## Original Plan for Today:
+{original_blocks_str}
+
+## Morning Assessment:
+- **Energy Level**: {morning_context.get('morning_energy', 'unknown')}
+- **Mood**: {morning_context.get('morning_mood', 'unknown')}
+- **Readiness**: {morning_context.get('readiness', 'unknown')}/10
+
+{trends_str}
+
+## Adjustment Guidelines:
+- If energy is LOW: Move lighter/creative work to morning, reduce workload
+- If energy is HIGH: Keep challenging work in morning, maintain intensity
+- If readiness is LOW (1-4): Add breaks, reduce workload, move tasks
+- If readiness is HIGH (7-10): Keep original plan, maybe increase intensity
+- If mood is poor: Add mood-lifting activities, reduce pressure
+- If mood is good: Leverage positive energy for challenging tasks
+
+## Example Output:
+[
+  {{"start": "06:00", "end": "08:00", "title": "Personal | Morning Routine", "type": "anchor"}},
+  {{"start": "08:00", "end": "10:00", "title": "Project | Adjusted Work", "type": "flex"}},
+  ...
+]
+
+Your Task:
+Generate a JSON array of blocks for today, adjusting the original plan based on the morning energy and mood assessment. Maintain the same total work time but optimize for the user's current state.
+"""
+    
+    return prompt
+
+
+def parse_morning_adjustment_response(json_text: str) -> List[Block]:
+    """
+    Parse the morning adjustment response into a list of Block objects.
+    
+    Args:
+        json_text: JSON response from LLM
+        
+    Returns:
+        List of Block objects for the adjusted schedule
+    """
+    return parse_planner_response(json_text)  # Reuse existing parser
+
+
+def build_journal_insights_prompt(
+    journal_entries: List[Dict[str, Any]],
+    days: int = 30
+) -> str:
+    """
+    Build a prompt for generating insights from journal data.
+    
+    Args:
+        journal_entries: List of journal entries with content and metadata
+        days: Number of days to analyze
+        
+    Returns:
+        Journal insights prompt
+    """
+    
+    # Format journal entries for analysis
+    entries_summary = ""
+    for entry in journal_entries[:10]:  # Limit to last 10 entries for prompt size
+        date_str = entry.get('date', 'unknown')
+        entry_type = entry.get('entry_type', 'unknown')
+        content = entry.get('content', {})
+        
+        entries_summary += f"\n📅 {date_str} - {entry_type}:\n"
+        
+        # Add key content fields
+        if 'energy_level' in content:
+            entries_summary += f"   Energy: {content['energy_level']}\n"
+        if 'mood' in content:
+            entries_summary += f"   Mood: {content['mood']}\n"
+        if 'what_went_well' in content:
+            entries_summary += f"   Went Well: {content['what_went_well'][:100]}...\n"
+        if 'challenges' in content:
+            entries_summary += f"   Challenges: {content['challenges'][:100]}...\n"
+        if 'learnings' in content:
+            entries_summary += f"   Learnings: {content['learnings'][:100]}...\n"
+        if 'patterns_noticed' in content:
+            entries_summary += f"   Patterns: {content['patterns_noticed'][:100]}...\n"
+    
+    prompt = f"""You are an AI productivity analyst. Analyze the user's journal entries to identify patterns, insights, and recommendations.
+
+## Your Task
+Analyze the journal data and provide:
+1. **Pattern Recognition**: Identify recurring themes, energy patterns, and productivity trends
+2. **Productivity Insights**: Discover what works well and what doesn't
+3. **Recommendations**: Suggest improvements based on the patterns
+4. **Actionable Advice**: Provide specific, actionable recommendations
+
+## Journal Data (Last {days} days):
+{entries_summary}
+
+## Analysis Guidelines:
+- Look for energy patterns (high/medium/low cycles)
+- Identify mood trends and their impact on productivity
+- Find recurring challenges and their solutions
+- Discover what consistently goes well
+- Notice patterns in planning effectiveness
+- Identify optimal work conditions and timing
+
+## Output Format:
+Return a JSON object with the following structure:
+{{
+  "patterns": [
+    {{
+      "type": "energy|mood|productivity|planning",
+      "description": "Description of the pattern",
+      "frequency": "how often this occurs",
+      "impact": "positive|negative|neutral"
+    }}
+  ],
+  "insights": [
+    {{
+      "category": "energy_management|time_management|mood_optimization|planning_strategy",
+      "insight": "Specific insight about productivity",
+      "evidence": "What data supports this insight",
+      "confidence": "high|medium|low"
+    }}
+  ],
+  "recommendations": [
+    {{
+      "category": "energy_optimization|schedule_adjustment|mood_improvement|planning_enhancement",
+      "recommendation": "Specific actionable recommendation",
+      "rationale": "Why this recommendation makes sense",
+      "priority": "high|medium|low"
+    }}
+  ],
+  "summary": "Brief overall assessment of the user's productivity patterns"
+}}
+
+Your Task:
+Analyze the journal data and provide comprehensive insights and recommendations.
+"""
+    
+    return prompt
+
+
+def build_productivity_analysis_prompt(
+    recent_entries: List[Dict[str, Any]],
+    energy_trends: Dict[str, str],
+    mood_trends: Dict[str, str]
+) -> str:
+    """
+    Build a prompt for detailed productivity analysis.
+    
+    Args:
+        recent_entries: Recent journal entries
+        energy_trends: Energy trend analysis
+        mood_trends: Mood trend analysis
+        
+    Returns:
+        Productivity analysis prompt
+    """
+    
+    # Format recent entries
+    entries_text = ""
+    for entry in recent_entries[:5]:
+        content = entry.get('content', {})
+        entries_text += f"\n- Energy: {content.get('energy_level', 'unknown')}"
+        entries_text += f", Mood: {content.get('mood', 'unknown')}"
+        if 'what_went_well' in content:
+            entries_text += f", Went Well: {content['what_went_well'][:50]}..."
+        if 'challenges' in content:
+            entries_text += f", Challenges: {content['challenges'][:50]}..."
+    
+    prompt = f"""You are a productivity expert analyzing a user's recent patterns.
+
+## Recent Data:
+{entries_text}
+
+## Trend Analysis:
+- Energy Trend: {energy_trends.get('energy_trend', 'unknown')}
+- Mood Trend: {mood_trends.get('mood_trend', 'unknown')}
+- Recent Energy: {energy_trends.get('recent_energy', 'unknown')}
+- Recent Mood: {mood_trends.get('recent_mood', 'unknown')}
+
+## Analysis Focus:
+1. **Energy Management**: How well does the user manage their energy?
+2. **Mood Impact**: How does mood affect productivity?
+3. **Pattern Recognition**: What recurring patterns exist?
+4. **Optimization Opportunities**: Where can productivity be improved?
+
+## Output Format:
+Return a JSON object with:
+{{
+  "energy_analysis": {{
+    "pattern": "description of energy pattern",
+    "optimal_times": "when energy is highest",
+    "recommendations": ["specific energy optimization tips"]
+  }},
+  "mood_analysis": {{
+    "pattern": "description of mood pattern",
+    "productivity_impact": "how mood affects work",
+    "recommendations": ["specific mood optimization tips"]
+  }},
+  "productivity_insights": [
+    {{
+      "insight": "specific productivity insight",
+      "evidence": "supporting data",
+      "action": "specific action to take"
+    }}
+  ],
+  "optimization_plan": {{
+    "short_term": ["immediate improvements"],
+    "long_term": ["sustainable changes"],
+    "priority": "highest priority action"
+  }}
+}}
+
+Your Task:
+Provide detailed productivity analysis and actionable recommendations.
+"""
+    
+    return prompt
+
+
+def parse_journal_insights_response(json_text: str) -> Dict[str, Any]:
+    """
+    Parse the journal insights response.
+    
+    Args:
+        json_text: JSON response from LLM
+        
+    Returns:
+        Parsed insights dictionary
+    """
     try:
-        # Read current content
-        content = project_file.read_text(encoding='utf-8')
+        # Clean and parse JSON
+        match = re.search(r"\{.*\}", json_text, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON object found in response")
         
-        # Find the Recent Progress section
-        if "## Recent Progress" in content:
-            # Insert new entry at the top of Recent Progress
-            today = date.today().strftime('%Y-%m-%d')
-            new_entry = f"\n### {today}\n{session_summary}\n"
+        clean_json_text = match.group(0)
+        data = json.loads(clean_json_text)
+        
+        # Validate required keys
+        required_keys = ["patterns", "insights", "recommendations", "summary"]
+        if not all(key in data for key in required_keys):
+            raise ValueError("Missing required keys in insights response")
+        
+        return data
+    except (json.JSONDecodeError, AttributeError, ValueError) as e:
+        raise ValueError(f"Failed to parse journal insights response: {e}") from e
+
+
+def parse_productivity_analysis_response(json_text: str) -> Dict[str, Any]:
+    """
+    Parse the productivity analysis response.
+    
+    Args:
+        json_text: JSON response from LLM
+        
+    Returns:
+        Parsed productivity analysis dictionary
+    """
+    try:
+        # Clean and parse JSON
+        match = re.search(r"\{.*\}", json_text, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON object found in response")
+        
+        clean_json_text = match.group(0)
+        data = json.loads(clean_json_text)
+        
+        # Validate required keys
+        required_keys = ["energy_analysis", "mood_analysis", "productivity_insights", "optimization_plan"]
+        if not all(key in data for key in required_keys):
+            raise ValueError("Missing required keys in productivity analysis response")
+        
+        return data
+    except (json.JSONDecodeError, AttributeError, ValueError) as e:
+        raise ValueError(f"Failed to parse productivity analysis response: {e}") from e
+
+
+def build_action_extraction_prompt(emails: List[Dict[str, Any]]) -> str:
+    """
+    Build a prompt for extracting action items from emails.
+    
+    Args:
+        emails: List of email data dictionaries
+        
+    Returns:
+        Action extraction prompt
+    """
+    
+    # Format email data for analysis
+    emails_text = ""
+    for email in emails:
+        emails_text += f"\n📧 **From**: {email.get('sender', 'Unknown')}"
+        emails_text += f"\n📋 **Subject**: {email.get('subject', 'No subject')}"
+        emails_text += f"\n📅 **Received**: {email.get('received', 'Unknown')}"
+        emails_text += f"\n⚡ **Importance**: {email.get('importance', 'normal')}"
+        emails_text += f"\n📝 **Content**: {email.get('body', '')[:200]}..."
+        emails_text += "\n" + "="*50 + "\n"
+    
+    prompt = f"""You are an AI assistant that extracts action items from emails. Analyze the emails and identify specific tasks, requests, or actions that need to be taken.
+
+## Your Task
+Extract action items from the provided emails. Focus on:
+1. **Explicit requests**: "Please send the report", "Can you review this?"
+2. **Implicit tasks**: "The deadline is Friday", "We need to schedule a meeting"
+3. **Follow-up items**: "Let me know when you're available", "Get back to me on this"
+4. **Project-related tasks**: Status updates, milestone requests, deliverables
+
+## Email Data:
+{emails_text}
+
+## Analysis Guidelines:
+- Look for action-oriented language (please, can you, need to, should)
+- Identify deadlines and due dates
+- Recognize meeting requests and scheduling needs
+- Note project-related tasks and updates
+- Consider sender importance and email priority
+- Extract specific, actionable items
+
+## Output Format:
+Return a JSON array of action items with the following structure:
+[
+  {{
+    "description": "Specific action item description",
+    "priority": "urgent|high|medium|low",
+    "sender": "email address of sender",
+    "email_subject": "original email subject",
+    "email_date": "ISO date string",
+    "project_context": "related project if applicable",
+    "notes": "additional context or notes"
+  }}
+]
+
+## Priority Guidelines:
+- **urgent**: Immediate attention required, deadlines within 24 hours
+- **high**: Important tasks, deadlines within a week
+- **medium**: Standard tasks, no immediate deadline
+- **low**: Nice-to-have items, no specific timeline
+
+Your Task:
+Extract all actionable items from the emails and provide them in the specified JSON format.
+"""
+    
+    return prompt
+
+
+def parse_action_extraction_response(json_text: str) -> List[Dict[str, Any]]:
+    """
+    Parse the action extraction response.
+    
+    Args:
+        json_text: JSON response from LLM
+        
+    Returns:
+        List of action item dictionaries
+    """
+    try:
+        # Clean and parse JSON
+        match = re.search(r"\[.*\]", json_text, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON array found in response")
+        
+        clean_json_text = match.group(0)
+        data = json.loads(clean_json_text)
+        
+        # Validate that it's a list
+        if not isinstance(data, list):
+            raise ValueError("Response is not a JSON array")
+        
+        # Validate each action item has required fields
+        for action in data:
+            if not isinstance(action, dict):
+                raise ValueError("Action item is not a dictionary")
             
-            # Find the position after "## Recent Progress"
-            pos = content.find("## Recent Progress") + len("## Recent Progress")
-            content = content[:pos] + new_entry + content[pos:]
-        else:
-            # Add Recent Progress section if it doesn't exist
-            today = date.today().strftime('%Y-%m-%d')
-            new_section = f"\n## Recent Progress\n### {today}\n{session_summary}\n"
-            content += new_section
+            required_fields = ["description", "priority"]
+            if not all(field in action for field in required_fields):
+                raise ValueError("Action item missing required fields")
+            
+            # Validate priority
+            if action["priority"] not in ["urgent", "high", "medium", "low"]:
+                action["priority"] = "medium"  # Default to medium if invalid
         
-        # Write back to file
-        project_file.write_text(content, encoding='utf-8')
-        print(f"✅ Updated project log: {project_file}")
-        
-    except Exception as e:
-        print(f"Error updating project log {project_file}: {e}")
+        return data
+    except (json.JSONDecodeError, AttributeError, ValueError) as e:
+        raise ValueError(f"Failed to parse action extraction response: {e}") from e

@@ -17,8 +17,8 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **Emoji Handling**: Smart cleaning of emojis from labels for consistent analytics
 
 ### Session Management
-- **Session Tracking**: Track work sessions with notes and external tool integration
-- **External Tool Data**: Capture Git activity, browser usage, IDE work, and calendar events
+- **Session Tracking**: Track work sessions with notes and manual data entry
+- **External Tool Data**: Paste summaries from Git, browser, IDE, and calendar
 - **Anti-Hallucination**: Robust logging that prevents LLM from filling in missing data
 - **Session Summaries**: Generate structured summaries of completed work sessions
 
@@ -27,6 +27,13 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **Project Context**: Rich project information including focus areas, milestones, and deadlines
 - **Project Status Tracking**: Active, on-hold, backlog, and completed project states
 - **Project Logs**: Persistent logs for each project with session summaries
+
+### Journaling & Reflection
+- **Evening Reflection**: Structured daily reflection with guided prompts
+- **Quick Notes**: Simple journal entries for capturing thoughts and ideas
+- **Journal Search**: Search through historical journal entries
+- **Pattern Recognition**: Identify trends and patterns in your reflections
+- **Planning Integration**: Evening reflections inform next-day planning
 
 ### Configuration & Customization
 - **YAML Configuration**: Flexible configuration system with defaults, projects, and profiles
@@ -42,6 +49,7 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **`echo.prompt_engine`**: LLM prompt construction and response parsing
 - **`echo.analytics`**: Time tracking and analytics engine
 - **`echo.session`**: Session state management and logging
+- **`echo.journal`**: Journal entry storage and retrieval
 - **`echo.config_loader`**: YAML configuration parsing and validation
 
 ### Data Models
@@ -49,12 +57,14 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **`Config`**: Root configuration object with defaults, projects, and schedules
 - **`Project`**: Project representation with status, milestones, and focus areas
 - **`DailyStats`**: Analytics data structure for time allocation tracking
+- **`JournalEntry`**: Journal entry with structured reflection data
 
 ### File Structure
 ```
 echo/
 ├── config/           # Configuration files
 ├── logs/            # Daily logs and session data
+├── refs/            # Journal entries and reflections
 ├── echo/            # Core Python modules
 ├── tests/           # Comprehensive test suite
 ├── dev/             # Development documentation
@@ -115,10 +125,10 @@ python -m echo.cli plan --priority "Finish the Echo analytics feature"
 ### Session Tracking
 ```bash
 # Start a work session
-python -m echo.cli session start
+python -m echo.cli start
 
 # End current session with notes
-python -m echo.cli session end --notes "Completed the analytics engine"
+python -m echo.cli end
 
 # View session history
 python -m echo.cli session history
@@ -126,15 +136,121 @@ python -m echo.cli session history
 
 ### Analytics
 ```bash
-# View today's time allocation
-python -m echo.cli analytics today
+# View time allocation analytics
+python -m echo.cli analytics
 
-# View weekly trends
-python -m echo.cli analytics weekly
-
-# Export analytics data
-python -m echo.cli analytics export
+# View specific number of days
+python -m echo.cli analytics --days 14
 ```
+
+## Journal & Reflection
+
+Echo includes a comprehensive journaling system for evening reflection and planning:
+
+```bash
+# Complete end-of-day workflow: reflection + tomorrow planning
+echo end_day
+
+# Morning check-in workflow: load and validate today's plan
+echo morning
+
+# Evening reflection with planning context
+echo journal evening
+
+# Quick journal notes
+echo journal quick
+
+# Search journal entries
+echo journal search
+
+# View journal insights
+echo journal insights
+```
+
+### Complete Day Cycle
+
+Echo provides a seamless day cycle from evening to morning:
+
+#### **Evening Workflow** (`echo end_day`)
+1. **Evening Reflection** (12 prompts):
+   - Daily reflection questions (what went well, challenges, learnings)
+   - Energy and mood assessment
+   - Pattern recognition
+   - Tomorrow planning questions (priorities, focus, energy prediction)
+   - Non-negotiables and things to avoid
+
+2. **Automatic Tomorrow Planning**:
+   - Uses your reflection insights to generate tomorrow's schedule
+   - Analyzes recent energy and mood trends
+   - Creates a personalized plan based on your patterns
+   - Saves and pushes the plan to your calendar
+
+#### **Morning Workflow** (`echo morning`)
+1. **Plan Loading**: Automatically loads yesterday's evening plan
+2. **Morning Assessment**: Energy, mood, and readiness evaluation
+3. **Plan Validation**: Option to adjust the plan based on morning energy
+4. **Smart Adjustments**: LLM-powered plan modifications based on current state
+5. **Ready to Execute**: Seamless transition to work sessions
+
+This creates the perfect **evening reflection → morning execution** cycle.
+
+### End of Day Workflow
+
+The `echo end_day` command provides a seamless end-of-day experience:
+
+1. **Evening Reflection** (12 prompts):
+   - Daily reflection questions (what went well, challenges, learnings)
+   - Energy and mood assessment
+   - Pattern recognition
+   - Tomorrow planning questions (priorities, focus, energy prediction)
+   - Non-negotiables and things to avoid
+
+2. **Automatic Tomorrow Planning**:
+   - Uses your reflection insights to generate tomorrow's schedule
+   - Analyzes recent energy and mood trends
+   - Creates a personalized plan based on your patterns
+   - Saves and pushes the plan to your calendar
+
+This creates the perfect evening workflow: **reflection → planning → ready for tomorrow**.
+
+### Morning Check-In Workflow
+
+The `echo morning` command provides a smart morning experience:
+
+1. **Plan Loading**: Automatically loads yesterday's evening plan
+2. **Morning Assessment**: 
+   - Energy level evaluation
+   - Mood assessment
+   - Readiness rating (1-10)
+3. **Smart Adjustments**: 
+   - Option to adjust plan based on morning energy
+   - LLM-powered modifications for optimal performance
+   - Maintains work volume while optimizing timing
+4. **Ready to Execute**: Seamless transition to work sessions
+
+This completes the cycle: **evening planning → morning validation → execution**.
+
+### Evening Reflection Workflow
+
+The enhanced evening reflection (`echo journal evening`) guides you through 12 comprehensive prompts:
+
+1. **Daily Reflection** (6 prompts):
+   - What went well today?
+   - What challenges did you face?
+   - What did you learn today?
+   - What was your energy level?
+   - How would you describe your mood?
+   - Any patterns you noticed?
+
+2. **Tomorrow Planning** (6 prompts):
+   - What are your top 3 priorities for tomorrow?
+   - What should be your main focus tomorrow?
+   - What's your energy prediction for tomorrow?
+   - Any non-negotiables for tomorrow?
+   - What should you avoid tomorrow?
+   - Any context for tomorrow?
+
+After completing the reflection, Echo automatically offers to plan tomorrow using your insights and recent patterns.
 
 ### Project Management
 ```bash
@@ -158,7 +274,7 @@ python -m pytest tests/ -v
 
 # Run specific test categories
 python -m pytest tests/test_analytics.py -v
-python -m pytest tests/test_prompt_engine.py -v
+python -m pytest tests/test_journal.py -v
 
 # Run with coverage
 python -m pytest tests/ --cov=echo --cov-report=html
@@ -178,54 +294,170 @@ cd ios
 swift run EchoPreview
 ```
 
-## 🔮 Roadmap
+## Roadmap
 
-### Phase 1: Core Features ✅
-- [x] LLM-powered daily planning
-- [x] Time tracking and analytics
-- [x] Project management
-- [x] Session logging
-- [x] Configuration system
+### ✅ Phase 1: Core Journaling System (Complete)
+- [x] Journal entry data models and storage
+- [x] Evening reflection and quick note creation
+- [x] Journal search and retrieval
+- [x] CLI commands for journaling workflows
+- [x] Comprehensive test coverage
 
-### Phase 2: Advanced Features 🚧
-- [ ] **Journaling System**: Evening reflection and next-day planning
-- [ ] **Robust Session Logging**: External tool integration (Git, browser, IDE)
-- [ ] **Meeting Summarizer**: Pre-meeting prep and post-meeting summaries
-- [ ] **Email Integration**: Daily summaries and project updates
+### ✅ Phase 2A: Enhanced Evening Reflection & Planning Bridge (Complete)
+- [x] Enhanced evening reflection with 12 comprehensive prompts
+- [x] Planning context extraction from reflections
+- [x] Energy and mood trend analysis
+- [x] Tomorrow planning with journal context
+- [x] Automatic planning integration in evening workflow
+- [x] Journal-aware planning prompts
+- [x] Comprehensive test coverage for new functionality
 
-### Phase 3: iOS App 🚧
-- [ ] **Native iOS App**: SwiftUI-based mobile interface
-- [ ] **Real-time Sync**: Cloud synchronization of data
-- [ ] **Push Notifications**: Schedule reminders and session prompts
-- [ ] **Widgets**: Home screen widgets for quick access
+### ✅ Phase 2B: Morning Workflow Integration (Complete)
+- [x] Morning check-in workflow (`echo morning`)
+- [x] Load and validate previous evening's plan
+- [x] Morning energy and mood assessment
+- [x] Smart plan adjustments based on morning state
+- [x] LLM-powered plan modifications
+- [x] Seamless morning session start
+- [x] Complete evening-to-morning cycle
 
-### Phase 4: Advanced Analytics 📊
-- [ ] **Trend Analysis**: Long-term pattern recognition
-- [ ] **Productivity Insights**: AI-powered productivity recommendations
-- [ ] **Goal Tracking**: Milestone and deadline management
-- [ ] **Team Collaboration**: Shared projects and team analytics
+## **Phase 2C: LLM-Generated Insights** ✅
 
-## 🤝 Contributing
+**Status: Complete**
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Run the test suite: `python -m pytest tests/ -v`
-5. Commit your changes: `git commit -m 'Add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
+### **New Commands:**
+- `echo insights [--days 30]` - Generate comprehensive insights from journal data
+- `echo productivity [--days 14]` - Detailed productivity analysis
+- `echo insight_summary [--days 30]` - Quick summary of key insights
 
-## 📄 License
+### **Features:**
+- **Pattern Recognition**: Identifies recurring energy, mood, and productivity patterns
+- **Productivity Insights**: Discovers what works well and what doesn't
+- **Actionable Recommendations**: Provides specific, prioritized improvement suggestions
+- **Energy & Mood Analysis**: Detailed analysis of energy management and mood impact
+- **Optimization Plans**: Short-term and long-term improvement strategies
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### **Example Usage:**
+```bash
+# Generate insights from last 30 days
+echo insights
 
-## 🙏 Acknowledgments
+# Detailed productivity analysis from last 14 days
+echo productivity --days 14
 
-- Built with OpenAI GPT-4o for intelligent planning
-- SwiftUI for the iOS interface
-- YAML for flexible configuration
-- CSV for lightweight analytics storage
+# Quick summary of key patterns
+echo insight_summary
+```
+
+### **Sample Output:**
+```
+📊 **Pattern Recognition**
+✅ Alternating high and medium energy levels (every other day)
+
+💡 **Productivity Insights**
+🔍 High energy days correlate with better productivity
+   Evidence: Consistent pattern of high energy on even days
+
+🎯 **Top Recommendations**
+🔥 Schedule important tasks on high energy days (Priority: high)
+   Rationale: Better performance on high energy days
+```
 
 ---
 
-**Echo** - Making daily planning intelligent and time tracking meaningful. 
+## **Phase 3: Advanced Integrations** 🚧
+- [ ] macOS app with notifications
+- [ ] Mobile companion app
+- [ ] Advanced analytics and reporting
+- [ ] Integration with external tools 
+
+## **Phase 3A: Outlook Email Integration** ✅
+
+**Status: Complete (Ready for OAuth Integration)**
+
+### **New Commands:**
+- `echo email_summary` - Generate and display daily email summary
+- `echo email_actions` - Display pending email action items
+- `echo email_urgent` - Display urgent email action items
+- `echo email_process` - Process new emails and extract action items
+
+### **Features:**
+- **Email Reading**: Connect to Outlook via Microsoft Graph API
+- **Action Item Extraction**: LLM-powered extraction of tasks from emails
+- **Priority Classification**: Urgent, high, medium, low priority levels
+- **Daily Summaries**: Email counts, urgent items, action items, meetings
+- **Persistent Tracking**: Save and track action items until completion
+- **Smart Filtering**: Focus on important senders and urgent keywords
+
+### **Configuration:**
+```yaml
+# config/user_config.yaml
+email:
+  outlook_access_token: ""  # Will be added via OAuth
+  important_senders:
+    - "ceo@company.com"
+    - "manager@company.com"
+    - "client@company.com"
+  urgent_keywords:
+    - "urgent"
+    - "asap"
+    - "deadline"
+    - "important"
+  action_keywords:
+    - "please"
+    - "can you"
+    - "need"
+    - "review"
+    - "send"
+    - "schedule"
+```
+
+### **Example Usage:**
+```bash
+# Get daily email summary
+echo email_summary
+
+# View pending action items
+echo email_actions
+
+# Check urgent items only
+echo email_urgent
+
+# Process new emails and extract actions
+echo email_process
+```
+
+### **Sample Output:**
+```
+📊 **Email Summary for Monday, January 20**
+==================================================
+📧 Total Emails: 15
+🚨 Urgent: 3
+✅ Action Items: 7
+📅 Meetings: 2
+📈 Updates: 4
+⏰ Deferred: 1
+
+🚨 **Urgent Emails (3)**
+==============================
+  • ceo@company.com: Urgent: Project deadline
+  • client@company.com: ASAP: Review needed
+  • manager@company.com: Critical: Budget approval
+
+✅ **Action Items (7)**
+==============================
+  🔥 ⏳ Review project report by Friday
+     From: ceo@company.com | Subject: Urgent: Project deadline
+  ⚡ ⏳ Schedule meeting next week
+     From: manager@company.com | Subject: Meeting request
+```
+
+### **Integration Points:**
+- **Morning Check-in**: Email summary included in morning workflow
+- **Admin Blocks**: Email processing tasks added to admin time
+- **End-of-Day**: Email processing status in evening reflection
+- **Action Tracking**: Persistent action items until completion
+
+---
+
+## **Phase 3B: OAuth Integration** 🚧 

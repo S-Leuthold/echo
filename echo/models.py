@@ -23,9 +23,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import time, date
+from datetime import time, date, datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 # Defines the public API for this module.
 __all__ = [
@@ -35,6 +35,10 @@ __all__ = [
     "Project",
     "Profile",
     "Config",
+    "JournalEntryType",
+    "JournalEntry",
+    "EveningReflection",
+    "JournalPlanningContext",
 ]
 
 
@@ -46,6 +50,91 @@ class BlockType(str, Enum):
     ANCHOR = "anchor"   # A fixed, non-negotiable event (e.g., wake-up, sleep)
     FIXED  = "fixed"    # A scheduled appointment with a hard start/end time
     FLEX   = "flex"     # A task that can be moved by the LLM (e.g., deep work)
+
+
+class JournalEntryType(str, Enum):
+    """
+    The types of journal entries that can be created.
+    Each type serves a different purpose in the reflection and planning workflow.
+    """
+    EVENING_REFLECTION = "evening_reflection"  # Daily evening reflection
+    QUICK_NOTE = "quick_note"                  # Quick journal entry
+    INSIGHT = "insight"                         # LLM-generated insight
+    PATTERN = "pattern"                         # Identified pattern or trend
+
+
+@dataclass
+class JournalEntry:
+    """
+    Represents a journal entry with structured data for reflection and planning.
+    Journal entries provide context for LLM planning and enable pattern recognition.
+    """
+    date: date
+    entry_type: JournalEntryType
+    content: Dict[str, str]  # Structured content (e.g., {"what_went_well": "...", "challenges": "..."})
+    created_at: datetime = field(default_factory=datetime.now)
+    tags: List[str] = field(default_factory=list)
+    linked_projects: List[str] = field(default_factory=list)  # Project IDs this entry relates to
+    
+    def to_dict(self) -> Dict:
+        """Serializes the JournalEntry into a JSON-safe dictionary."""
+        return {
+            "date": self.date.isoformat(),
+            "entry_type": self.entry_type.value,
+            "content": self.content,
+            "created_at": self.created_at.isoformat(),
+            "tags": self.tags,
+            "linked_projects": self.linked_projects,
+        }
+
+
+@dataclass
+class EveningReflection:
+    """
+    Represents a complete evening reflection session including the reflection
+    and the planning context for tomorrow.
+    """
+    reflection: JournalEntry
+    tomorrow_plan: List[Block]
+    planning_context: Dict[str, str]  # Key planning insights for tomorrow
+    created_at: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> Dict:
+        """Serializes the EveningReflection into a JSON-safe dictionary."""
+        return {
+            "reflection": self.reflection.to_dict(),
+            "tomorrow_plan": [block.to_dict() for block in self.tomorrow_plan],
+            "planning_context": self.planning_context,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+@dataclass
+class JournalPlanningContext:
+    """
+    Extracted planning context from journal entries for use in planning prompts.
+    """
+    recent_mood: str
+    energy_trend: str
+    productivity_patterns: List[str] = field(default_factory=list)
+    avoid_patterns: List[str] = field(default_factory=list)
+    focus_areas: List[str] = field(default_factory=list)
+    non_negotiables: List[str] = field(default_factory=list)
+    energy_prediction: Optional[str] = None
+    mood_prediction: Optional[str] = None
+    
+    def to_dict(self) -> Dict:
+        """Serializes the JournalPlanningContext into a JSON-safe dictionary."""
+        return {
+            "recent_mood": self.recent_mood,
+            "energy_trend": self.energy_trend,
+            "productivity_patterns": self.productivity_patterns,
+            "avoid_patterns": self.avoid_patterns,
+            "focus_areas": self.focus_areas,
+            "non_negotiables": self.non_negotiables,
+            "energy_prediction": self.energy_prediction,
+            "mood_prediction": self.mood_prediction,
+        }
 
 
 @dataclass
@@ -156,13 +245,9 @@ class Categories:
 
 @dataclass
 class Config:
-    """
-    The root configuration object for the entire Echo system. It is constructed
-    by the `config_loader` and serves as the primary input for all subsequent
-    planning and scheduling operations.
-    """
-    defaults:        Defaults
-    weekly_schedule: Dict[str, List[Dict]]
-    projects:        Dict[str, Project]
-    profiles:        Dict[str, Profile]
-    categories:      Categories = field(default_factory=Categories)
+    """Main configuration for Echo."""
+    defaults: Defaults
+    weekly_schedule: Dict[str, List[Dict[str, Any]]]
+    projects: Dict[str, Dict[str, Any]]
+    profiles: Dict[str, Dict[str, Any]]
+    email: Dict[str, Any] = field(default_factory=dict)
