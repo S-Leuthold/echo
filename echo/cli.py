@@ -10,7 +10,13 @@ from pathlib import Path
 from datetime import datetime, date
 from typing import List, Dict, Any
 
+import webbrowser
+import requests
+import json
+
 from .config_loader import load_config
+from .email_processor import OutlookEmailProcessor
+from .imap_processor import IMAPEmailProcessor
 
 
 def run_email_test_connection(args):
@@ -117,6 +123,51 @@ def run_email_summary(args):
     print(f"  📧 No Response Needed: {summary.no_response_needed_count} emails")
 
 
+def run_oauth_login(args):
+    """Guide user through Microsoft OAuth flow and store tokens."""
+    print("🔑 Starting Microsoft OAuth login flow...")
+    config = load_config()
+    processor = OutlookEmailProcessor(config)
+
+    # Build auth URL
+    oauth_config = config.email.get("graph_api", {})
+    client_id = oauth_config.get("client_id")
+    redirect_uri = oauth_config.get("redirect_uri", "http://localhost:8080/auth/callback")
+    scopes = oauth_config.get("scopes", ["Mail.Read", "Mail.ReadWrite"])
+    scope_string = " ".join(scopes)
+    auth_url = (
+        f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?"
+        f"client_id={client_id}&response_type=code&redirect_uri={redirect_uri}&scope={scope_string}&response_mode=query"
+    )
+    print(f"\n👉 Please open the following URL in your browser and log in:")
+    print(auth_url)
+    webbrowser.open(auth_url)
+    print("\nAfter logging in, you will be redirected to a URL. Copy the 'code' parameter from the URL.")
+    code = input("Paste the authorization code here: ").strip()
+
+    # Exchange code for tokens
+    token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    client_secret = oauth_config.get("client_secret")
+    data = {
+        "client_id": client_id,
+        "scope": scope_string,
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+        "client_secret": client_secret,
+    }
+    print("\n🔄 Exchanging code for tokens...")
+    resp = requests.post(token_url, data=data)
+    if resp.status_code == 200:
+        tokens = resp.json()
+        token_file = Path(".token")
+        with open(token_file, "w") as f:
+            json.dump(tokens, f, indent=2)
+        print(f"✅ Success! Tokens saved to {token_file.resolve()}")
+    else:
+        print(f"❌ Failed to obtain tokens: {resp.status_code} {resp.text}")
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Echo - Email Management")
@@ -129,6 +180,10 @@ def main():
     # Email summary
     email_summary_parser = subparsers.add_parser("email_summary", help="Generate daily email summary.")
     email_summary_parser.set_defaults(func=run_email_summary)
+    
+    # OAuth login
+    oauth_login_parser = subparsers.add_parser("oauth_login", help="Run Microsoft OAuth login flow and save tokens.")
+    oauth_login_parser.set_defaults(func=run_oauth_login)
     
     args = parser.parse_args()
     
