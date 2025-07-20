@@ -36,12 +36,6 @@ from .journal import (
     generate_journal_insights, generate_productivity_analysis, get_insight_summary
 )
 
-# Email processing functions
-from .email_processor import (
-    OutlookEmailProcessor, EmailAction, EmailSummary,
-    EmailPriority, EmailStatus
-)
-
 # Core data models
 from .models import (
     Block, BlockType, Config, Defaults, Milestone, Profile, Project, ProjectStatus,
