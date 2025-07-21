@@ -536,6 +536,22 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
             />
           </div>
 
+          {/* Possible Tasks */}
+          <div>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
+              What tasks are candidates for tomorrow? (Projects, objectives, specific work)
+            </label>
+            <Textarea
+              value={reflectionData.tomorrow.possibleTasks}
+              onChange={(e) => setReflectionData(prev => ({ 
+                ...prev, 
+                tomorrow: { ...prev.tomorrow, possibleTasks: e.target.value }
+              }))}
+              placeholder="e.g., Echo development - frontend fixes, Grant proposal writing, Paper review for Nature, Team meeting prep, Admin tasks..."
+              className="bg-muted border-border text-foreground min-h-[100px] resize-none"
+            />
+          </div>
+
           {/* Context & Environment */}
           <div className="grid grid-cols-2 gap-6">
             <div>
@@ -729,6 +745,7 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState(null);
   const [error, setError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const generatePlan = async () => {
     setIsGenerating(true);
@@ -738,7 +755,9 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
       // Prepare the planning request
       const planningRequest = {
         most_important: reflectionData.tomorrow.topPriority || "Complete high-priority tasks",
-        todos: reflectionData.tomorrow.topPriority ? [reflectionData.tomorrow.topPriority] : ["Complete outstanding work"],
+        todos: reflectionData.tomorrow.possibleTasks ? 
+          reflectionData.tomorrow.possibleTasks.split(',').map(task => task.trim()).filter(task => task) : 
+          [reflectionData.tomorrow.topPriority || "Complete outstanding work"],
         energy_level: reflectionData.tomorrow.energyExpected || "Medium",
         non_negotiables: reflectionData.tomorrow.nonNegotiables || "Morning routine, lunch break",
         avoid_today: reflectionData.tomorrow.toAvoid || "Unnecessary distractions",
@@ -754,6 +773,7 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
         what_drained: reflectionData.whatDrained || "",
         key_insights: reflectionData.keyInsights || "",
         tomorrow_priority: reflectionData.tomorrow.topPriority || "",
+        tomorrow_possible_tasks: reflectionData.tomorrow.possibleTasks || "",
         tomorrow_energy: reflectionData.tomorrow.energyExpected || "Medium",
         tomorrow_environment: reflectionData.tomorrow.workEnvironment || "Home",
         tomorrow_non_negotiables: reflectionData.tomorrow.nonNegotiables || "",
@@ -784,12 +804,13 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
 
       const result = await response.json();
       
-      // Transform the blocks for display
+      // Transform the blocks for display using enricher data
       const transformedBlocks = result.blocks?.map((block, index) => ({
         id: (index + 1).toString(),
         time: `${block.start.substring(0, 5)} - ${block.end.substring(0, 5)}`,
-        emoji: getEmojiForLabel(block.label),
+        emoji: block.emoji || getEmojiForLabel(block.label), // Use enricher emoji or fallback
         title: block.label,
+        note: block.note || '', // Include enricher note
         category: getCategoryFromLabel(block.label)
       })) || [];
 
@@ -825,6 +846,28 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
       }
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const savePlan = async () => {
+    if (!generatedPlan) return;
+
+    setIsSaving(true);
+    try {
+      // In a real implementation, this would save the plan to the backend
+      // For now, we'll simulate the save and navigate to the homepage
+      
+      // Simulate a brief save operation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Navigate to homepage (you can replace this with proper navigation)
+      window.location.href = '/today';
+      
+    } catch (err) {
+      console.error('Failed to save plan:', err);
+      setError('Failed to save plan. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -931,11 +974,16 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
                   key={block.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-all cursor-pointer"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <span className="text-xl">{block.emoji}</span>
-                    <div>
+                    <div className="flex-1">
                       <div className="text-foreground font-medium">{block.title}</div>
                       <div className="text-xs text-muted-foreground">{block.time}</div>
+                      {block.note && (
+                        <div className="text-xs text-accent/80 italic mt-1 bg-accent/10 px-2 py-1 rounded">
+                          💡 {block.note}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Badge className={`text-xs px-2 py-1 ${getCategoryColor(block.category)}`}>
@@ -954,11 +1002,22 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
                 Edit Plan
               </Button>
               <Button
+                onClick={savePlan}
+                disabled={isSaving}
                 className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold flex-1"
               >
-                <Save className="w-4 h-4 mr-2" />
-                Save & Commit Plan
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save & Commit Plan
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
@@ -980,6 +1039,7 @@ export default function PlanningPage() {
     keyInsights: "",
     tomorrow: {
       topPriority: "",
+      possibleTasks: "",
       energyExpected: "",
       workEnvironment: "",
       nonNegotiables: "",
