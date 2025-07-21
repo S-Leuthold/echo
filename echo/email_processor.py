@@ -390,17 +390,28 @@ class OutlookEmailProcessor:
         return False
 
     def get_unresponded_action_emails(self, days: int = 7) -> List[Dict]:
-        """Get unresponded emails that require action."""
-        emails = self.get_emails(days=days)
-        emails = self.check_email_responses(emails)
-        emails = self.filter_emails(emails)
-        return emails
+        """Get unresponded RECEIVED emails that require action."""
+        emails = self.get_emails(days=days)  # This gets received emails
+        emails = self.check_email_responses(emails)  # Check if we responded
+        emails = self.filter_emails(emails)  # Filter for importance/action needed
+        
+        # Only include emails we received (not sent), that we haven't responded to
+        filtered_emails = []
+        for email in emails:
+            # Skip if we already responded
+            if email.get('responded', False):
+                continue
+                
+            # Only include received emails that need action
+            filtered_emails.append(email)
+        
+        return filtered_emails
 
     def summarize_emails_via_llm(self, emails: List[Dict]) -> Dict:
         """Summarize emails using LLM with error handling."""
         if not emails:
             return {
-                "summary": "No actionable emails found.",
+                "summary": "Your inbox is all caught up! No urgent emails requiring immediate attention.",
                 "action_items": [],
                 "total_unresponded": 0,
                 "urgent_count": 0,
@@ -419,14 +430,41 @@ class OutlookEmailProcessor:
                 "has_action": email.get('has_action', False)
             })
         
-        # Call LLM for summarization (this would be implemented in prompt_engine)
-        # For now, return structured data
         urgent_count = sum(1 for e in emails if e.get('urgency') == 'high')
         high_priority_count = sum(1 for e in emails if e.get('importance') == 'high')
         
+        # Generate LLM summary of inbox status
+        try:
+            from .prompt_engine import build_email_summary_prompt, parse_email_summary_response
+            from .cli import _get_openai_client, _call_llm
+            
+            # Build the LLM prompt
+            prompt = build_email_summary_prompt(emails)
+            
+            # Call LLM
+            client = _get_openai_client()
+            response = _call_llm(client, prompt)
+            
+            # Parse response
+            result = parse_email_summary_response(response)
+            inbox_summary = result.get("summary", f"Found {len(emails)} emails requiring attention")
+            llm_action_items = result.get("action_items", [])
+            
+        except Exception as e:
+            logger.warning(f"LLM email summary failed, using fallback: {e}")
+            # Fallback summary based on email characteristics
+            if urgent_count > 0:
+                inbox_summary = f"Inbox needs attention: {urgent_count} urgent email{'s' if urgent_count != 1 else ''} and {len(emails) - urgent_count} other message{'s' if len(emails) - urgent_count != 1 else ''} requiring responses."
+            elif high_priority_count > 0:
+                inbox_summary = f"Moderate inbox day: {high_priority_count} high-priority email{'s' if high_priority_count != 1 else ''} and {len(emails) - high_priority_count} standard message{'s' if len(emails) - high_priority_count != 1 else ''} to handle."
+            else:
+                inbox_summary = f"Light inbox load: {len(emails)} routine email{'s' if len(emails) != 1 else ''} to process when convenient."
+            
+            llm_action_items = [f"Respond to {e.get('subject', 'email')} from {e.get('from', {}).get('emailAddress', {}).get('address', 'sender')}" for e in emails]
+        
         return {
-            "summary": f"Found {len(emails)} actionable emails",
-            "action_items": [f"Respond to {e.get('subject', 'email')} from {e.get('from', {}).get('emailAddress', {}).get('address', 'sender')}" for e in emails],
+            "summary": inbox_summary,
+            "action_items": llm_action_items,
             "total_unresponded": len(emails),
             "urgent_count": urgent_count,
             "high_priority_count": high_priority_count,

@@ -13,14 +13,24 @@ requires-python = ">=3.10"
 
 dependencies = [
     "pyyaml",
-    "openai"
+    "openai",
+    "fastapi",
+    "uvicorn",
+    "requests",
+    "python-dotenv",
+    "pydantic"
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest",
   "pyyaml",
-  "openai",       
+  "openai",
+  "fastapi",
+  "uvicorn",
+  "requests",
+  "python-dotenv",
+  "pydantic",
   "black",
   "ruff"
 ]

@@ -1,0 +1,26 @@
+/Users/samleuthold/Desktop/echo/api_server.py:177: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [11428]
+INFO:     Waiting for application startup.
+INFO:__main__:Initializing Echo API server...
+INFO:echo.email_processor:Loaded email filters: 7 important senders, 7 urgent keywords
+INFO:__main__:Echo API server initialized successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:53516 - "GET /email-summary HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:53517 - "GET /email-summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53521 - "OPTIONS /reflection HTTP/1.1" 200 OK
+ERROR:__main__:Error saving reflection: 'JournalEntry' object has no attribute 'id'
+WARNING:__main__:HTTP exception on http://localhost:8000/reflection: 500 - 'JournalEntry' object has no attribute 'id'
+INFO:     127.0.0.1:53517 - "POST /reflection HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53521 - "OPTIONS /plan HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:53517 - "POST /plan HTTP/1.1" 200 OK

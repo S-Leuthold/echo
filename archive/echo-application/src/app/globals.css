@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Custom Echo Project Palette */
+    --background-primary: #0D1117;
+    --background-secondary: #161B22;
+    --text-primary: #E6EDF3;
+    --text-secondary: #8B949E;
+    --border-primary: #30363D;
+    --accent-blue: #58A6FF;
+
+    /* shadcn/ui variables mapped to our palette */
+    --background: 222 47% 11%; /* #0D1117 */
+    --foreground: 210 40% 98%; /* #E6EDF3 */
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%; /* #161B22 */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 22%; /* #30363D */
+    --input: 217 33% 22%;
+    --ring: 215 20% 65%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* The :root variables are already dark, so no changes needed here for a dark-only theme. */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background-primary text-text-primary;
+  }
+} 
