@@ -1,0 +1,95 @@
+{
+  "": {
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/master.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/EchoApp.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoApp.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoApp.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoApp.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Models/Block.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/Block.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/Block.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/Block~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/Block.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Services/EchoAPI.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoAPI.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoAPI.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoAPI~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/EchoAPI.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Tests/APITest.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/APITest.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/APITest.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/APITest~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/APITest.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/ViewModels/PlanningViewModel.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningViewModel.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningViewModel.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningViewModel.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/ViewModels/SessionViewModel.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionViewModel.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionViewModel.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionViewModel.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/ViewModels/TodayViewModel.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayViewModel.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayViewModel.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayViewModel.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/AnalyticsView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/AnalyticsView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/AnalyticsView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/AnalyticsView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/AnalyticsView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/ContentView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ContentView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ContentView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ContentView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/PlanningView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/PlanningView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/ProjectsView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ProjectsView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ProjectsView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ProjectsView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/ProjectsView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/SessionView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SessionView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/SettingsView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SettingsView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SettingsView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SettingsView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SettingsView.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/SharedViews.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SharedViews.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SharedViews.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SharedViews~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/SharedViews.swiftdeps"
+  },
+  "/Users/samleuthold/Desktop/echo/macos/EchoApp/Views/TodayView.swift": {
+    "dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayView.d",
+    "object": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayView.swift.o",
+    "swiftmodule": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayView~partial.swiftmodule",
+    "swift-dependencies": "/Users/samleuthold/Desktop/echo/macos/.build/arm64-apple-macosx/debug/EchoApp.build/TodayView.swiftdeps"
+  }
+}

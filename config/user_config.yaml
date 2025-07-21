@@ -56,14 +56,15 @@ profiles:
 
 # Email Integration Settings
 email:
-  # IMAP Configuration
-  imap:
-    provider: "outlook"
-    server: "outlook.office365.com"
-    port: 993
-    username: ${ECHO_IMAP_USERNAME}
-    password: ${ECHO_IMAP_PASSWORD}
-    use_ssl: true
+  # Microsoft Graph API Configuration
+  graph_api:
+    client_id: ${ECHO_GRAPH_CLIENT_ID}
+    client_secret: ${ECHO_GRAPH_CLIENT_SECRET}
+    redirect_uri: ${ECHO_GRAPH_REDIRECT_URI}
+    scopes:
+      - "Mail.Read"
+      - "Mail.ReadWrite"
+      - "User.Read"
   # Email Processing Settings
   important_senders:
     - "ceo@company.com"
@@ -71,6 +72,8 @@ email:
     - "client@company.com"
     - "professor@colostate.edu"
     - "advisor@colostate.edu"
+    - "sam.leuthold@colostate.edu"
+    - "samleuthold@colostate.edu"
   
   urgent_keywords:
     - "urgent"
@@ -92,3 +95,7 @@ email:
     - "respond"
     - "reply"
     - "follow up"
+    - "accepted"
+    - "presentation"
+    - "expire"
+    - "token"

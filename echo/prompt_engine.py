@@ -144,8 +144,6 @@ Generate a JSON array of blocks for the entire day, following the rules above. U
 
 def parse_planner_response(json_text: str) -> List[Block]:
     """Parses the Planner's JSON response into a list of new Block objects."""
-    print(f"\nDEBUG: Parsing planner response (length: {len(json_text)})")
-    print(f"DEBUG: Raw response: {json_text[:500]}...")
     
     try:
         # First, try to find a JSON array.
@@ -155,11 +153,9 @@ def parse_planner_response(json_text: str) -> List[Block]:
             match = re.search(r"\{.*\}", json_text, re.DOTALL)
 
         if not match:
-            print("DEBUG: No JSON array or object found in response")
             raise ValueError("No JSON array or object found in the response.")
 
         clean_json_text = match.group(0)
-        print(f"DEBUG: Extracted JSON: {clean_json_text}")
         
         # Remove any markdown code block markers
         if clean_json_text.startswith("```json"):
@@ -169,17 +165,13 @@ def parse_planner_response(json_text: str) -> List[Block]:
         clean_json_text = clean_json_text.strip()
         
         data = json.loads(clean_json_text)
-        print(f"DEBUG: Parsed JSON data type: {type(data)}")
 
         # If the LLM returned a single object, wrap it in a list.
         if isinstance(data, dict):
             data = [data]
-            print("DEBUG: Wrapped single object in list")
 
-        print(f"DEBUG: Processing {len(data)} blocks")
         blocks = []
-        for i, item in enumerate(data):
-            print(f"DEBUG: Processing item {i+1}: {item}")
+        for item in data:
             blocks.append(
                 Block(
                     start=time.fromisoformat(item["start"]),
@@ -189,10 +181,8 @@ def parse_planner_response(json_text: str) -> List[Block]:
                 )
             )
         
-        print(f"DEBUG: Successfully created {len(blocks)} blocks")
         return blocks
     except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError) as e:
-        print(f"DEBUG: Error parsing planner response: {e}")
         raise ValueError(f"Failed to parse Planner LLM response: {e}") from e
 
 # --- PERSONA 2: The Enricher ---
@@ -310,17 +300,17 @@ def _get_project_context(cfg: Config) -> str:
     if cfg.projects:
         context_parts.append("## Active Projects:")
         for project_id, project in cfg.projects.items():
-            if project.status == "active":
-                context_parts.append(f"\n### {project.name}")
-                if project.current_focus:
-                    context_parts.append(f"**Current Focus:** {project.current_focus}")
-                if project.deadline:
-                    context_parts.append(f"**Deadline:** {project.deadline}")
-                if project.milestones:
+            if project.get('status') == "active":
+                context_parts.append(f"\n### {project.get('name', project_id)}")
+                if project.get('current_focus'):
+                    context_parts.append(f"**Current Focus:** {project['current_focus']}")
+                if project.get('deadline'):
+                    context_parts.append(f"**Deadline:** {project['deadline']}")
+                if project.get('milestones'):
                     context_parts.append("**Milestones:**")
-                    for milestone in project.milestones[:3]:  # Top 3 milestones
-                        due_str = f" (due {milestone.due_date})" if milestone.due_date else ""
-                        context_parts.append(f"- {milestone.description}{due_str}")
+                    for milestone in project['milestones'][:3]:  # Top 3 milestones
+                        due_str = f" (due {milestone.get('due_date')})" if milestone.get('due_date') else ""
+                        context_parts.append(f"- {milestone.get('description', 'Unknown milestone')}{due_str}")
     else:
         context_parts.append("## Active Projects:")
         context_parts.append("No active projects defined.")
@@ -356,11 +346,11 @@ def _get_filtered_project_context(cfg: Config, user_input: str) -> tuple[str, bo
     # Check for project names in user input
     if cfg.projects:
         for project_id, project in cfg.projects.items():
-            if project.status == "active":
+            if project.get('status') == "active":
                 # Check if project name is mentioned in user input
-                project_name_lower = project.name.lower()
+                project_name_lower = project.get('name', project_id).lower()
                 if project_name_lower in user_input_lower:
-                    mentioned_projects.add(project.name)
+                    mentioned_projects.add(project.get('name', project_id))
                 # Also check for common variations and keywords
                 project_variations = [
                     project_name_lower,
@@ -369,14 +359,14 @@ def _get_filtered_project_context(cfg: Config, user_input: str) -> tuple[str, bo
                 ]
                 for variation in project_variations:
                     if variation in user_input_lower:
-                        mentioned_projects.add(project.name)
+                        mentioned_projects.add(project.get('name', project_id))
                 
                 # Check for keywords that might indicate the project
-                if project.current_focus:
-                    focus_keywords = project.current_focus.lower().split()
+                if project.get('current_focus'):
+                    focus_keywords = project.get('current_focus', '').lower().split()
                     for keyword in focus_keywords:
                         if len(keyword) > 3 and keyword in user_input_lower:
-                            mentioned_projects.add(project.name)
+                            mentioned_projects.add(project.get('name', project_id))
                             break
     
     # Extract potential tasks that don't have associated projects
@@ -395,17 +385,17 @@ def _get_filtered_project_context(cfg: Config, user_input: str) -> tuple[str, bo
     if mentioned_projects:
         context_parts.append("## Relevant Projects:")
         for project_id, project in cfg.projects.items():
-            if project.name in mentioned_projects:
-                context_parts.append(f"\n### {project.name}")
-                if project.current_focus:
-                    context_parts.append(f"**Current Focus:** {project.current_focus}")
-                if project.deadline:
-                    context_parts.append(f"**Deadline:** {project.deadline}")
-                if project.milestones:
+            if project.get('name') in mentioned_projects:
+                context_parts.append(f"\n### {project.get('name', project_id)}")
+                if project.get('current_focus'):
+                    context_parts.append(f"**Current Focus:** {project['current_focus']}")
+                if project.get('deadline'):
+                    context_parts.append(f"**Deadline:** {project['deadline']}")
+                if project.get('milestones'):
                     context_parts.append("**Milestones:**")
-                    for milestone in project.milestones[:3]:  # Top 3 milestones
-                        due_str = f" (due {milestone.due_date})" if milestone.due_date else ""
-                        context_parts.append(f"- {milestone.description}{due_str}")
+                    for milestone in project['milestones'][:3]:  # Top 3 milestones
+                        due_str = f" (due {milestone.get('due_date')})" if milestone.get('due_date') else ""
+                        context_parts.append(f"- {milestone.get('description', 'Unknown milestone')}{due_str}")
     else:
         context_parts.append("## Relevant Projects:")
         context_parts.append("No specific projects mentioned in user input.")
@@ -1309,3 +1299,248 @@ def parse_action_extraction_response(json_text: str) -> List[Dict[str, Any]]:
         return data
     except (json.JSONDecodeError, AttributeError, ValueError) as e:
         raise ValueError(f"Failed to parse action extraction response: {e}") from e
+
+def build_email_summary_prompt(emails: List[Dict]) -> str:
+    """
+    Build a prompt for the LLM to summarize a list of emails, focusing on key topics, action items, meetings, and follow-ups.
+    """
+    if not emails:
+        return "No emails to summarize."
+    formatted_emails = []
+    for email in emails:
+        sender = email.get('from', {}).get('emailAddress', {}).get('address', '')
+        subject = email.get('subject', '')
+        body = email.get('bodyPreview', '')
+        responded = email.get('responded', False)
+        status = "✅ Responded" if responded else "⏳ Needs Response"
+        formatted_emails.append(f"From: {sender}\nSubject: {subject}\nBody: {body}\nStatus: {status}")
+    emails_text = '\n\n'.join(formatted_emails)
+    prompt = f"""
+You are an executive assistant. Summarize the following emails for daily planning. 
+
+**IMPORTANT FILTERING RULES:**
+- Ignore newsletters, notifications, and automated messages
+- Ignore calendar invites (emails with "Accepted:", "Declined:", "Canceled:", "Meeting", "Calendar", "Invitation" in subject)
+- Ignore promotional emails and marketing messages
+- Focus only on emails that require actual action or response
+
+**FOCUS ON:**
+- Key topics and threads that need attention
+- Action items that require responses or follow-up
+- Important requests or deadlines
+- Only include emails that need responses (not already responded to)
+- **BE AGGRESSIVE**: Even if an email doesn't explicitly ask for something, consider if it requires any response, follow-up, or action
+- Look for implicit action items like: confirming receipt, providing updates, scheduling follow-ups, etc.
+
+**OUTPUT FORMAT:**
+Return a JSON object with two fields:
+- summary: a concise summary of the most important topics and threads
+- action_items: a list of clean action items in this format:
+  [
+    {{
+      "action": "Brief description of what needs to be done",
+      "sender": "email@domain.com", 
+      "subject": "Original email subject",
+      "deadline": "Deadline if mentioned, otherwise null",
+      "priority": "high/medium/low based on sender importance and urgency"
+    }}
+  ]
+
+**PRIORITY GUIDELINES:**
+- high: From important senders or contains urgent keywords
+- medium: Standard requests or follow-ups
+- low: Nice-to-have items or general updates
+
+Emails:
+{emails_text}
+"""
+    return prompt
+
+def parse_email_summary_response(response: str) -> Dict:
+    """
+    Parse the LLM response for the email summary prompt. Returns a dict with 'summary' and 'action_items'.
+    """
+    import json
+    try:
+        result = json.loads(response)
+        if not isinstance(result, dict):
+            raise ValueError("Response is not a JSON object.")
+        if "summary" not in result or "action_items" not in result:
+            raise ValueError("Missing required fields in response.")
+        return result
+    except Exception as e:
+        print(f"Failed to parse email summary LLM response: {e}")
+        return {"summary": "Failed to parse LLM response.", "action_items": []}
+
+def build_email_aware_planner_prompt(
+    most_important: str,
+    todos: List[str],
+    energy_level: str,
+    non_negotiables: str,
+    avoid_today: str,
+    fixed_events: List[Dict],
+    config: Config,
+    email_context: Optional[Dict] = None,
+    journal_context: Optional[Dict[str, str]] = None,
+    recent_trends: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Build the planner prompt with email context for enhanced planning.
+    
+    Args:
+        most_important: User's most important work
+        todos: List of todos
+        energy_level: User's energy level
+        non_negotiables: Non-negotiable commitments
+        avoid_today: Things to avoid
+        fixed_events: Fixed events from config
+        config: User configuration
+        email_context: Email context with action items and priorities
+        journal_context: Planning context from recent reflections
+        recent_trends: Energy/mood trends from recent reflections
+        
+    Returns:
+        Enhanced planner prompt with email and journal context
+    """
+    
+    # Load project context filtered by user input
+    user_input = f"{most_important} {' '.join(todos)}"
+    project_context, projects_found, unassigned_tasks = _get_filtered_project_context(config, user_input)
+    
+    # Build fixed events string
+    fixed_events_str = ""
+    if fixed_events:
+        fixed_events_str = "\n## Fixed Events (do not change):\n"
+        for event in fixed_events:
+            fixed_events_str += f"- {event}\n"
+    
+    # Build todos string
+    todos_str = ", ".join(todos) if todos else "None"
+    
+    # Build enhanced email context section
+    email_context_str = ""
+    if email_context and email_context.get("total_unresponded", 0) > 0:
+        email_context_str = "\n## Email Action Items & Priorities:\n"
+        email_context_str += f"- **Total Unresponded**: {email_context['total_unresponded']} emails\n"
+        email_context_str += f"- **Urgent Emails**: {email_context['urgent_count']} requiring immediate attention\n"
+        email_context_str += f"- **High Priority**: {email_context['high_priority_count']} from important senders\n"
+        
+        # Add response time estimates
+        if email_context.get('response_time_estimates'):
+            estimates = email_context['response_time_estimates']
+            total_time = estimates.get('total_estimated_time', 0)
+            email_context_str += f"- **Estimated Email Time**: {total_time} minutes\n"
+        
+        if email_context.get("summary"):
+            email_context_str += f"\n**Email Summary**: {email_context['summary']}\n"
+        
+        # Add scheduling recommendations
+        if email_context.get("scheduling_recommendations"):
+            email_context_str += "\n**Email Scheduling Recommendations**:\n"
+            for i, rec in enumerate(email_context["scheduling_recommendations"][:5], 1):
+                priority_icon = "🔴" if rec['priority'] == 'critical' else "🟡" if rec['priority'] == 'high' else "🟢"
+                email_context_str += f"{i}. {priority_icon} {rec['action_item']} ({rec['time_allocation']}min, {rec['recommended_time']})\n"
+        
+        if email_context.get("action_items"):
+            email_context_str += "\n**Email Action Items**:\n"
+            for i, item in enumerate(email_context["action_items"][:5], 1):
+                email_context_str += f"{i}. {item}\n"
+        
+        email_context_str += "\n**Enhanced Email Planning Guidelines**:\n"
+        email_context_str += "- Schedule urgent email responses early in the day (first 2 hours)\n"
+        email_context_str += "- Include 'Admin | Email & Admin' blocks for email processing\n"
+        email_context_str += "- Prioritize responses to important senders and urgent emails\n"
+        email_context_str += "- Allocate time based on email priority (15-30 minutes per email)\n"
+        email_context_str += "- Consider email action items when filling schedule gaps\n"
+        email_context_str += "- Schedule critical emails in morning blocks for maximum attention\n"
+        email_context_str += "- Batch similar email responses together for efficiency\n"
+    
+    # Build journal context section
+    journal_context_str = ""
+    if journal_context:
+        journal_context_str = "\n## Journal-Based Planning Context:\n"
+        if "tomorrow_focus" in journal_context:
+            journal_context_str += f"- **Tomorrow's Focus**: {journal_context['tomorrow_focus']}\n"
+        if "tomorrow_energy" in journal_context:
+            journal_context_str += f"- **Expected Energy**: {journal_context['tomorrow_energy']}\n"
+        if "non_negotiables" in journal_context:
+            journal_context_str += f"- **Non-Negotiables**: {journal_context['non_negotiables']}\n"
+        if "avoid_tomorrow" in journal_context:
+            journal_context_str += f"- **Avoid**: {journal_context['avoid_tomorrow']}\n"
+        if "tomorrow_priorities" in journal_context:
+            journal_context_str += f"- **Top Priorities**: {journal_context['tomorrow_priorities']}\n"
+        if "patterns_noticed" in journal_context:
+            journal_context_str += f"- **Patterns Noticed**: {journal_context['patterns_noticed']}\n"
+        if "learnings" in journal_context:
+            journal_context_str += f"- **Recent Learnings**: {journal_context['learnings']}\n"
+    
+    # Build trends section
+    trends_str = ""
+    if recent_trends:
+        trends_str = "\n## Recent Patterns & Trends:\n"
+        if "energy_trend" in recent_trends:
+            trends_str += f"- **Energy Trend**: {recent_trends['energy_trend']}\n"
+        if "mood_trend" in recent_trends:
+            trends_str += f"- **Mood Trend**: {recent_trends['mood_trend']}\n"
+        if "recent_energy" in recent_trends:
+            trends_str += f"- **Recent Energy**: {recent_trends['recent_energy']}\n"
+        if "recent_mood" in recent_trends:
+            trends_str += f"- **Recent Mood**: {recent_trends['recent_mood']}\n"
+    
+    prompt = f"""You are a JSON API that generates a complete daily schedule with enhanced context from emails and recent reflections.
+
+## Rules
+1. Return ONLY a valid JSON array of objects.
+2. Each object MUST have "start", "end", "title", and "type" keys.
+3. "type" must be either "anchor" (for fixed events) or "flex" (for work blocks).
+4. The schedule MUST cover every minute from 06:00 to 22:00 with NO gaps.
+5. No block may be longer than 120 minutes or shorter than 45 minutes.
+6. All block titles MUST use the canonical format: "Project | Block Title" (e.g., "Echo | Prompt Development", "Personal | Morning Routine").
+7. Include all fixed events exactly as provided below.
+8. Schedule the user's most important work as early as possible, unless energy is low.
+9. Schedule all user-supplied to-dos, breaking them into blocks as needed.
+10. **ENHANCED EMAIL INTEGRATION**: 
+    - Schedule urgent email responses in the first 2 hours of the day
+    - Include at least one "Admin | Email & Admin" block for email processing
+    - Allocate time based on email priority (15-30 minutes per email)
+    - Schedule critical emails in morning blocks for maximum attention
+    - Batch similar email responses together for efficiency
+    - Consider email action items when filling schedule gaps
+11. Never schedule more than two consecutive 120-minute work blocks.
+12. If energy is low, schedule lighter or creative work in the morning.
+13. Respect all non-negotiable commitments.
+14. Do not leave any gaps in the schedule.
+15. Use project context below to suggest relevant work that advances specific projects.
+16. **NEW**: Prioritize email responses based on urgency and sender importance.
+17. **NEW**: Include email action items as specific tasks in relevant blocks.
+
+{project_context}
+
+## User's Most Important Work:
+{most_important}
+
+## User's To-Dos:
+{todos_str}
+
+## Energy Level:
+{energy_level}
+
+## Non-Negotiables:
+{non_negotiables}
+
+## Avoid Today:
+{avoid_today}
+
+{fixed_events_str}
+
+{email_context_str}
+
+{journal_context_str}
+
+{trends_str}
+
+Your Task:
+Generate a JSON array of blocks for the entire day, incorporating email priorities and action items while following all the rules above. Make sure to schedule email responses appropriately based on their priority and urgency.
+"""
+    
+    return prompt

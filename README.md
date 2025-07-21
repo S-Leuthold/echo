@@ -28,6 +28,15 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **Project Status Tracking**: Active, on-hold, backlog, and completed project states
 - **Project Logs**: Persistent logs for each project with session summaries
 
+### Email Integration & Planning
+- **Email Processing**: Microsoft Graph API integration for Outlook email processing
+- **Response Tracking**: Automatically tracks which emails have been responded to
+- **Action Item Extraction**: LLM-powered extraction of actionable items from emails
+- **Priority Filtering**: Filters emails by important senders, urgent keywords, and action keywords
+- **Planning Integration**: Email action items automatically incorporated into daily planning
+- **End-of-Day Workflow**: Process emails and plan tomorrow with email context
+- **Morning Check-in**: Review overnight emails and adjust today's plan
+
 ### Journaling & Reflection
 - **Evening Reflection**: Structured daily reflection with guided prompts
 - **Quick Notes**: Simple journal entries for capturing thoughts and ideas
@@ -40,6 +49,13 @@ Echo is an intelligent daily planning system that combines LLM-powered schedulin
 - **Category Mapping**: Custom mappings from project names to time categories
 - **Profile System**: Context-specific overrides for travel, holidays, etc.
 - **Weekly Schedule Templates**: Pre-defined schedules for different days
+
+### CLI Commands
+- **`plan`**: Generate daily plan with email integration
+- **`end_day`**: End-of-day workflow with email processing and tomorrow planning
+- **`morning`**: Morning check-in with overnight email review
+- **`email_summary`**: Generate daily email summary
+- **`oauth_login`**: Microsoft OAuth authentication for email integration
 
 ## 🏗️ Architecture
 
@@ -371,23 +387,36 @@ echo insight_summary
 - [ ] Advanced analytics and reporting
 - [ ] Integration with external tools 
 
-## **Phase 3A: Outlook Email Integration** ✅
+## Outlook Email Integration (Microsoft Graph API)
 
-**Status: Complete (Ready for OAuth Integration)**
+Echo now supports secure, modern email integration using Microsoft Graph API and OAuth 2.0.
 
-### **New Commands:**
-- `echo email_summary` - Generate and display daily email summary
-- `echo email_actions` - Display pending email action items
-- `echo email_urgent` - Display urgent email action items
-- `echo email_process` - Process new emails and extract action items
+### Setup
+1. Register an app in the Azure Portal and obtain your Application (client) ID and client secret.
+2. Set your redirect URI to `http://localhost:8080/auth/callback`.
+3. In your `.env` file, add:
+   ```
+   ECHO_GRAPH_CLIENT_ID=your-client-id-here
+   ECHO_GRAPH_CLIENT_SECRET=your-client-secret-here
+   ECHO_GRAPH_REDIRECT_URI=http://localhost:8080/auth/callback
+   ```
+4. Run the OAuth login flow:
+   ```bash
+   python -m echo.cli oauth_login
+   ```
+   Follow the prompts to authenticate and save your token.
 
-### **Features:**
-- **Email Reading**: Connect to Outlook via Microsoft Graph API
-- **Action Item Extraction**: LLM-powered extraction of tasks from emails
-- **Priority Classification**: Urgent, high, medium, low priority levels
-- **Daily Summaries**: Email counts, urgent items, action items, meetings
-- **Persistent Tracking**: Save and track action items until completion
-- **Smart Filtering**: Focus on important senders and urgent keywords
+### Usage
+- To fetch and display a summary of your recent emails:
+  ```bash
+  python -m echo.cli email_summary
+  ```
+- The summary will show the subject, sender, and received time for your most recent emails.
+
+### Integration with Daily Planning
+- Email summaries can be included in your daily planning and reflection workflows.
+- You can extend the CLI or planning scripts to automatically fetch and summarize emails as part of your morning or evening routines.
+- Action items and urgent emails can be surfaced for prioritization in your daily plan.
 
 ### **Configuration:**
 ```yaml

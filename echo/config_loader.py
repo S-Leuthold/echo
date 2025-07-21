@@ -54,7 +54,7 @@ def load_config() -> Config:
             wake_time=defaults_data.get("wake_time", "07:00"),
             sleep_time=defaults_data.get("sleep_time", "22:00")
         )
-        
+
         # Load weekly schedule
         weekly_schedule = config_data.get("weekly_schedule", {})
         
