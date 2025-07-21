@@ -19,7 +19,7 @@ import asyncio
 # Echo imports
 from echo.config_loader import load_config
 from echo.email_processor import OutlookEmailProcessor
-from echo.prompt_engine import build_email_aware_planner_prompt, parse_planner_response
+from echo.prompt_engine import build_email_aware_planner_prompt, parse_planner_response, build_enricher_prompt, parse_enricher_response
 from echo.journal import get_recent_reflection_context, analyze_energy_mood_trends
 from echo.models import Block, BlockType, Config
 from echo.analytics import calculate_daily_stats, get_recent_stats, categorize_block
@@ -253,14 +253,29 @@ async def get_today_schedule():
             project_name = label_parts[0] if len(label_parts) > 1 else "Unknown"
             task_name = label_parts[1] if len(label_parts) > 1 else block.label
             
+            # Get enricher data if available
+            emoji = "🚀"  # Default
+            note = ""     # Default
+            
+            # Check if plan data has enricher information
+            if plan_file.exists():
+                with open(plan_file, 'r') as f:
+                    plan_data = json.load(f)
+                    for saved_block in plan_data.get("blocks", []):
+                        if (saved_block.get("start") == block.start.strftime("%H:%M:%S") and 
+                            saved_block.get("end") == block.end.strftime("%H:%M:%S")):
+                            emoji = saved_block.get("emoji", "🚀")
+                            note = saved_block.get("note", "")
+                            break
+            
             block_response = BlockResponse(
                 id=f"block_{block.start.isoformat()}",
                 start_time=block.start.isoformat(),
                 end_time=block.end.isoformat(),
-                emoji="🚀",  # Default emoji
+                emoji=emoji,
                 project_name=project_name,
                 task_name=task_name,
-                note="",  # TODO: Add notes from block metadata
+                note=note,
                 type=block.type.value,
                 duration=int(block.end.hour * 60 + block.end.minute - (block.start.hour * 60 + block.start.minute)),
                 label=block.label,
@@ -414,13 +429,21 @@ async def create_plan(request: PlanningRequest):
             recent_trends=recent_trends
         )
         
-        # Call LLM to generate plan
+        # Call LLM to generate plan using two-stage architecture
         try:
             client = _get_openai_client()
-            response = _call_llm(client, prompt)
             
-            # Parse the response into structured blocks
-            blocks = parse_planner_response(response)
+            # Stage 1: Planner generates basic structure
+            planner_response = _call_llm(client, prompt)
+            blocks = parse_planner_response(planner_response)
+            
+            # Stage 2: Enricher adds emojis and notes
+            enricher_prompt = build_enricher_prompt(blocks)
+            enricher_response = _call_llm(client, enricher_prompt)
+            enriched_blocks = parse_enricher_response(enricher_response, blocks)
+            
+            # Use enriched blocks for final plan
+            blocks = enriched_blocks
             
             # Save plan to file
             today = date.today()
@@ -444,13 +467,15 @@ async def create_plan(request: PlanningRequest):
                 }
             }
             
-            # Convert blocks to JSON format
+            # Convert enriched blocks to JSON format
             for block in blocks:
                 block_data = {
                     "start": block.start.strftime("%H:%M:%S"),
                     "end": block.end.strftime("%H:%M:%S"),
                     "label": block.label,
-                    "type": block.type.value if hasattr(block.type, 'value') else str(block.type)
+                    "type": block.type.value if hasattr(block.type, 'value') else str(block.type),
+                    "emoji": getattr(block, 'emoji', '🚀'),  # Use enricher emoji or default
+                    "note": getattr(block, 'note', '')       # Use enricher note or empty
                 }
                 plan_data["blocks"].append(block_data)
             
@@ -497,8 +522,8 @@ async def save_reflection(request: ReflectionRequest):
         return {
             "status": "success",
             "message": "Reflection saved successfully",
-            "entry_id": entry.id,
-            "entry_date": entry.date.isoformat()
+            "entry_date": entry.date.isoformat(),
+            "created_at": entry.created_at.isoformat()
         }
         
     except Exception as e:
