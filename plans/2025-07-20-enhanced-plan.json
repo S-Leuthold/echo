@@ -1,0 +1,37 @@
+{
+  "date": "2025-07-20",
+  "blocks": [],
+  "email_context": {
+    "total_unresponded": 2,
+    "urgent_count": 1,
+    "high_priority_count": 2,
+    "scheduling_recommendations": [
+      {
+        "email_id": "email1",
+        "action_item": "Respond to urgent email",
+        "priority": "critical",
+        "time_allocation": 30,
+        "recommended_time": "morning"
+      }
+    ],
+    "response_time_estimates": {
+      "total_estimated_time": 30
+    }
+  },
+  "user_input": {
+    "most_important": "Finish project",
+    "todos": [
+      "Review code",
+      "Update docs"
+    ],
+    "energy_level": "8",
+    "non_negotiables": "Team meeting",
+    "avoid_today": "Social media"
+  },
+  "planning_stats": {
+    "total_scheduled": 1,
+    "total_completed": 0,
+    "pending_scheduled": 1,
+    "completion_rate": 0.0
+  }
+}
