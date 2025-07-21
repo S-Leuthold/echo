@@ -1339,6 +1339,7 @@ Return a JSON object with two fields:
   [
     {{
       "action": "Brief description of what needs to be done",
+      "specific_description": "Detailed description of the specific action required (e.g., 'Review the KFS document and approve/reject the action item', 'Confirm meeting attendance for Tuesday 2pm')",
       "sender": "email@domain.com", 
       "subject": "Original email subject",
       "deadline": "Deadline if mentioned, otherwise null",

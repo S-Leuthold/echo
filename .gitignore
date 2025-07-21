@@ -17,3 +17,7 @@ gcal_credentials.json
 # Test Logs 
 
 /logs
+
+# Other
+
+echo-application/node_modules

@@ -1,0 +1,189 @@
+{
+  "date": "2025-07-21",
+  "created_at": "2025-07-21T14:34:20.624166",
+  "blocks": [
+    {
+      "start": "06:00:00",
+      "end": "07:00:00",
+      "label": "Personal | Morning Routine",
+      "type": "anchor"
+    },
+    {
+      "start": "07:00:00",
+      "end": "08:00:00",
+      "label": "Admin | Email & Admin",
+      "type": "flex"
+    },
+    {
+      "start": "08:00:00",
+      "end": "09:00:00",
+      "label": "Email | Respond to Re: KFS colostate : Your Action List has a document that needs your attention",
+      "type": "flex"
+    },
+    {
+      "start": "09:00:00",
+      "end": "10:00:00",
+      "label": "Email | Respond to Re: Meetings from August",
+      "type": "flex"
+    },
+    {
+      "start": "10:00:00",
+      "end": "12:00:00",
+      "label": "Work | Complete high-priority tasks",
+      "type": "flex"
+    },
+    {
+      "start": "12:00:00",
+      "end": "13:00:00",
+      "label": "Personal | Lunch Break",
+      "type": "anchor"
+    },
+    {
+      "start": "13:00:00",
+      "end": "15:00:00",
+      "label": "Work | Complete outstanding work",
+      "type": "flex"
+    },
+    {
+      "start": "15:00:00",
+      "end": "16:00:00",
+      "label": "Email | Respond to Dear S.J. Leuthold: Scholarly Meetings Solicits Article/Abstract Submissions",
+      "type": "flex"
+    },
+    {
+      "start": "16:00:00",
+      "end": "18:00:00",
+      "label": "Work | Complete high-priority tasks",
+      "type": "flex"
+    },
+    {
+      "start": "18:00:00",
+      "end": "20:00:00",
+      "label": "Work | Complete outstanding work",
+      "type": "flex"
+    },
+    {
+      "start": "20:00:00",
+      "end": "22:00:00",
+      "label": "Personal | Evening Routine",
+      "type": "anchor"
+    }
+  ],
+  "metadata": {
+    "email_context": {
+      "summary": "There are three emails that require attention. The first one is from Rui Zhang, inviting for an article or abstract submission for the 12th Conference on Energy, Environment and Earth Sciences with a deadline on September 10, 2025. The second email is from Kierra Jewell, notifying about a document in the KFS action list that needs attention. The third email is from Francesca, discussing about meetings in August and confirming a meeting on Tuesday or Monday afternoon.",
+      "action_items": [
+        {
+          "action": "Submit article/abstract for conference",
+          "specific_description": "Submit an article or abstract for the 12th Conference on Energy, Environment and Earth Sciences",
+          "sender": "Rui.Zhang@ichmls.com",
+          "subject": "Dear S.J. Leuthold: Scholarly Meetings Solicits Article/Abstract Submissions",
+          "deadline": "September 10, 2025",
+          "priority": "high"
+        },
+        {
+          "action": "Review KFS document",
+          "specific_description": "Review the document in the KFS action list as mentioned by Kierra Jewell",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "deadline": null,
+          "priority": "medium"
+        },
+        {
+          "action": "Confirm meeting schedule",
+          "specific_description": "Confirm the meeting schedule with Francesca for Tuesday or Monday afternoon",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "subject": "Re: Meetings from August",
+          "deadline": null,
+          "priority": "medium"
+        }
+      ],
+      "total_unresponded": 3,
+      "urgent_count": 0,
+      "high_priority_count": 2,
+      "emails": [
+        {
+          "subject": "Dear S.J. Leuthold: Scholarly Meetings Solicits Article/Abstract Submissions",
+          "sender": "Rui.Zhang@ichmls.com",
+          "received": "2025-07-21T19:21:11Z",
+          "importance": "medium",
+          "urgency": "medium",
+          "has_action": true
+        },
+        {
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "received": "2025-07-21T18:56:28Z",
+          "importance": "high",
+          "urgency": "medium",
+          "has_action": true
+        },
+        {
+          "subject": "Re: Meetings from August",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "received": "2025-07-21T18:54:58Z",
+          "importance": "high",
+          "urgency": "medium",
+          "has_action": true
+        }
+      ],
+      "scheduling_recommendations": [
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAETAAC5DlNXqJybR4xjpQmjUmjjAAP9VXZoAAA=",
+          "subject": "Dear S.J. Leuthold: Scholarly Meetings Solicits Article/Abstract Submissions",
+          "sender": "Rui.Zhang@ichmls.com",
+          "priority": "medium",
+          "time_allocation": 15,
+          "recommended_time": "afternoon",
+          "action_item": "Respond to Dear S.J. Leuthold: Scholarly Meetings Solicits Article/Abstract Submissions from Rui.Zhang@ichmls.com"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEJAAC5DlNXqJybR4xjpQmjUmjjAAP9VM19AAA=",
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Respond to Re: KFS colostate : Your Action List has a document that needs your attention: from Sam.Leuthold@colostate.edu"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEJAAC5DlNXqJybR4xjpQmjUmjjAAP9VM18AAA=",
+          "subject": "Re: Meetings from August",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Respond to Re: Meetings from August from Sam.Leuthold@colostate.edu"
+        }
+      ],
+      "response_time_estimates": {
+        "total_estimated_time": 55,
+        "time_estimates": {
+          "critical": 30,
+          "high": 20,
+          "medium": 15,
+          "low": 10
+        },
+        "email_count": 3
+      }
+    },
+    "journal_context": {
+      "tomorrow_focus": "Avoid distractions",
+      "tomorrow_energy": "Good",
+      "non_negotiables": "7",
+      "avoid_tomorrow": "Complete email integration",
+      "today_energy": "No fixed events",
+      "today_mood": "8",
+      "date": "2025-07-20"
+    },
+    "user_input": {
+      "most_important": "Complete high-priority tasks",
+      "todos": [
+        "Complete outstanding work"
+      ],
+      "energy_level": "Medium",
+      "non_negotiables": "Morning routine, lunch break",
+      "avoid_today": "Unnecessary distractions"
+    }
+  }
+}

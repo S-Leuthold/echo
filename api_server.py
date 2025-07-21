@@ -5,7 +5,7 @@ FastAPI server that exposes Echo's core functionality for the macOS app.
 Provides endpoints for today's schedule, analytics, projects, and sessions.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -24,6 +24,12 @@ from echo.journal import get_recent_reflection_context, analyze_energy_mood_tren
 from echo.models import Block, BlockType, Config
 from echo.analytics import calculate_daily_stats, get_recent_stats, categorize_block
 from echo.session import SessionState
+import openai
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +49,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions."""
+    logger.error(f"Unhandled exception on {request.url}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc)}
+    )
+
+# Handle HTTP exceptions specifically
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with proper logging."""
+    logger.warning(f"HTTP exception on {request.url}: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
 
 # Pydantic models for API requests/responses
 class BlockResponse(BaseModel):
@@ -103,9 +129,50 @@ class PlanningRequest(BaseModel):
     avoid_today: str
     fixed_events: List[str]
 
+class ReflectionRequest(BaseModel):
+    day_rating: int
+    energy_level: str
+    what_happened: str
+    what_worked: str
+    what_drained: str
+    key_insights: str
+    tomorrow_priority: str
+    tomorrow_energy: str
+    tomorrow_environment: str
+    tomorrow_non_negotiables: str
+    tomorrow_avoid: str
+
 # Global state (in production, use proper state management)
 config: Optional[Config] = None
 email_processor: Optional[OutlookEmailProcessor] = None
+
+def _get_openai_client():
+    """Get OpenAI client with API key from environment."""
+    try:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable not set")
+        return openai.OpenAI(api_key=api_key)
+    except Exception as e:
+        logger.error(f"Failed to get OpenAI client: {e}")
+        raise
+
+def _call_llm(client, prompt: str) -> str:
+    """Call the LLM with the given prompt with error handling."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that follows instructions precisely."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=2000
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Error calling LLM: {e}")
+        raise
 
 @app.on_event("startup")
 async def startup_event():
@@ -347,54 +414,241 @@ async def create_plan(request: PlanningRequest):
             recent_trends=recent_trends
         )
         
-        # TODO: Call LLM to generate plan
-        # For now, return success response
-        return {"status": "success", "message": "Plan generation initiated"}
+        # Call LLM to generate plan
+        try:
+            client = _get_openai_client()
+            response = _call_llm(client, prompt)
+            
+            # Parse the response into structured blocks
+            blocks = parse_planner_response(response)
+            
+            # Save plan to file
+            today = date.today()
+            plan_file = Path(f"plans/{today.isoformat()}-enhanced-plan.json")
+            plan_file.parent.mkdir(exist_ok=True)
+            
+            plan_data = {
+                "date": today.isoformat(),
+                "created_at": datetime.now().isoformat(),
+                "blocks": [],
+                "metadata": {
+                    "email_context": email_context,
+                    "journal_context": journal_context[0] if journal_context else None,
+                    "user_input": {
+                        "most_important": request.most_important,
+                        "todos": request.todos,
+                        "energy_level": request.energy_level,
+                        "non_negotiables": request.non_negotiables,
+                        "avoid_today": request.avoid_today
+                    }
+                }
+            }
+            
+            # Convert blocks to JSON format
+            for block in blocks:
+                block_data = {
+                    "start": block.start.strftime("%H:%M:%S"),
+                    "end": block.end.strftime("%H:%M:%S"),
+                    "label": block.label,
+                    "type": block.type.value if hasattr(block.type, 'value') else str(block.type)
+                }
+                plan_data["blocks"].append(block_data)
+            
+            # Save to file
+            with open(plan_file, 'w') as f:
+                json.dump(plan_data, f, indent=2)
+            
+            # Return the generated plan
+            return {
+                "status": "success", 
+                "message": "Plan generated successfully",
+                "blocks": plan_data["blocks"],
+                "plan_file": str(plan_file)
+            }
+            
+        except Exception as llm_error:
+            logger.error(f"LLM planning error: {llm_error}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(llm_error)}")
         
     except Exception as e:
         logger.error(f"Error creating plan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/reflection")
+async def save_reflection(request: ReflectionRequest):
+    """Save evening reflection to journal."""
+    try:
+        from echo.journal import create_enhanced_evening_reflection_entry
+        
+        # Create journal entry
+        entry = create_enhanced_evening_reflection_entry(
+            what_went_well=request.what_worked,
+            challenges=request.what_drained,
+            learnings=request.key_insights,
+            energy_level=request.energy_level,
+            mood=str(request.day_rating),  # Convert int to string
+            patterns_noticed=request.what_happened,
+            tomorrow_focus=request.tomorrow_priority,
+            tomorrow_energy=request.tomorrow_energy,
+            non_negotiables=request.tomorrow_non_negotiables,
+            avoid_tomorrow=request.tomorrow_avoid
+        )
+        
+        return {
+            "status": "success",
+            "message": "Reflection saved successfully",
+            "entry_id": entry.id,
+            "entry_date": entry.date.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving reflection: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/email-summary")
+async def get_email_summary():
+    """Get today's email summary for planning page."""
+    try:
+        if not email_processor:
+            return {
+                "total_emails": 0,
+                "unread_emails": 0,
+                "urgent_emails": 0,
+                "action_items": [],
+                "summary": "Email integration not configured"
+            }
+        
+        # Get email context
+        email_context = email_processor.get_email_planning_context(days=1)
+        
+        # Transform to frontend format
+        action_items = []
+        if email_context.get("emails"):
+            # Use the structured email data that includes sender info
+            for i, email in enumerate(email_context["emails"][:5]):
+                # Try to get LLM-generated specific description from action_items
+                specific_description = "Review and respond to this email appropriately"
+                if email_context.get("action_items") and i < len(email_context["action_items"]):
+                    llm_action = email_context["action_items"][i]
+                    if isinstance(llm_action, dict) and "specific_description" in llm_action:
+                        specific_description = llm_action["specific_description"]
+                
+                action_items.append({
+                    "id": str(i + 1),
+                    "from": email.get("sender", "Unknown Sender"),
+                    "subject": email.get("subject", "No Subject"),
+                    "priority": "High" if email.get("importance") == "high" else "Medium",
+                    "timeEstimate": "30 min" if email.get("urgency") == "high" else "15 min",
+                    "category": "Urgent Reply" if email.get("urgency") == "high" else "Review & Respond",
+                    "specificDescription": specific_description
+                })
+        elif email_context.get("action_items"):
+            # Fallback to action items list if structured email data not available
+            for i, item in enumerate(email_context["action_items"][:5]):
+                action_items.append({
+                    "id": str(i + 1),
+                    "from": "Unknown Sender",  
+                    "subject": item,
+                    "priority": "Medium",
+                    "timeEstimate": "15 min",
+                    "category": "Review & Respond"
+                })
+        
+        return {
+            "total_emails": email_context.get("total_unresponded", 0),
+            "unread_emails": email_context.get("total_unresponded", 0),
+            "urgent_emails": email_context.get("urgent_count", 0),
+            "action_items": action_items,
+            "summary": email_context.get("summary", "No email summary available")
+        }
+        
+    except Exception as e:
+        logger.warning(f"Error getting email summary: {e}")
+        # Return graceful fallback
+        return {
+            "total_emails": 0,
+            "unread_emails": 0,
+            "urgent_emails": 0,
+            "action_items": [],
+            "summary": f"Email summary unavailable: {str(e)}"
+        }
+
 async def generate_today_plan() -> List[Block]:
     """Generate a plan for today using the LLM."""
-    # TODO: Implement actual plan generation
-    # For now, return sample blocks
-    today = date.today()
-    
-    sample_blocks = [
-        Block(
-            start=time(6, 0),
-            end=time(7, 0),
-            label="Personal | Morning Routine",
-            type=BlockType.ANCHOR
-        ),
-        Block(
-            start=time(9, 0),
-            end=time(10, 30),
-            label="Echo Development | API Server",
-            type=BlockType.FLEX
-        ),
-        Block(
-            start=time(10, 30),
-            end=time(12, 0),
-            label="Echo Development | macOS App",
-            type=BlockType.FLEX
-        ),
-        Block(
-            start=time(12, 0),
-            end=time(13, 0),
-            label="Personal | Lunch Break",
-            type=BlockType.ANCHOR
-        ),
-        Block(
-            start=time(17, 0),
-            end=time(18, 0),
-            label="Personal | Evening Routine",
-            type=BlockType.ANCHOR
+    try:
+        if not config:
+            raise ValueError("Configuration not loaded")
+        
+        # Get email context
+        email_context = {}
+        if email_processor:
+            try:
+                email_context = email_processor.get_email_planning_context(days=7)
+            except Exception as e:
+                logger.warning(f"Failed to get email context for auto-plan: {e}")
+        
+        # Get journal context
+        journal_context = get_recent_reflection_context(days=7)
+        recent_trends = analyze_energy_mood_trends(days=7)
+        
+        # Build prompt with default values
+        prompt = build_email_aware_planner_prompt(
+            most_important="Focus on high-priority tasks",
+            todos=["Complete outstanding work"],
+            energy_level="7",
+            non_negotiables="Morning routine, lunch break, evening routine",
+            avoid_today="Unnecessary meetings, distractions",
+            fixed_events=[],
+            config=config,
+            email_context=email_context,
+            journal_context=journal_context[0] if journal_context else None,
+            recent_trends=recent_trends
         )
-    ]
-    
-    return sample_blocks
+        
+        # Call LLM
+        client = _get_openai_client()
+        response = _call_llm(client, prompt)
+        
+        # Parse and return blocks
+        blocks = parse_planner_response(response)
+        return blocks
+        
+    except Exception as e:
+        logger.warning(f"Failed to generate LLM plan, falling back to sample: {e}")
+        # Fallback to sample blocks if LLM fails
+        sample_blocks = [
+            Block(
+                start=time(6, 0),
+                end=time(7, 0),
+                label="Personal | Morning Routine",
+                type=BlockType.ANCHOR
+            ),
+            Block(
+                start=time(9, 0),
+                end=time(10, 30),
+                label="Echo Development | API Server",
+                type=BlockType.FLEX
+            ),
+            Block(
+                start=time(10, 30),
+                end=time(12, 0),
+                label="Echo Development | Frontend Integration",
+                type=BlockType.FLEX
+            ),
+            Block(
+                start=time(12, 0),
+                end=time(13, 0),
+                label="Personal | Lunch Break",
+                type=BlockType.ANCHOR
+            ),
+            Block(
+                start=time(17, 0),
+                end=time(18, 0),
+                label="Personal | Evening Routine",
+                type=BlockType.ANCHOR
+            )
+        ]
+        return sample_blocks
 
 if __name__ == "__main__":
     import uvicorn
