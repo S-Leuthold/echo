@@ -1,296 +1,71 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
-:root {
-  --radius: 0.625rem;
-  
-  /* Echo Sunset Theme - Warm Evening Vibes Everywhere */
-  --background: #0B0A0F;           /* Deep indigo night */
-  --foreground: #FAF7F2;           /* Warm off-white */
-  --card: #1A1621;                 /* Rich dark purple */
-  --card-foreground: #FAF7F2;
-  --popover: #1A1621;
-  --popover-foreground: #FAF7F2;
-  --primary: #E6A86C;              /* Dusty orange as primary */
-  --primary-foreground: #0B0A0F;
-  --secondary: #4A3F5C;            /* Deep lavender */
-  --secondary-foreground: #FAF7F2;
-  --muted: #2D2438;                /* Muted purple */
-  --muted-foreground: #C4B5A0;     /* Warm beige */
-  --accent: #E6A86C;               /* Dusty orange accent */
-  --accent-foreground: #0B0A0F;
-  --destructive: #EF4444;
-  --border: #3D3349;               /* Subtle purple border */
-  --input: #2D2438;
-  --ring: #E6A86C;
-  --chart-1: #22C55E;
-  --chart-2: #3B82F6;
-  --chart-3: #F59E0B;
-  --chart-4: #EF4444;
-  --chart-5: #8B5CF6;
-  
-  /* TimeCategory Color System - Personal & Intuitive */
-  /* DEEP_WORK - Deep focus sessions */
-  --deep-work: #1E5128;           /* Deep Green */
-  --deep-work-active: #2F7439;    /* Brighter for active state */
-  --deep-work-completed: #134E20; /* Darker for completed */
-  
-  /* SHALLOW_WORK / ADMIN - Light administrative tasks */
-  --shallow-work: #A3B18A;        /* Sage Green */
-  --shallow-work-active: #B8C5A1; /* Brighter for active */
-  --shallow-work-completed: #8F9B79; /* Darker for completed */
-  
-  /* MEETINGS - Collaborative sessions */
-  --meetings: #C94242;            /* Action Red */
-  --meetings-active: #D65555;     /* Brighter for active */
-  --meetings-completed: #B53838;  /* Darker for completed */
-  
-  /* PERSONAL - Personal time and activities */
-  --personal: #BDB2FF;            /* Lavender */
-  --personal-active: #CBC4FF;     /* Brighter for active */
-  --personal-completed: #A99EEB;  /* Darker for completed */
-  
-  /* HEALTH - Fitness and wellness */
-  --health: #E8C547;              /* Mustard Yellow */
-  --health-active: #EDCF5A;       /* Brighter for active */
-  --health-completed: #D4B33A;    /* Darker for completed */
-  
-  /* MEALS / COOKING - Food and nutrition */
-  --meals: #F28F3B;               /* Tangerine */
-  --meals-active: #F49F56;        /* Brighter for active */
-  --meals-completed: #E0812A;     /* Darker for completed */
-  
-  /* TRANSIT / ERRANDS - Movement and logistics */
-  --transit: #6C757D;             /* Cool Grey */
-  --transit-active: #8590A0;      /* Brighter for active */
-  --transit-completed: #5A6068;   /* Darker for completed */
-  
-  /* PLANNING - Strategic thinking */
-  --planning: #6366F1;            /* Indigo */
-  --planning-active: #7C7FF5;     /* Brighter for active */
-  --planning-completed: #4F52D3;  /* Darker for completed */
-  
-  /* RESEARCH - Learning and investigation */
-  --research: #EC4899;            /* Pink */
-  --research-active: #F060A9;     /* Brighter for active */
-  --research-completed: #DB2777;  /* Darker for completed */
-  --sidebar: #0F0F12;              /* Deep sidebar depth */
-  --sidebar-foreground: #FAF7F2;
-  --sidebar-primary: #E6A86C;
-  --sidebar-primary-foreground: #0B0A0F;
-  --sidebar-accent: #E6A86C;
-  --sidebar-accent-foreground: #0B0A0F;
-  --sidebar-border: #3D3349;
-  --sidebar-ring: #E6A86C;
-  
-  /* Planning Page - Sunset Evening Theme */
-  --planning-background: #0B0A0F;        /* Deep indigo night */
-  --planning-foreground: #FAF7F2;        /* Warm off-white */
-  --planning-card: #1A1621;              /* Rich dark purple */
-  --planning-card-foreground: #FAF7F2;
-  --planning-muted: #2D2438;             /* Muted purple */
-  --planning-muted-foreground: #C4B5A0;  /* Warm beige */
-  --planning-accent: #E6A86C;            /* Dusty orange */
-  --planning-accent-foreground: #0B0A0F;
-  --planning-border: #3D3349;            /* Subtle purple border */
-  --planning-secondary: #4A3F5C;         /* Deep lavender */
-  --planning-secondary-foreground: #FAF7F2;
-  
-  /* Planning warm accents */
-  --planning-pink: #D4A5A5;             /* Soft dusty pink */
-  --planning-orange: #E6A86C;           /* Main dusty orange */
-  --planning-indigo: #6B5B95;           /* Deep indigo accent */
-  --planning-sage: #A8B5A0;             /* Sage green for completed */
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@layer theme {
+  :root {
+    /* Tailwind v4 semantic colors */
+    --color-background: #0B0A0F;
+    --color-foreground: #FAF7F2;
+    --color-card: #1A1621;
+    --color-card-foreground: #FAF7F2;
+    --color-popover: #1A1621;
+    --color-popover-foreground: #FAF7F2;
+    --color-primary: #E6A86C;
+    --color-primary-foreground: #0B0A0F;
+    --color-secondary: #4A3F5C;
+    --color-secondary-foreground: #FAF7F2;
+    --color-muted: #2D2438;
+    --color-muted-foreground: #C4B5A0;
+    --color-accent: #E6A86C;
+    --color-accent-foreground: #0B0A0F;
+    --color-destructive: #EF4444;
+    --color-destructive-foreground: #FAF7F2;
+    --color-border: #3D3349;
+    --color-input: #2D2438;
+    --color-ring: #E6A86C;
+    
+    --color-sidebar: #0F0F12;
+    --color-sidebar-foreground: #FAF7F2;
+    --color-sidebar-primary: #E6A86C;
+    --color-sidebar-primary-foreground: #0B0A0F;
+    --color-sidebar-accent: #E6A86C;
+    --color-sidebar-accent-foreground: #0B0A0F;
+    --color-sidebar-border: #3D3349;
+    --color-sidebar-ring: #E6A86C;
+  }
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--color-border);
   }
+  
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 }
 
-/* Echo Custom Utility Classes */
 @layer utilities {
-  .font-manrope {
-    font-family: var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-  
-  .text-primary {
-    color: var(--foreground);
-  }
-  
-  .text-secondary {
-    color: var(--muted-foreground);
-  }
-  
-  .bg-background-primary {
-    background-color: var(--background);
-  }
-  
-  .bg-background-secondary {
-    background-color: var(--secondary);
-  }
-  
-  .border-primary {
-    border-color: var(--border);
-  }
-  
-  .accent-blue {
-    color: var(--accent);
-  }
-  
-  /* TimeCategory Utilities - Personal & Intuitive */
-  /* DEEP_WORK */
-  .border-deep-work { border-color: var(--deep-work); }
-  .bg-deep-work-active { background-color: var(--deep-work-active); }
-  .bg-deep-work-completed { background-color: var(--deep-work-completed); }
-  .text-deep-work { color: var(--deep-work); }
-  
-  /* SHALLOW_WORK */
-  .border-shallow-work { border-color: var(--shallow-work); }
-  .bg-shallow-work-active { background-color: var(--shallow-work-active); }
-  .bg-shallow-work-completed { background-color: var(--shallow-work-completed); }
-  .text-shallow-work { color: var(--shallow-work); }
-  
-  /* MEETINGS */
-  .border-meetings { border-color: var(--meetings); }
-  .bg-meetings-active { background-color: var(--meetings-active); }
-  .bg-meetings-completed { background-color: var(--meetings-completed); }
-  .text-meetings { color: var(--meetings); }
-  
-  /* PERSONAL */
-  .border-personal { border-color: var(--personal); }
-  .bg-personal-active { background-color: var(--personal-active); }
-  .bg-personal-completed { background-color: var(--personal-completed); }
-  .text-personal { color: var(--personal); }
-  
-  /* HEALTH */
-  .border-health { border-color: var(--health); }
-  .bg-health-active { background-color: var(--health-active); }
-  .bg-health-completed { background-color: var(--health-completed); }
-  .text-health { color: var(--health); }
-  
-  /* MEALS */
-  .border-meals { border-color: var(--meals); }
-  .bg-meals-active { background-color: var(--meals-active); }
-  .bg-meals-completed { background-color: var(--meals-completed); }
-  .text-meals { color: var(--meals); }
-  
-  /* TRANSIT */
-  .border-transit { border-color: var(--transit); }
-  .bg-transit-active { background-color: var(--transit-active); }
-  .bg-transit-completed { background-color: var(--transit-completed); }
-  .text-transit { color: var(--transit); }
-  
-  /* PLANNING */
-  .border-planning { border-color: var(--planning); }
-  .bg-planning-active { background-color: var(--planning-active); }
-  .bg-planning-completed { background-color: var(--planning-completed); }
-  .text-planning { color: var(--planning); }
-
-  /* Text shadow utility for better readability on colored backgrounds */
   .text-shadow {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
   
-  /* RESEARCH */
-  .border-research { border-color: var(--research); }
-  .bg-research-active { background-color: var(--research-active); }
-  .bg-research-completed { background-color: var(--research-completed); }
-  .text-research { color: var(--research); }
-  
-  /* Planning Page Theme Utilities */
-  .bg-planning { background-color: var(--planning-background); }
-  .text-planning-foreground { color: var(--planning-foreground); }
-  .bg-planning-card { background-color: var(--planning-card); }
-  .text-planning-card-foreground { color: var(--planning-card-foreground); }
-  .bg-planning-muted { background-color: var(--planning-muted); }
-  .text-planning-muted-foreground { color: var(--planning-muted-foreground); }
-  .text-planning-accent { color: var(--planning-accent); }
-  .bg-planning-accent { background-color: var(--planning-accent); }
-  .border-planning { border-color: var(--planning-border); }
-  .bg-planning-secondary { background-color: var(--planning-secondary); }
-  .text-planning-pink { color: var(--planning-pink); }
-  .text-planning-orange { color: var(--planning-orange); }
-  .text-planning-indigo { color: var(--planning-indigo); }
-  .text-planning-sage { color: var(--planning-sage); }
+  /* Category background colors for calendar blocks */
+  .bg-deep-work-active { background-color: #2F7439; }
+  .bg-shallow-work-active { background-color: #B8C5A1; }
+  .bg-meetings-active { background-color: #D65555; }
+  .bg-personal-active { background-color: #CBC4FF; }
+  .bg-health-active { background-color: #EDCF5A; }
+  .bg-meals-active { background-color: #F49F56; }
+  .bg-transit-active { background-color: #8590A0; }
+  .bg-planning-active { background-color: #7C7FF5; }
+  .bg-research-active { background-color: #F060A9; }
+  .bg-admin-active { background-color: #B8C5A1; }
+  .bg-work-active { background-color: #B8C5A1; }
+  .bg-exercise-active { background-color: #EDCF5A; }
+  .bg-learning-active { background-color: #2F7439; }
+  .bg-writing-active { background-color: #2F7439; }
+  .bg-social-active { background-color: #CBC4FF; }
+  .bg-rest-active { background-color: #8590A0; }
 }

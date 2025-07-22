@@ -8,6 +8,16 @@ weekly_schedule:
       category: personal
       task: Test Block
       description: Test description
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'I like to start the day by reading some non-fiction for about
+        30 minutes. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'I eat for about 30 minutes most morning, and also make smoothies
+        for my wife and I. '
     fixed: []
     flex: []
   tuesday:
@@ -16,18 +26,58 @@ weekly_schedule:
       category: personal
       task: Test Block
       description: Test description
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'I like to start the day by reading some non-fiction for about
+        30 minutes. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'I eat for about 30 minutes most morning, and also make smoothies
+        for my wife and I. '
     fixed: []
     flex: []
   wednesday:
-    anchors: []
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'I like to start the day by reading some non-fiction for about
+        30 minutes. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'I eat for about 30 minutes most morning, and also make smoothies
+        for my wife and I. '
     fixed: []
     flex: []
   thursday:
-    anchors: []
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'I like to start the day by reading some non-fiction for about
+        30 minutes. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'I eat for about 30 minutes most morning, and also make smoothies
+        for my wife and I. '
     fixed: []
     flex: []
   friday:
-    anchors: []
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'I like to start the day by reading some non-fiction for about
+        30 minutes. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'I eat for about 30 minutes most morning, and also make smoothies
+        for my wife and I. '
     fixed: []
     flex: []
   saturday:

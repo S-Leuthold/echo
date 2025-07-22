@@ -35,10 +35,23 @@ interface KnownBlock {
   days: string[]; // Which days of the week this applies to
 }
 
+interface Reminder {
+  id: string;
+  name: string;
+  due_date: string; // ISO date string
+  recurrence: "none" | "weekly" | "monthly" | "yearly";
+  category: string;
+  description?: string;
+  is_completed: boolean;
+}
+
 interface ConfigWizardState {
   knownBlocks: KnownBlock[];
+  reminders: Reminder[];
   editingBlock: KnownBlock | null;
+  editingReminder: Reminder | null;
   showModal: boolean;
+  modalType: "block" | "reminder";
 }
 
 // const DAYS_OF_WEEK = [
@@ -71,8 +84,11 @@ const CATEGORIES = [
 export default function ConfigWizard() {
   const [state, setState] = useState<ConfigWizardState>({
     knownBlocks: [],
+    reminders: [],
     editingBlock: null,
-    showModal: false
+    editingReminder: null,
+    showModal: false,
+    modalType: "block"
   });
   const [loading, setLoading] = useState(false);
 
@@ -81,15 +97,20 @@ export default function ConfigWizard() {
     const loadExistingConfig = async () => {
       try {
         setLoading(true);
+        
+        // Load blocks from server
         const response = await fetch('http://localhost:8000/config/load');
         const result = await response.json();
         
-        if (response.ok && result.known_blocks) {
-          setState(prev => ({
-            ...prev,
-            knownBlocks: result.known_blocks
-          }));
-        }
+        // Load reminders from localStorage
+        const savedReminders = localStorage.getItem('echo_reminders');
+        const reminders = savedReminders ? JSON.parse(savedReminders) : [];
+        
+        setState(prev => ({
+          ...prev,
+          knownBlocks: (response.ok && result.known_blocks) ? result.known_blocks : [],
+          reminders: reminders
+        }));
       } catch (error) {
         console.error("Error loading existing configuration:", error);
         // Don't show error to user - just start with empty config
@@ -114,6 +135,16 @@ export default function ConfigWizard() {
       days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
     },
     days: ["monday", "tuesday", "wednesday", "thursday", "friday"] // Keep for backward compatibility
+  });
+
+  const createNewReminder = (): Reminder => ({
+    id: `new_reminder_${Date.now()}`,
+    name: "",
+    due_date: new Date().toISOString().split('T')[0], // Today's date
+    recurrence: "none",
+    category: "Personal",
+    description: "",
+    is_completed: false
   });
 
   const handleBlockSave = async (block: KnownBlock) => {
@@ -168,10 +199,48 @@ export default function ConfigWizard() {
     }
   };
 
-  const openModal = (block?: KnownBlock) => {
+  const handleReminderSave = async (reminder: Reminder) => {
+    // Generate a proper ID for new reminders
+    if (reminder.id.startsWith('new_reminder_')) {
+      reminder.id = `reminder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    setState(prev => {
+      const isEditing = prev.editingReminder && !prev.editingReminder.id.startsWith('new_reminder_');
+      const updatedReminders = isEditing
+        ? prev.reminders.map(r => r.id === reminder.id ? reminder : r)
+        : [...prev.reminders, reminder];
+        
+      console.log('Saving reminder:', reminder);
+      console.log('Updated reminders:', updatedReminders);
+      
+      return {
+        ...prev,
+        reminders: updatedReminders,
+        editingReminder: null,
+        showModal: false
+      };
+    });
+
+    // Auto-save reminders to localStorage for now (can be extended to server)
+    try {
+      const updatedReminders = state.editingReminder && !state.editingReminder.id.startsWith('new_reminder_')
+        ? state.reminders.map(r => r.id === reminder.id ? reminder : r)
+        : [...state.reminders, reminder];
+        
+      localStorage.setItem('echo_reminders', JSON.stringify(updatedReminders));
+      console.log('Reminders auto-saved to localStorage');
+    } catch (error) {
+      console.error('Error saving reminders:', error);
+    }
+  };
+
+  const openModal = (block?: KnownBlock, reminder?: Reminder) => {
     setState(prev => ({
       ...prev,
-      editingBlock: block || createNewBlock(),
+      editingBlock: block || (reminder ? null : createNewBlock()),
+      editingReminder: reminder || (block ? null : createNewReminder()),
+      modalType: reminder ? "reminder" : "block",
       showModal: true
     }));
   };
@@ -180,6 +249,7 @@ export default function ConfigWizard() {
     setState(prev => ({
       ...prev,
       editingBlock: null,
+      editingReminder: null,
       showModal: false
     }));
   };
@@ -238,10 +308,10 @@ export default function ConfigWizard() {
         </div>
       </div>
 
-      {/* Block Type Cards - Upper 1/3 */}
+      {/* Action Cards - Upper section */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Choose a Block Type to Get Started</h3>
-        <div className="grid gap-4 md:grid-cols-3 max-w-4xl">
+        <h3 className="text-lg font-semibold mb-4">Create Blocks and Reminders</h3>
+        <div className="grid gap-4 md:grid-cols-4 max-w-6xl">
           {BLOCK_TYPES.map(type => (
             <Card 
               key={type.value} 
@@ -259,6 +329,18 @@ export default function ConfigWizard() {
               </div>
             </Card>
           ))}
+          
+          {/* Add Reminder Card */}
+          <Card 
+            className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
+            onClick={() => openModal(undefined, createNewReminder())}
+          >
+            <h4 className="font-medium text-sm">Add Reminder</h4>
+            <p className="text-xs text-muted-foreground mt-1">Bills, deadlines, and important dates</p>
+            <div className="mt-2 flex justify-end">
+              <span className="text-xs text-primary">Click to create →</span>
+            </div>
+          </Card>
         </div>
       </div>
 
@@ -306,33 +388,62 @@ export default function ConfigWizard() {
         <div>
           <Card className="h-[540px]">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Reminders & Deadlines</CardTitle>
-                  <CardDescription>
-                    Bills, deadlines, and important dates
-                  </CardDescription>
-                </div>
-                <Button size="sm" variant="outline">
-                  + Add Reminder
-                </Button>
+              <div>
+                <CardTitle>Reminders & Deadlines ({state.reminders.length})</CardTitle>
+                <CardDescription>
+                  Bills, deadlines, and important dates
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="h-full">
-              <div className="text-center text-muted-foreground py-16">
-                <p className="text-sm">Coming soon!</p>
-                <p className="text-xs mt-2">This section will manage bills, deadlines, and other important reminders that inform your daily planning.</p>
-              </div>
+            <CardContent className="h-full overflow-y-auto">
+              {state.reminders.length === 0 ? (
+                <div className="text-center text-muted-foreground py-16">
+                  <p className="text-sm">No reminders yet</p>
+                  <p className="text-xs mt-2">Click "Add Reminder" above to create your first reminder.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {state.reminders.map(reminder => (
+                    <Card 
+                      key={reminder.id} 
+                      className={`p-3 cursor-pointer hover:shadow-sm transition-all ${
+                        reminder.is_completed ? 'opacity-60' : ''
+                      }`}
+                      onClick={() => openModal(undefined, reminder)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className={`font-medium text-sm ${
+                            reminder.is_completed ? 'line-through' : ''
+                          }`}>{reminder.name}</h4>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            <p>Due: {new Date(reminder.due_date).toLocaleDateString()}</p>
+                            <p className="capitalize">{reminder.category} • {reminder.recurrence}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Modal for Block Editor */}
-      {state.showModal && state.editingBlock && (
+      {/* Modal for Block or Reminder Editor */}
+      {state.showModal && state.modalType === "block" && state.editingBlock && (
         <BlockEditorModal
           block={state.editingBlock}
           onSave={handleBlockSave}
+          onCancel={closeModal}
+        />
+      )}
+      
+      {state.showModal && state.modalType === "reminder" && state.editingReminder && (
+        <ReminderEditorModal
+          reminder={state.editingReminder}
+          onSave={handleReminderSave}
           onCancel={closeModal}
         />
       )}
@@ -568,6 +679,119 @@ function BlockEditorModal({ block, onSave, onCancel }: BlockEditorModalProps) {
             </Button>
           </div>
         </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+interface ReminderEditorModalProps {
+  reminder: Reminder;
+  onSave: (reminder: Reminder) => void;
+  onCancel: () => void;
+}
+
+function ReminderEditorModal({ reminder, onSave, onCancel }: ReminderEditorModalProps) {
+  const [editReminder, setEditReminder] = useState<Reminder>(reminder);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-card border border-border rounded-lg p-0 w-[60%] max-w-4xl max-h-[80vh] overflow-y-auto">
+        <Card className="border-none shadow-none">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>{editReminder.id.startsWith('new_reminder_') ? "New Reminder" : "Edit Reminder"}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={onCancel}>
+                ✕
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="name">Reminder Name</Label>
+              <Input
+                id="name"
+                value={editReminder.name}
+                onChange={(e) => setEditReminder(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Pay Electric Bill"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="due_date">Due Date</Label>
+              <Input
+                id="due_date"
+                type="date"
+                value={editReminder.due_date}
+                onChange={(e) => setEditReminder(prev => ({ ...prev, due_date: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="recurrence">Recurrence</Label>
+              <Select value={editReminder.recurrence} onValueChange={(value: "none" | "weekly" | "monthly" | "yearly") => setEditReminder(prev => ({ ...prev, recurrence: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Does not repeat</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select value={editReminder.category} onValueChange={(value) => setEditReminder(prev => ({ ...prev, category: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                value={editReminder.description || ""}
+                onChange={(e) => setEditReminder(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Additional details about this reminder..."
+                rows={2}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {!editReminder.name.trim() && (
+                <p className="text-sm text-red-500">
+                  Reminder name is required.
+                </p>
+              )}
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    console.log('Save reminder clicked with:', editReminder);
+                    onSave(editReminder);
+                  }} 
+                  disabled={!editReminder.name.trim()}
+                >
+                  Save Reminder
+                </Button>
+                <Button variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
