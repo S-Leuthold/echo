@@ -521,38 +521,7 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Top Priority */}
-          <div>
-            <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
-              What's the ONE thing that must get done tomorrow?
-            </label>
-            <Input
-              value={reflectionData.tomorrow.topPriority}
-              onChange={(e) => setReflectionData(prev => ({ 
-                ...prev, 
-                tomorrow: { ...prev.tomorrow, topPriority: e.target.value }
-              }))}
-              className="bg-muted border-border text-foreground text-lg font-medium"
-            />
-          </div>
-
-          {/* Possible Tasks */}
-          <div>
-            <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
-              What tasks are candidates for tomorrow? (Projects, objectives, specific work)
-            </label>
-            <Textarea
-              value={reflectionData.tomorrow.possibleTasks}
-              onChange={(e) => setReflectionData(prev => ({ 
-                ...prev, 
-                tomorrow: { ...prev.tomorrow, possibleTasks: e.target.value }
-              }))}
-              placeholder="e.g., Echo development - frontend fixes, Grant proposal writing, Paper review for Nature, Team meeting prep, Admin tasks..."
-              className="bg-muted border-border text-foreground min-h-[100px] resize-none"
-            />
-          </div>
-
-          {/* Context & Environment */}
+          {/* Context & Environment - MOVED TO TOP */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
@@ -603,6 +572,36 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Top Priority */}
+          <div>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
+              What's the ONE thing that must get done tomorrow?
+            </label>
+            <Input
+              value={reflectionData.tomorrow.topPriority}
+              onChange={(e) => setReflectionData(prev => ({ 
+                ...prev, 
+                tomorrow: { ...prev.tomorrow, topPriority: e.target.value }
+              }))}
+              className="bg-muted border-border text-foreground text-lg font-medium"
+            />
+          </div>
+
+          {/* Possible Tasks */}
+          <div>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3 block">
+              What tasks are candidates for tomorrow? (Projects, objectives, specific work)
+            </label>
+            <Textarea
+              value={reflectionData.tomorrow.possibleTasks}
+              onChange={(e) => setReflectionData(prev => ({ 
+                ...prev, 
+                tomorrow: { ...prev.tomorrow, possibleTasks: e.target.value }
+              }))}
+              className="bg-muted border-border text-foreground min-h-[100px] resize-none"
+            />
           </div>
 
           {/* Constraints */}
