@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, BarChart3, Settings, BookOpen, Mail, Moon } from "lucide-react";
+import { Calendar, BarChart3, Settings, BookOpen, Mail, Moon, Cog } from "lucide-react";
 import { usePlanStatus } from "@/contexts/PlanStatusContext";
 
 const getNavigation = (emailSummary: any) => [
@@ -34,6 +34,11 @@ const getNavigation = (emailSummary: any) => [
     name: "Journal",
     href: "/journal", 
     icon: BookOpen,
+  },
+  {
+    name: "Config Wizard",
+    href: "/config-wizard",
+    icon: Cog,
   },
   {
     name: "Settings",

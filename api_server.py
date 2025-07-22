@@ -26,6 +26,7 @@ from echo.analytics import calculate_daily_stats, get_recent_stats, categorize_b
 from echo.session import SessionState
 import openai
 import os
+import yaml
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -141,6 +142,27 @@ class ReflectionRequest(BaseModel):
     tomorrow_environment: str
     tomorrow_non_negotiables: str
     tomorrow_avoid: str
+
+class KnownBlock(BaseModel):
+    """Model for known block configuration"""
+    id: str
+    name: str
+    type: str  # anchor, fixed, flex
+    start_time: str
+    duration: int  # in minutes
+    category: str
+    description: Optional[str] = None
+    days: List[str]  # days of the week
+
+class ConfigRequest(BaseModel):
+    """Model for configuration wizard requests"""
+    known_blocks: List[KnownBlock]
+
+class ConfigResponse(BaseModel):
+    """Model for configuration response"""
+    message: str
+    success: bool
+    config_path: Optional[str] = None
 
 # Global state (in production, use proper state management)
 config: Optional[Config] = None
@@ -674,6 +696,177 @@ async def generate_today_plan() -> List[Block]:
             )
         ]
         return sample_blocks
+
+@app.post("/config/save", response_model=ConfigResponse)
+async def save_config(request: ConfigRequest):
+    """Save configuration from the wizard to user_config.yaml"""
+    try:
+        # Convert known blocks to weekly_schedule format
+        weekly_schedule = {}
+        days_of_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        
+        for day in days_of_week:
+            weekly_schedule[day] = {
+                "anchors": [],
+                "fixed": [],
+                "flex": []
+            }
+
+        def add_minutes_to_time(time_str: str, minutes: int) -> str:
+            """Helper to add minutes to a time string"""
+            hours, mins = map(int, time_str.split(':'))
+            total_minutes = hours * 60 + mins + minutes
+            new_hours = (total_minutes // 60) % 24
+            new_mins = total_minutes % 60
+            return f"{new_hours:02d}:{new_mins:02d}"
+
+        # Process each known block
+        for block in request.known_blocks:
+            for day in block.days:
+                if day in weekly_schedule:
+                    end_time = add_minutes_to_time(block.start_time, block.duration)
+                    schedule_block = {
+                        "time": f"{block.start_time}–{end_time}",
+                        "category": block.category.lower()
+                    }
+                    
+                    if block.type == "fixed":
+                        schedule_block["label"] = block.name
+                    else:
+                        schedule_block["task"] = block.name
+                    
+                    if block.description:
+                        schedule_block["description"] = block.description
+                    
+                    # Add to appropriate type list
+                    type_key = f"{block.type}s" if block.type != "flex" else "flex"
+                    if type_key in weekly_schedule[day]:
+                        weekly_schedule[day][type_key].append(schedule_block)
+
+        # Load existing config or create new one
+        config_path = Path("config/user_config.yaml")
+        
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                existing_config = yaml.safe_load(f)
+        else:
+            # Create basic config structure
+            existing_config = {
+                "defaults": {
+                    "wake_time": "07:00",
+                    "sleep_time": "22:00"
+                },
+                "projects": {
+                    "personal": {
+                        "name": "Personal Projects",
+                        "status": "active",
+                        "current_focus": "General productivity"
+                    }
+                },
+                "profiles": {
+                    "default": {
+                        "name": "Default Profile",
+                        "overrides": {}
+                    }
+                },
+                "email": {
+                    "important_senders": [],
+                    "urgent_keywords": ["urgent", "asap", "deadline", "important"],
+                    "action_keywords": ["please", "can you", "need", "review"]
+                }
+            }
+
+        # Update weekly_schedule
+        existing_config["weekly_schedule"] = weekly_schedule
+
+        # Create config directory if it doesn't exist
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write updated config
+        with open(config_path, 'w') as f:
+            yaml.safe_dump(existing_config, f, default_flow_style=False, sort_keys=False, indent=2)
+
+        logger.info(f"Configuration saved to {config_path}")
+        
+        return ConfigResponse(
+            message=f"Configuration saved successfully with {len(request.known_blocks)} known blocks",
+            success=True,
+            config_path=str(config_path)
+        )
+
+    except Exception as e:
+        logger.error(f"Error saving configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save configuration: {str(e)}")
+
+@app.get("/config/load")
+async def load_existing_config():
+    """Load existing configuration for editing in wizard"""
+    try:
+        config_path = Path("config/user_config.yaml")
+        
+        if not config_path.exists():
+            return {
+                "known_blocks": [],
+                "message": "No existing configuration found"
+            }
+
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+
+        known_blocks = []
+        weekly_schedule = config_data.get("weekly_schedule", {})
+        
+        # Convert weekly_schedule back to known blocks format
+        # This is a simplified conversion - might need refinement
+        block_templates = {}
+        
+        for day, schedule in weekly_schedule.items():
+            for block_type in ["anchors", "fixed", "flex"]:
+                if block_type in schedule:
+                    for block in schedule[block_type]:
+                        # Extract time range
+                        time_range = block.get("time", "")
+                        if "–" in time_range:
+                            start_time, end_time = time_range.split("–")
+                            start_time = start_time.strip()
+                            end_time = end_time.strip()
+                            
+                            # Calculate duration
+                            start_h, start_m = map(int, start_time.split(":"))
+                            end_h, end_m = map(int, end_time.split(":"))
+                            duration = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+                            
+                            # Create unique key for similar blocks
+                            name = block.get("task", block.get("label", ""))
+                            category = block.get("category", "personal")
+                            block_key = f"{name}_{start_time}_{duration}"
+                            
+                            if block_key not in block_templates:
+                                block_templates[block_key] = {
+                                    "id": block_key,
+                                    "name": name,
+                                    "type": block_type.rstrip("s"),  # Remove 's' from anchors/fixed
+                                    "start_time": start_time,
+                                    "duration": duration,
+                                    "category": category.title(),
+                                    "description": block.get("description", ""),
+                                    "days": []
+                                }
+                            
+                            # Add this day to the block
+                            if day not in block_templates[block_key]["days"]:
+                                block_templates[block_key]["days"].append(day)
+
+        known_blocks = list(block_templates.values())
+        
+        return {
+            "known_blocks": known_blocks,
+            "message": f"Loaded {len(known_blocks)} known blocks from existing configuration"
+        }
+
+    except Exception as e:
+        logger.error(f"Error loading configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load configuration: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
