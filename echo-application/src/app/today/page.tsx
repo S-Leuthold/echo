@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePlanStatus } from "@/contexts/PlanStatusContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +20,240 @@ import {
   FileText,
   Calendar,
   ExternalLink,
-  Square
+  Square,
+  AlertCircle,
+  Plus
 } from "lucide-react";
+
+// Plan status detection and management
+type PlanStatus = 'loading' | 'exists' | 'missing' | 'expired' | 'error';
+
+interface PlanStatusInfo {
+  status: PlanStatus;
+  canPlanToday: boolean;
+  shouldPlanTomorrow: boolean;
+  message: string;
+  actionText: string;
+}
+
+const getPlanStatusInfo = (): PlanStatusInfo => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // If it's after 6 PM, suggest planning tomorrow instead of today
+  const shouldPlanTomorrow = currentHour >= 18;
+  const canPlanToday = currentHour < 18;
+  
+  return {
+    status: 'missing',
+    canPlanToday,
+    shouldPlanTomorrow,
+    message: shouldPlanTomorrow 
+      ? "No plan found for today. Since it's evening, let's plan tomorrow instead."
+      : "No plan found for today. You can still plan the rest of your day.",
+    actionText: shouldPlanTomorrow ? "Plan Tomorrow" : "Plan Today"
+  };
+};
+
+// API integration functions
+const checkTodayPlan = async (): Promise<{ exists: boolean; data?: any; error?: string }> => {
+  try {
+    const response = await fetch('http://localhost:8000/today');
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Check if there are actually scheduled blocks (not just empty response)
+      const hasBlocks = data.blocks && data.blocks.length > 0;
+      
+      if (hasBlocks) {
+        return { exists: true, data };
+      } else {
+        // API responded but no actual plan blocks exist
+        return { exists: false, data }; // Include data for email info
+      }
+    } else if (response.status === 404) {
+      return { exists: false };
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error checking today\'s plan:', error);
+    return { exists: false, error: error.message };
+  }
+};
+
+const logUserAction = async (action: string, data: any = {}) => {
+  try {
+    console.log(`[User Action] ${action}:`, {
+      timestamp: new Date().toISOString(),
+      page: 'today',
+      action,
+      data
+    });
+    // Future: Send to analytics endpoint
+  } catch (error) {
+    console.error('Error logging user action:', error);
+  }
+};
+
+// Data transformation functions (now accepts currentTime parameter for real-time updates)
+const transformTodayDataToFocus = (todayData: any, currentTime: Date = new Date()) => {
+  if (!todayData || !todayData.current_block) {
+    return mockCurrentFocus; // Fallback to mock if no current block
+  }
+  
+  const currentBlock = todayData.current_block;
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  
+  // Calculate real-time progress and time remaining
+  const startTime = parseTime(currentBlock.start_time);
+  const endTime = parseTime(currentBlock.end_time);
+  const startMinutes = startTime.hours * 60 + startTime.minutes;
+  const endMinutes = endTime.hours * 60 + endTime.minutes;
+  const totalDuration = endMinutes - startMinutes;
+  const elapsed = currentMinutes - startMinutes;
+  const remaining = endMinutes - currentMinutes;
+  
+  const realTimeProgress = Math.max(0, Math.min(100, Math.round((elapsed / totalDuration) * 100)));
+  const remainingMinutes = Math.max(0, remaining);
+  
+  return {
+    id: currentBlock.id,
+    startTime: currentBlock.start_time,
+    endTime: currentBlock.end_time,
+    emoji: currentBlock.emoji || '🚀',
+    label: currentBlock.label,
+    type: 'active' as const,
+    progress: realTimeProgress,
+    strategicNote: currentBlock.note || 'Focus on completing this task with quality and intention.',
+    timeCategory: mapBlockTypeToCategory(currentBlock.type),
+    sessionGoal: `Complete the current task: ${currentBlock.task_name}`,
+    remainingMinutes, // Add real-time remaining minutes
+    subtasks: [
+      { id: '1', text: 'Focus on the primary objective', completed: false },
+      { id: '2', text: 'Track progress and insights', completed: false },
+      { id: '3', text: 'Maintain quality standards', completed: false }
+    ],
+    userNotes: 'Session in progress with live data.'
+  };
+};
+
+const transformTodayDataToSchedule = (todayData: any, currentTime: Date = new Date()) => {
+  if (!todayData || !todayData.blocks) {
+    return mockSchedule; // Fallback to mock if no blocks
+  }
+  
+  return todayData.blocks.map((block: any, index: number) => {
+    const startTime = parseTime(block.start_time);
+    const endTime = parseTime(block.end_time);
+    const startMinutes = startTime.hours * 60 + startTime.minutes;
+    const endMinutes = endTime.hours * 60 + endTime.minutes;
+    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+    
+    // Determine block state
+    let state = 'upcoming';
+    let progress = 0;
+    let isCurrent = false;
+    
+    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+      state = 'active';
+      isCurrent = true;
+      progress = Math.round(((currentMinutes - startMinutes) / (endMinutes - startMinutes)) * 100);
+    } else if (currentMinutes > endMinutes) {
+      state = 'completed';
+      progress = 100;
+    }
+    
+    return {
+      id: block.id,
+      startTime: block.start_time,
+      endTime: block.end_time,
+      emoji: block.emoji || '📅',
+      label: block.label,
+      timeCategory: mapBlockTypeToCategory(block.type),
+      isCurrent,
+      progress,
+      startMinutes,
+      strategicNote: block.note || '',
+      state
+    };
+  });
+};
+
+const parseTime = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return { hours, minutes };
+};
+
+const mapBlockTypeToCategory = (blockType: string) => {
+  // Map API block types to UI categories
+  const typeMap: { [key: string]: string } = {
+    'fixed': 'PERSONAL',
+    'anchor': 'PERSONAL', 
+    'flex': 'DEEP_WORK',
+    'work': 'DEEP_WORK',
+    'meeting': 'MEETINGS',
+    'personal': 'PERSONAL',
+    'health': 'HEALTH',
+    'meal': 'MEALS',
+    'transit': 'TRANSIT',
+    'planning': 'PLANNING',
+    'research': 'RESEARCH'
+  };
+  
+  return typeMap[blockType.toLowerCase()] || 'DEEP_WORK';
+};
+
+// Session management API functions (hooks for future implementation)
+const sessionAPI = {
+  async startSession(blockId: string, sessionData: any) {
+    try {
+      await logUserAction('session_start', { blockId, sessionData });
+      // TODO: Implement actual API call to POST /sessions/start
+      console.log('Starting session for block:', blockId, sessionData);
+      return { success: true, sessionId: `session_${Date.now()}` };
+    } catch (error) {
+      console.error('Error starting session:', error);
+      throw error;
+    }
+  },
+
+  async pauseSession(sessionId: string) {
+    try {
+      await logUserAction('session_pause', { sessionId });
+      // TODO: Implement actual API call to POST /sessions/{id}/pause
+      console.log('Pausing session:', sessionId);
+      return { success: true };
+    } catch (error) {
+      console.error('Error pausing session:', error);
+      throw error;
+    }
+  },
+
+  async endSession(sessionId: string, sessionNotes?: string) {
+    try {
+      await logUserAction('session_end', { sessionId, hasNotes: !!sessionNotes });
+      // TODO: Implement actual API call to POST /sessions/{id}/end
+      console.log('Ending session:', sessionId, { notes: sessionNotes });
+      return { success: true };
+    } catch (error) {
+      console.error('Error ending session:', error);
+      throw error;
+    }
+  },
+
+  async updateSessionNotes(sessionId: string, notes: string) {
+    try {
+      await logUserAction('session_notes_update', { sessionId, notesLength: notes.length });
+      // TODO: Implement actual API call to PUT /sessions/{id}/notes
+      console.log('Updating session notes:', sessionId, notes.length, 'characters');
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating session notes:', error);
+      throw error;
+    }
+  }
+};
 
 // Mock schedule data with TimeCategory system - Personal & Intuitive
 const mockSchedule = [
@@ -317,6 +550,104 @@ const mockRecentSessions = [
   }
 ];
 
+// No Plan Available Component  
+function NoPlanAvailable({ planStatusInfo, todayData }: { planStatusInfo: PlanStatusInfo; todayData?: any }) {
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  const handlePlanNavigation = async () => {
+    setIsNavigating(true);
+    await logUserAction('navigate_to_planning', { 
+      reason: 'no_plan_available',
+      recommendation: planStatusInfo.actionText
+    });
+    
+    // Navigate to planning page
+    window.location.href = '/planning';
+  };
+  
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Card className="max-w-lg w-full mx-4">
+        <CardContent className="p-8 text-center">
+          <div className="mb-6">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              No Plan for Today
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              {planStatusInfo.message}
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={handlePlanNavigation}
+              disabled={isNavigating}
+              className="w-full"
+            >
+              {isNavigating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Redirecting...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {planStatusInfo.actionText}
+                </>
+              )}
+            </Button>
+            
+            {planStatusInfo.canPlanToday && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  logUserAction('navigate_to_planning', { 
+                    reason: 'no_plan_available',
+                    recommendation: 'Plan Tomorrow'
+                  });
+                  window.location.href = '/planning';
+                }}
+                className="w-full"
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Plan Tomorrow Instead
+              </Button>
+            )}
+            
+            <div className="pt-4 border-t border-border/50">
+              <p className="text-xs text-muted-foreground">
+                Planning helps you stay focused and productive throughout your day.
+              </p>
+              
+              {/* Show email context if available */}
+              {todayData?.email_summary?.action_items?.length > 0 && (
+                <div className="mt-4 p-3 rounded-lg bg-muted/20 border border-border/30">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    📧 Email action items waiting:
+                  </p>
+                  <div className="space-y-1">
+                    {todayData.email_summary.action_items.slice(0, 3).map((item: any, index: number) => (
+                      <div key={index} className="text-xs text-muted-foreground">
+                        • {item.subject} ({item.priority})
+                      </div>
+                    ))}
+                    {todayData.email_summary.action_items.length > 3 && (
+                      <div className="text-xs text-muted-foreground italic">
+                        +{todayData.email_summary.action_items.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // Helper function to get category color
 const getCategoryColor = (category: string) => {
   switch (category) {
@@ -476,7 +807,9 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
   const [subtasks, setSubtasks] = useState(focus.subtasks || []);
   const [sessionNotes, setSessionNotes] = useState("");
   const [showNotesInput, setShowNotesInput] = useState(false);
-  const [sessionActive, setSessionActive] = useState(focus.type === 'active'); // Track session state
+  const [sessionActive, setSessionActive] = useState(focus.type === 'active');
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
   
   // Handle "between" state differently
   if (focus.type === 'between') {
@@ -602,7 +935,12 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                   {focus.startTime} - {focus.endTime}
                 </span>
                 <span className="text-muted-foreground/40">•</span>
-                <span>66 minutes remaining</span>
+                <span>
+                  {focus.remainingMinutes 
+                    ? `${focus.remainingMinutes} minutes remaining`
+                    : 'Time remaining calculation...'
+                  }
+                </span>
               </div>
             </div>
           </CollapsibleTrigger>
@@ -669,10 +1007,15 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                     </Button>
                     <Button 
                       size="sm"
-                      onClick={() => {
-                        // Here you would save the notes
-                        console.log("Session notes saved:", sessionNotes);
-                        setShowNotesInput(false);
+                      onClick={async () => {
+                        try {
+                          if (currentSessionId && sessionNotes.trim()) {
+                            await sessionAPI.updateSessionNotes(currentSessionId, sessionNotes);
+                          }
+                          setShowNotesInput(false);
+                        } catch (error) {
+                          console.error('Failed to save session notes:', error);
+                        }
                       }}
                     >
                       Save Note
@@ -705,10 +1048,38 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                 <Button 
                   size="sm" 
                   className="bg-accent hover:bg-accent/90 font-medium"
-                  onClick={() => setSessionActive(true)}
+                  disabled={sessionLoading}
+                  onClick={async () => {
+                    try {
+                      setSessionLoading(true);
+                      const result = await sessionAPI.startSession(focus.id, {
+                        blockLabel: focus.label,
+                        startTime: new Date().toISOString(),
+                        sessionGoal: focus.sessionGoal
+                      });
+                      
+                      if (result.success) {
+                        setSessionActive(true);
+                        setCurrentSessionId(result.sessionId);
+                      }
+                    } catch (error) {
+                      console.error('Failed to start session:', error);
+                    } finally {
+                      setSessionLoading(false);
+                    }
+                  }}
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Session
+                  {sessionLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Starting...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Session
+                    </>
+                  )}
                 </Button>
               ) : (
                 // When session IS active: Show Pause and End Session
@@ -717,9 +1088,18 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                     variant="outline" 
                     size="sm" 
                     className="font-medium"
-                    onClick={() => {
-                      // Handle pause logic here
-                      console.log("Session paused");
+                    disabled={sessionLoading}
+                    onClick={async () => {
+                      try {
+                        setSessionLoading(true);
+                        if (currentSessionId) {
+                          await sessionAPI.pauseSession(currentSessionId);
+                        }
+                      } catch (error) {
+                        console.error('Failed to pause session:', error);
+                      } finally {
+                        setSessionLoading(false);
+                      }
                     }}
                   >
                     <Pause className="w-4 h-4 mr-2" />  
@@ -728,9 +1108,21 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                   <Button 
                     size="sm" 
                     className="bg-destructive hover:bg-destructive/90 font-medium"
-                    onClick={() => {
-                      setSessionActive(false);
-                      console.log("Session ended");
+                    disabled={sessionLoading}
+                    onClick={async () => {
+                      try {
+                        setSessionLoading(true);
+                        if (currentSessionId) {
+                          await sessionAPI.endSession(currentSessionId, sessionNotes);
+                        }
+                        setSessionActive(false);
+                        setCurrentSessionId(null);
+                        setSessionNotes("");
+                      } catch (error) {
+                        console.error('Failed to end session:', error);
+                      } finally {
+                        setSessionLoading(false);
+                      }
                     }}
                   >
                     <Square className="w-4 h-4 mr-2" />
@@ -1017,12 +1409,74 @@ function TimelineSchedule({ schedule }: { schedule: typeof mockSchedule }) {
 }
 
 export default function TodayPage() {
-  const currentTime = new Date().toLocaleTimeString("en-US", { 
+  // Use shared plan status context instead of local state
+  const { planStatus, todayData, error, isLoading } = usePlanStatus();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  const currentTimeString = currentTime.toLocaleTimeString("en-US", { 
     hour12: false, 
     hour: "2-digit", 
     minute: "2-digit" 
   });
-
+  
+  // Log page visit (context handles the actual data loading)
+  useEffect(() => {
+    logUserAction('page_load', { page: 'today' });
+  }, []);
+  
+  // Show loading state
+  if (planStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading today's plan...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show no plan state with smart planning options
+  if (planStatus === 'missing') {
+    const planStatusInfo = getPlanStatusInfo();
+    return <NoPlanAvailable planStatusInfo={planStatusInfo} todayData={todayData} />;
+  }
+  
+  // Show error state
+  if (planStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-lg w-full mx-4">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Error Loading Today's Plan
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              {error || 'Something went wrong while loading your plan.'}
+            </p>
+            <Button 
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Render normal today view when plan exists
   return (
     <div className="min-h-screen bg-background">
       {/* Subtle page header */}
@@ -1031,12 +1485,12 @@ export default function TodayPage() {
           <div>
             <h1 className="text-xl font-semibold text-foreground">Today</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString("en-US", { 
+              {currentTime.toLocaleDateString("en-US", { 
                 weekday: "long", 
                 year: "numeric", 
                 month: "long", 
                 day: "numeric" 
-              })} • {currentTime}
+              })} • {currentTimeString}
             </p>
           </div>
         </div>
@@ -1047,14 +1501,18 @@ export default function TodayPage() {
         <div className="flex gap-8 mb-8">
           {/* Focus Area (70%) */}
           <div className="w-[70%]">
-            <CurrentFocusComponent focus={mockCurrentFocus} />
+            <CurrentFocusComponent 
+              focus={todayData ? transformTodayDataToFocus(todayData, currentTime) : mockCurrentFocus} 
+            />
           </div>
 
           {/* Context Area (30%) */}
           <div className="w-[30%]">
             <Card className="h-full">
               <CardContent className="p-6">
-                <TimelineSchedule schedule={mockSchedule} />
+                <TimelineSchedule 
+                  schedule={todayData ? transformTodayDataToSchedule(todayData, currentTime) : mockSchedule} 
+                />
               </CardContent>
             </Card>
           </div>

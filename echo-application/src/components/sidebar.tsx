@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, BarChart3, Settings, BookOpen, Mail, Moon } from "lucide-react";
+import { usePlanStatus } from "@/contexts/PlanStatusContext";
 
-const navigation = [
+const getNavigation = (emailSummary: any) => [
   {
     name: "Today",
     href: "/today",
@@ -16,8 +17,8 @@ const navigation = [
     name: "Email", 
     href: "/email",
     icon: Mail,
-    badge: 8, // Total unresponded emails
-    urgentBadge: 2, // Urgent emails
+    badge: emailSummary?.total_emails || 0, // Dynamic email count
+    urgentBadge: emailSummary?.urgent_emails > 0 ? emailSummary.urgent_emails : undefined, // Only show if > 0
   },
   {
     name: "Analytics", 
@@ -43,6 +44,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { planStatus, todayData } = usePlanStatus();
   
   // Generate time-aware greeting
   const getGreeting = () => {
@@ -63,52 +65,65 @@ export function Sidebar() {
     const hour = new Date().getHours();
     const currentMinutes = hour * 60 + new Date().getMinutes();
     
-    // Mock schedule data (would come from props or context in real app)
-    const mockSchedule = [
-      { startTime: "09:00", endTime: "11:00", label: "Frontend Build", emoji: "🚀", startMinutes: 9 * 60, state: "active" },
-      { startTime: "12:00", endTime: "12:30", label: "Team Standup", emoji: "🤝", startMinutes: 12 * 60, state: "upcoming" },
-      { startTime: "14:00", endTime: "16:00", label: "API Integration", emoji: "🔌", startMinutes: 14 * 60, state: "upcoming" }
-    ];
-    
-    // Find current session
-    const activeSession = mockSchedule.find(session => 
-      currentMinutes >= session.startMinutes && 
-      currentMinutes < (session.startMinutes + 120)
-    );
-    
-    if (activeSession) {
-      return `Ready to dive back into the ${activeSession.label}?`;
-    }
-    
-    // Check for recently completed session
-    const recentlyCompleted = mockSchedule.find(session => 
-      session.state === "completed" && 
-      currentMinutes >= (session.startMinutes + 120) && 
-      currentMinutes <= (session.startMinutes + 150)
-    );
-    
-    if (recentlyCompleted) {
-      const nextSession = mockSchedule.find(session => session.state === "upcoming");
-      if (nextSession) {
-        return `Your next session is ${nextSession.emoji} ${nextSession.label} at ${nextSession.startTime}.`;
+    // Handle no plan state
+    if (planStatus === 'missing') {
+      const emailCount = todayData?.email_summary?.action_items?.length || 0;
+      if (emailCount > 0) {
+        return `You have ${emailCount} email action items waiting. Ready to plan your day?`;
       } else {
-        return "A light afternoon ahead. Perfect time for some deep work.";
+        return hour < 18 
+          ? "No plan for today yet. What would you like to focus on?"
+          : "Time to plan tomorrow. What are your priorities?";
       }
     }
     
-    // Find next upcoming session
-    const nextSession = mockSchedule
-      .filter(session => session.startMinutes > currentMinutes)
-      .sort((a, b) => a.startMinutes - b.startMinutes)[0];
+    if (planStatus === 'loading') {
+      return "Checking today's schedule...";
+    }
     
-    if (nextSession) {
-      const minutesUntil = nextSession.startMinutes - currentMinutes;
-      if (minutesUntil < 60) {
-        return `${nextSession.emoji} ${nextSession.label} starts in ${minutesUntil} minutes.`;
-      } else if (minutesUntil < 120) {
-        return `Coming up: ${nextSession.emoji} ${nextSession.label} in about an hour.`;
-      } else {
-        return `Your next session is ${nextSession.emoji} ${nextSession.label} at ${nextSession.startTime}.`;
+    if (planStatus === 'error') {
+      return "Having trouble loading your plan. Everything okay?";
+    }
+    
+    // Use live schedule data when available
+    const schedule = todayData?.blocks || [];
+    
+    if (schedule.length > 0) {
+      // Find current session
+      const activeSession = schedule.find((session: any) => {
+        const startTime = parseTime(session.start_time);
+        const endTime = parseTime(session.end_time);
+        const startMinutes = startTime.hours * 60 + startTime.minutes;
+        const endMinutes = endTime.hours * 60 + endTime.minutes;
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      });
+      
+      if (activeSession) {
+        const label = activeSession.label.split(' | ').pop(); // Get task name
+        return `Ready to dive back into ${label}?`;
+      }
+      
+      // Find next upcoming session
+      const nextSession = schedule.find((session: any) => {
+        const startTime = parseTime(session.start_time);
+        const startMinutes = startTime.hours * 60 + startTime.minutes;
+        return startMinutes > currentMinutes;
+      });
+      
+      if (nextSession) {
+        const startTime = parseTime(nextSession.start_time);
+        const startMinutes = startTime.hours * 60 + startTime.minutes;
+        const minutesUntil = startMinutes - currentMinutes;
+        const label = nextSession.label.split(' | ').pop();
+        const emoji = nextSession.emoji || '📅';
+        
+        if (minutesUntil < 60) {
+          return `${emoji} ${label} starts in ${minutesUntil} minutes.`;
+        } else if (minutesUntil < 120) {
+          return `Coming up: ${emoji} ${label} in about an hour.`;
+        } else {
+          return `Your next session is ${emoji} ${label} at ${nextSession.start_time}.`;
+        }
       }
     }
     
@@ -124,6 +139,12 @@ export function Sidebar() {
     } else {
       return "Winding down or diving into evening work?";
     }
+  };
+  
+  // Helper function to parse time strings
+  const parseTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return { hours, minutes };
   };
 
   return (
@@ -142,7 +163,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {navigation.map((item) => {
+        {getNavigation(todayData?.email_summary).map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
