@@ -41,9 +41,9 @@ interface ConfigWizardState {
   editingBlock: KnownBlock | null;
 }
 
-const DAYS_OF_WEEK = [
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
-];
+// const DAYS_OF_WEEK = [
+//   "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+// ];
 
 const BLOCK_TYPES: { value: BlockType; label: string; description: string }[] = [
   { 
@@ -139,12 +139,12 @@ export default function ConfigWizard() {
     });
   };
 
-  const handleBlockDelete = (blockId: string) => {
-    setState(prev => ({
-      ...prev,
-      knownBlocks: prev.knownBlocks.filter(b => b.id !== blockId)
-    }));
-  };
+  // const handleBlockDelete = (blockId: string) => {
+  //   setState(prev => ({
+  //     ...prev,
+  //     knownBlocks: prev.knownBlocks.filter(b => b.id !== blockId)
+  //   }));
+  // };
 
   const handleExportConfig = async () => {
     try {
@@ -175,13 +175,13 @@ export default function ConfigWizard() {
     }
   };
 
-  const addMinutes = (timeStr: string, minutes: number): string => {
-    const [hours, mins] = timeStr.split(':').map(Number);
-    const totalMinutes = hours * 60 + mins + minutes;
-    const newHours = Math.floor(totalMinutes / 60) % 24;
-    const newMins = totalMinutes % 60;
-    return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
-  };
+  // const addMinutes = (timeStr: string, minutes: number): string => {
+  //   const [hours, mins] = timeStr.split(':').map(Number);
+  //   const totalMinutes = hours * 60 + mins + minutes;
+  //   const newHours = Math.floor(totalMinutes / 60) % 24;
+  //   const newMins = totalMinutes % 60;
+  //   return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
+  // };
 
   if (state.step === 1) {
     return (
@@ -375,12 +375,12 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
     }));
   };
 
-  const handleFlexPreferenceChange = (field: string, value: string) => {
-    setEditBlock(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  // const handleFlexPreferenceChange = (field: string, value: string) => {
+  //   setEditBlock(prev => ({
+  //     ...prev,
+  //     [field]: value
+  //   }));
+  // };
 
   return (
     <Card>

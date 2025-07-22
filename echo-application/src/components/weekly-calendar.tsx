@@ -82,8 +82,8 @@ const minutesToTime = (minutes: number): string => {
 
 export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: WeeklyCalendarProps) {
   const timeSlots = generateTimeSlots();
-  const startMinutes = 6 * 60; // 6 AM
-  const slotHeightMinutes = 30;
+  // const startMinutes = 6 * 60; // 6 AM
+  // const slotHeightMinutes = 30;
 
   // Organize blocks by day
   const blocksByDay: { [day: string]: CalendarBlock[] } = {};
