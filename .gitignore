@@ -20,4 +20,7 @@ gcal_credentials.json
 
 # Other
 
-echo-application/node_modules
+echo-application/node_modules.token
+api_server.log
+*.log
+__pycache__/
