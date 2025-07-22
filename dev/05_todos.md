@@ -156,3 +156,5 @@
 - [ ] Feature adoption rate > 60%
 - [ ] Bug report frequency < 1 per week
 - [ ] User retention > 80% after 30 days 
+
+one more thing from my phone-- integrated habit tracking?
