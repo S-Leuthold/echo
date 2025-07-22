@@ -14,6 +14,7 @@ export interface CalendarBlock {
   category: string;
   days: string[];
   description?: string;
+  preferred_time?: string; // For flex blocks
 }
 
 interface WeeklyCalendarProps {
@@ -43,63 +44,53 @@ const generateTimeSlots = () => {
   return slots;
 };
 
-const getCategoryColor = (category: string) => {
+// Updated to use outline-based styling instead of solid fills
+const getCategoryBorderColor = (category: string) => {
   const colorMap: { [key: string]: string } = {
-    'deep_work': 'bg-deep-work-active',
-    'shallow_work': 'bg-shallow-work-active', 
-    'meetings': 'bg-meetings-active',
-    'personal': 'bg-personal-active',
-    'health': 'bg-health-active',
-    'rest': 'bg-rest-active',
-    'admin': 'bg-admin-active',
-    'work': 'bg-work-active',
-    'exercise': 'bg-exercise-active',
-    'learning': 'bg-learning-active',
-    'research': 'bg-research-active',
-    'writing': 'bg-writing-active',
-    'planning': 'bg-planning-active',
-    'social': 'bg-social-active',
-    'meals': 'bg-meals-active'
+    'deep_work': 'border-deep-work-active',
+    'shallow_work': 'border-shallow-work-active', 
+    'meetings': 'border-meetings-active',
+    'personal': 'border-personal-active',
+    'health': 'border-health-active',
+    'rest': 'border-rest-active',
+    'admin': 'border-admin-active',
+    'work': 'border-work-active',
+    'exercise': 'border-exercise-active',
+    'learning': 'border-learning-active',
+    'research': 'border-research-active',
+    'writing': 'border-writing-active',
+    'planning': 'border-planning-active',
+    'social': 'border-social-active',
+    'meals': 'border-meals-active'
   };
-  return colorMap[category.toLowerCase()] || 'bg-muted';
+  return colorMap[category.toLowerCase()] || 'border-muted';
 };
 
-// Function to determine if a color is light or dark
-const isLightColor = (color: string) => {
-  // Extract RGB values from category colors for brightness calculation
-  const colorMap: { [key: string]: [number, number, number] } = {
-    'deep_work': [47, 116, 57], // #2F7439
-    'shallow_work': [184, 197, 161], // #B8C5A1
-    'meetings': [213, 85, 85], // #D65555
-    'personal': [203, 196, 255], // #CBC4FF
-    'health': [237, 207, 90], // #EDCF5A
-    'rest': [133, 144, 160], // #8590A0
-    'admin': [184, 197, 161], // #B8C5A1
-    'work': [184, 197, 161], // #B8C5A1
-    'exercise': [237, 207, 90], // #EDCF5A
-    'learning': [47, 116, 57], // #2F7439
-    'research': [240, 96, 169], // #F060A9
-    'writing': [47, 116, 57], // #2F7439
-    'planning': [124, 127, 245], // #7C7FF5
-    'social': [203, 196, 255], // #CBC4FF
-    'meals': [244, 159, 86] // #F49F56
+// Get category accent color for icons and text
+const getCategoryAccentColor = (category: string) => {
+  const colorMap: { [key: string]: string } = {
+    'deep_work': 'text-deep-work-active',
+    'shallow_work': 'text-shallow-work-active', 
+    'meetings': 'text-meetings-active',
+    'personal': 'text-personal-active',
+    'health': 'text-health-active',
+    'rest': 'text-rest-active',
+    'admin': 'text-admin-active',
+    'work': 'text-work-active',
+    'exercise': 'text-exercise-active',
+    'learning': 'text-learning-active',
+    'research': 'text-research-active',
+    'writing': 'text-writing-active',
+    'planning': 'text-planning-active',
+    'social': 'text-social-active',
+    'meals': 'text-meals-active'
   };
-  
-  const rgb = colorMap[color.toLowerCase()];
-  if (!rgb) return false; // Default to dark text for unknown colors
-  
-  // Calculate relative luminance
-  const [r, g, b] = rgb.map(c => {
-    c = c / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 0.5; // Light if luminance > 0.5
+  return colorMap[category.toLowerCase()] || 'text-muted-foreground';
 };
 
-const getTextColor = (category: string) => {
-  return isLightColor(category) ? 'text-black' : 'text-white';
+// For outline-based blocks, we use consistent foreground text with category accent colors
+const getTextColor = () => {
+  return 'text-foreground'; // Use theme foreground color for consistency
 };
 
 // Removed block type icons for cleaner calendar view
@@ -127,13 +118,16 @@ export function WeeklyCalendar({ blocks, onBlockClick, onBlockDelete, onTimeSlot
   });
 
   const renderBlock = (block: CalendarBlock, dayIndex: number) => {
-    const startMinutes = timeToMinutes(block.start_time);
+    // Use preferred_time for flex blocks, start_time for others
+    const displayTime = block.type === 'flex' && block.preferred_time ? block.preferred_time : block.start_time;
+    const startMinutes = timeToMinutes(displayTime);
     const endMinutes = startMinutes + block.duration;
     const endTime = minutesToTime(endMinutes);
     
-    // Calculate position and height (starting from 5 AM)
-    const startPosition = ((startMinutes - (5 * 60)) / 30) * 2.5; // 2.5rem per 30-min slot for smaller view
-    const heightRem = (block.duration / 30) * 2.5; // 2.5rem per 30 minutes
+    // Calculate position and height (starting from 5 AM) - precise to avoid collisions
+    const minutesFromStart = startMinutes - (5 * 60); // Minutes since 5 AM
+    const startPosition = (minutesFromStart / 30) * 2.5; // 2.5rem per 30-min slot
+    const heightRem = (block.duration / 30) * 2.5 - 0.125; // Subtract small gap between blocks
     
     // Get the appropriate icon
     const { icon: IconComponent } = IconResolutionService.resolveIcon(block.name, block.category);
@@ -146,27 +140,34 @@ export function WeeklyCalendar({ blocks, onBlockClick, onBlockDelete, onTimeSlot
     };
     
     const tier = getTier(block.duration);
-    const displayTimeRange = `${block.start_time} - ${endTime.replace(/^0/, '')}`;
+    const displayTimeRange = `${displayTime} - ${endTime.replace(/^0/, '')}`;
     
     const formatTime = (time: string) => {
-      const [hours, minutes] = time.split(':').map(Number);
+      if (!time || typeof time !== 'string') return '12:00 PM'; // Fallback for invalid time
+      
+      const timeParts = time.split(':');
+      if (timeParts.length !== 2) return '12:00 PM'; // Fallback for malformed time
+      
+      const [hours, minutes] = timeParts.map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return '12:00 PM'; // Fallback for non-numeric values
+      
       const period = hours >= 12 ? 'PM' : 'AM';
       const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
       return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     };
     
-    const formattedTimeRange = `${formatTime(block.start_time)} - ${formatTime(endTime)}`;
+    const formattedTimeRange = `${formatTime(displayTime)} - ${formatTime(endTime)}`;
     
     return (
       <Tooltip key={`${block.id}-${dayIndex}`}>
         <TooltipTrigger asChild>
           <div
-            className={`group absolute left-1 right-1 rounded-md cursor-pointer transition-all hover:shadow-lg hover:shadow-accent/25 hover:scale-[1.02] hover:brightness-110 z-10 ${getCategoryColor(block.category)} border border-border/30`}
+            className={`group absolute left-0 right-0 rounded-sm cursor-pointer transition-all hover:shadow-sm z-10 bg-card/80 border-2 ${getCategoryBorderColor(block.category)} hover:bg-card/90 ${block.type === 'flex' ? 'border-dashed' : 'border-solid'}`}
             style={{
               top: `${startPosition}rem`,
               height: `${heightRem}rem`,
               minHeight: '2rem',
-              padding: tier === 'short' ? '0.25rem' : '0.5rem'
+              padding: '0.375rem' // Consistent padding for all blocks
             }}
             onClick={() => onBlockClick?.(block)}
           >
@@ -189,27 +190,27 @@ export function WeeklyCalendar({ blocks, onBlockClick, onBlockDelete, onTimeSlot
           {tier === 'tall' && (
             <div className="flex flex-col justify-center w-full">
               {/* Top line: Icon + Title */}
-              <div className={`flex items-center gap-1 mb-1 ${getTextColor(block.category)}`}>
-                <IconComponent size={12} className="flex-shrink-0" />
+              <div className={`flex items-center gap-1 mb-1 ${getTextColor()}`}>
+                <IconComponent size={12} className={`flex-shrink-0 ${getCategoryAccentColor(block.category)}`} />
                 <span className="font-medium text-xs truncate text-left">{block.name}</span>
               </div>
               {/* Bottom line: Time range */}
-              <div className={`text-xs opacity-80 text-left ${getTextColor(block.category)}`}>
+              <div className={`text-xs opacity-70 text-left ${getTextColor()}`}>
                 {displayTimeRange}
               </div>
             </div>
           )}
           
           {tier === 'medium' && (
-            <div className={`flex items-center gap-1.5 justify-start w-full ${getTextColor(block.category)}`}>
-              <IconComponent size={14} className="flex-shrink-0" />
+            <div className={`flex items-center gap-1.5 justify-start w-full ${getTextColor()}`}>
+              <IconComponent size={14} className={`flex-shrink-0 ${getCategoryAccentColor(block.category)}`} />
               <span className="font-medium text-xs truncate text-left">{block.name}</span>
             </div>
           )}
           
           {tier === 'short' && (
-            <div className={`flex items-center gap-1 justify-start w-full ${getTextColor(block.category)}`}>
-              <IconComponent size={12} className="flex-shrink-0" />
+            <div className={`flex items-center gap-1 justify-start w-full ${getTextColor()}`}>
+              <IconComponent size={12} className={`flex-shrink-0 ${getCategoryAccentColor(block.category)}`} />
               <span 
                 className="font-medium text-xs truncate text-left"
                 style={{ 
@@ -251,9 +252,11 @@ export function WeeklyCalendar({ blocks, onBlockClick, onBlockDelete, onTimeSlot
             {timeSlots.map((slot, index) => (
               <div
                 key={slot.time}
-                className={`h-10 flex items-center justify-end pr-2 text-xs text-muted-foreground border-r border-border/30`}
+                className={`h-10 flex items-center justify-end pr-2 text-xs border-r border-border/30 ${
+                  index % 2 === 0 ? 'text-muted-foreground font-medium' : 'text-muted-foreground/70'
+                }`}
               >
-                {index % 2 === 0 && slot.displayTime}
+                {slot.displayTime}
               </div>
             ))}
           </div>
