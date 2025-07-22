@@ -36,9 +36,9 @@ interface KnownBlock {
 }
 
 interface ConfigWizardState {
-  step: number;
   knownBlocks: KnownBlock[];
   editingBlock: KnownBlock | null;
+  showModal: boolean;
 }
 
 // const DAYS_OF_WEEK = [
@@ -70,9 +70,9 @@ const CATEGORIES = [
 
 export default function ConfigWizard() {
   const [state, setState] = useState<ConfigWizardState>({
-    step: 1,
     knownBlocks: [],
-    editingBlock: null
+    editingBlock: null,
+    showModal: false
   });
   const [loading, setLoading] = useState(false);
 
@@ -134,9 +134,26 @@ export default function ConfigWizard() {
       return {
         ...prev,
         knownBlocks: updatedBlocks,
-        editingBlock: null
+        editingBlock: null,
+        showModal: false
       };
     });
+  };
+
+  const openModal = (block?: KnownBlock) => {
+    setState(prev => ({
+      ...prev,
+      editingBlock: block || createNewBlock(),
+      showModal: true
+    }));
+  };
+
+  const closeModal = () => {
+    setState(prev => ({
+      ...prev,
+      editingBlock: null,
+      showModal: false
+    }));
   };
 
   // const handleBlockDelete = (blockId: string) => {
@@ -183,178 +200,130 @@ export default function ConfigWizard() {
   //   return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
   // };
 
-  if (state.step === 1) {
-    return (
-      <div className="container max-w-4xl mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Echo Configuration Wizard</CardTitle>
-            <CardDescription>
-              Build your weekly schedule with known blocks - recurring time slots that define your routine.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Choose a Block Type to Get Started</h3>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {BLOCK_TYPES.map(type => (
-                    <Card 
-                      key={type.value} 
-                      className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
-                      onClick={() => {
-                        const newBlock = createNewBlock();
-                        newBlock.type = type.value;
-                        setState(prev => ({ 
-                          ...prev, 
-                          step: 2,
-                          editingBlock: newBlock
-                        }));
-                      }}
-                    >
-                      <h4 className="font-medium text-sm">{type.label}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
-                      <div className="mt-2 flex justify-end">
-                        <span className="text-xs text-primary">Click to create →</span>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="container max-w-full mx-auto p-6">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Known Blocks Configuration</h1>
-          <p className="text-muted-foreground">Manage your recurring schedule blocks</p>
+          <h1 className="text-2xl font-bold">Echo Configuration Wizard</h1>
+          <p className="text-muted-foreground">Build your weekly schedule with recurring blocks and manage reminders</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setState(prev => ({ ...prev, editingBlock: createNewBlock() }))}>
-            Add New Block
-          </Button>
-          <Button onClick={handleExportConfig} disabled={state.knownBlocks.length === 0 || loading}>
-            {loading ? "Saving..." : "Save Configuration"}
-          </Button>
+        <Button onClick={handleExportConfig} disabled={state.knownBlocks.length === 0 || loading}>
+          {loading ? "Saving..." : "Save Configuration"}
+        </Button>
+      </div>
+
+      {/* Block Type Cards - Upper 1/3 */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-4">Choose a Block Type to Get Started</h3>
+        <div className="grid gap-4 md:grid-cols-3 max-w-4xl">
+          {BLOCK_TYPES.map(type => (
+            <Card 
+              key={type.value} 
+              className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
+              onClick={() => {
+                const newBlock = createNewBlock();
+                newBlock.type = type.value;
+                openModal(newBlock);
+              }}
+            >
+              <h4 className="font-medium text-sm">{type.label}</h4>
+              <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
+              <div className="mt-2 flex justify-end">
+                <span className="text-xs text-primary">Click to create →</span>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Left Panel - Block Editor */}
-        <div className="lg:col-span-1">
-          {state.editingBlock ? (
-            <BlockEditor
-              block={state.editingBlock}
-              onSave={handleBlockSave}
-              onCancel={() => setState(prev => ({ ...prev, editingBlock: null }))}
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Block Editor</CardTitle>
-                <CardDescription>
-                  Click &ldquo;Add New Block&rdquo; above or click on a time slot in the calendar to create a new block.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    <p><strong>{state.knownBlocks.length}</strong> blocks configured</p>
-                  </div>
-                  
-                  {state.knownBlocks.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Quick Actions:</h4>
-                      <div className="space-y-1">
-                        {state.knownBlocks.slice(0, 3).map(block => (
-                          <button
-                            key={block.id}
-                            onClick={() => setState(prev => ({ ...prev, editingBlock: { ...block } }))}
-                            className="w-full text-left text-xs p-2 rounded hover:bg-accent transition-colors"
-                          >
-                            Edit &ldquo;{block.name}&rdquo;
-                          </button>
-                        ))}
-                        {state.knownBlocks.length > 3 && (
-                          <p className="text-xs text-muted-foreground">
-                            +{state.knownBlocks.length - 3} more blocks
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
+      {/* Main Content - Lower 2/3 */}
+      <div className="grid gap-6" style={{ gridTemplateColumns: '3fr 1fr' }}>
+        {/* Weekly Calendar - 3/4 width */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Weekly Calendar View ({state.knownBlocks.length} blocks)</CardTitle>
+              <CardDescription>
+                Your recurring blocks visualized across the week. Click on blocks to edit them or on empty time slots to create new ones.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          
+          {loading ? (
+            <Card className="p-8">
+              <p className="text-center text-muted-foreground">
+                Loading configuration...
+              </p>
             </Card>
+          ) : (
+            <WeeklyCalendar
+              blocks={state.knownBlocks.map(block => ({
+                ...block,
+                id: block.id,
+                name: block.name,
+                type: block.type,
+                start_time: block.start_time,
+                duration: block.duration,
+                category: block.category,
+                days: block.days,
+                description: block.description
+              }))}
+              onBlockClick={(block) => {
+                // Find the original block and edit it
+                const originalBlock = state.knownBlocks.find(b => b.id === block.id);
+                if (originalBlock) {
+                  openModal({ ...originalBlock });
+                }
+              }}
+              onTimeSlotClick={(day, time) => {
+                const newBlock = createNewBlock();
+                newBlock.start_time = time;
+                newBlock.days = [day];
+                openModal(newBlock);
+              }}
+            />
           )}
         </div>
 
-        {/* Main Content Area - Weekly Calendar */}
-        <div className="lg:col-span-3">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Calendar View</CardTitle>
-                <CardDescription>
-                  Your recurring blocks visualized across the week. Click on blocks to edit them or on empty time slots to create new ones.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            
-            {loading ? (
-              <Card className="p-8">
-                <p className="text-center text-muted-foreground">
-                  Loading configuration...
-                </p>
-              </Card>
-            ) : (
-              <WeeklyCalendar
-                blocks={state.knownBlocks.map(block => ({
-                  ...block,
-                  id: block.id,
-                  name: block.name,
-                  type: block.type,
-                  start_time: block.start_time,
-                  duration: block.duration,
-                  category: block.category,
-                  days: block.days,
-                  description: block.description
-                }))}
-                onBlockClick={(block) => {
-                  // Find the original block and edit it
-                  const originalBlock = state.knownBlocks.find(b => b.id === block.id);
-                  if (originalBlock) {
-                    setState(prev => ({ ...prev, editingBlock: { ...originalBlock } }));
-                  }
-                }}
-                onTimeSlotClick={(day, time) => {
-                  const newBlock = createNewBlock();
-                  newBlock.start_time = time;
-                  newBlock.days = [day];
-                  setState(prev => ({ ...prev, editingBlock: newBlock }));
-                }}
-              />
-            )}
-          </div>
+        {/* Reminders & Deadlines - 1/4 width */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Reminders & Deadlines</CardTitle>
+              <CardDescription>
+                Non-calendar events like bills, deadlines, and important dates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center text-muted-foreground py-8">
+                <p className="text-sm">Coming soon!</p>
+                <p className="text-xs mt-2">This section will manage bills, deadlines, and other important reminders that inform your daily planning.</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Modal for Block Editor */}
+      {state.showModal && state.editingBlock && (
+        <BlockEditorModal
+          block={state.editingBlock}
+          onSave={handleBlockSave}
+          onCancel={closeModal}
+        />
+      )}
     </div>
   );
 }
 
-interface BlockEditorProps {
+interface BlockEditorModalProps {
   block: KnownBlock;
   onSave: (block: KnownBlock) => void;
   onCancel: () => void;
 }
 
-function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
+function BlockEditorModal({ block, onSave, onCancel }: BlockEditorModalProps) {
   const [editBlock, setEditBlock] = useState<KnownBlock>(block);
 
   // Sync days with recurrence for backward compatibility
@@ -383,11 +352,18 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
   // };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{editBlock.id.startsWith('new_') ? "New Block" : "Edit Block"}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-card border border-border rounded-lg p-0 w-[60%] max-w-4xl max-h-[80vh] overflow-y-auto">
+        <Card className="border-none shadow-none">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>{editBlock.id.startsWith('new_') ? "New Block" : "Edit Block"}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={onCancel}>
+                ✕
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
         <div>
           <Label htmlFor="name">Block Name</Label>
           <Input
@@ -569,7 +545,9 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

@@ -22,10 +22,10 @@ interface WeeklyCalendarProps {
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Generate time slots from 6 AM to 11 PM in 30-minute increments
+// Generate time slots from 5 AM to 10 PM in 30-minute increments
 const generateTimeSlots = () => {
   const slots = [];
-  for (let hour = 6; hour <= 23; hour++) {
+  for (let hour = 5; hour <= 22; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       slots.push({
@@ -95,9 +95,9 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
     const startMinutes = timeToMinutes(block.start_time);
     const endMinutes = startMinutes + block.duration;
     
-    // Calculate position and height
-    const startPosition = ((startMinutes - (6 * 60)) / 30) * 3; // 3rem per 30-min slot
-    const heightRem = (block.duration / 30) * 3; // 3rem per 30 minutes
+    // Calculate position and height (starting from 5 AM)
+    const startPosition = ((startMinutes - (5 * 60)) / 30) * 2.5; // 2.5rem per 30-min slot for smaller view
+    const heightRem = (block.duration / 30) * 2.5; // 2.5rem per 30 minutes
     
     return (
       <div
@@ -106,7 +106,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
         style={{
           top: `${startPosition}rem`,
           height: `${heightRem}rem`,
-          minHeight: '2.5rem'
+          minHeight: '2rem'
         }}
         onClick={() => onBlockClick?.(block)}
         title={`${block.name} (${block.start_time} - ${minutesToTime(endMinutes)})`}
@@ -128,7 +128,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
 
   return (
     <Card className="p-4">
-      <div className="grid grid-cols-8 gap-2 h-[600px] overflow-y-auto">
+      <div className="grid grid-cols-8 gap-2 h-[500px] overflow-y-auto">
         {/* Time column */}
         <div className="col-span-1">
           <div className="h-12 flex items-center justify-center font-medium text-sm">
@@ -138,7 +138,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
             {timeSlots.map((slot, index) => (
               <div
                 key={slot.time}
-                className={`h-12 flex items-center justify-end pr-2 text-xs text-muted-foreground border-r ${
+                className={`h-10 flex items-center justify-end pr-2 text-xs text-muted-foreground border-r ${
                   index % 2 === 0 ? 'border-border' : 'border-transparent'
                 }`}
               >
@@ -161,7 +161,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
               {timeSlots.map((slot, slotIndex) => (
                 <div
                   key={`${day}-${slot.time}`}
-                  className={`h-12 border-b cursor-pointer hover:bg-accent/20 transition-colors ${
+                  className={`h-10 border-b cursor-pointer hover:bg-accent/20 transition-colors ${
                     slotIndex % 2 === 0 ? 'border-border/50' : 'border-border/20'
                   }`}
                   onClick={() => onTimeSlotClick?.(DAY_KEYS[dayIndex], slot.time)}
