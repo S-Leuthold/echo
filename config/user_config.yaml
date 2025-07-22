@@ -4,10 +4,6 @@ defaults:
 weekly_schedule:
   monday:
     anchors:
-    - time: "09:00\u201310:00"
-      category: personal
-      task: Test Block
-      description: Test description
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
@@ -18,14 +14,19 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
+        too long. '
+    - time: "16:15\u201316:30"
+      category: personal
+      task: Commute to the Gym
+      description: Ride my bike to Midtown Fitness
     fixed: []
     flex: []
   tuesday:
     anchors:
-    - time: "09:00\u201310:00"
-      category: personal
-      task: Test Block
-      description: Test description
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
@@ -36,6 +37,10 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "16:15\u201316:30"
+      category: personal
+      task: Commute to the Gym
+      description: Ride my bike to Midtown Fitness
     fixed: []
     flex: []
   wednesday:
@@ -50,6 +55,10 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "16:15\u201316:30"
+      category: personal
+      task: Commute to the Gym
+      description: Ride my bike to Midtown Fitness
     fixed: []
     flex: []
   thursday:
@@ -64,6 +73,10 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "16:15\u201316:30"
+      category: personal
+      task: Commute to the Gym
+      description: Ride my bike to Midtown Fitness
     fixed: []
     flex: []
   friday:
@@ -78,6 +91,10 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "16:15\u201316:30"
+      category: personal
+      task: Commute to the Gym
+      description: Ride my bike to Midtown Fitness
     fixed: []
     flex: []
   saturday:

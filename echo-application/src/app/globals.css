@@ -1,37 +1,35 @@
 @import "tailwindcss";
 
-@layer theme {
-  :root {
-    /* Tailwind v4 semantic colors */
-    --color-background: #0B0A0F;
-    --color-foreground: #FAF7F2;
-    --color-card: #1A1621;
-    --color-card-foreground: #FAF7F2;
-    --color-popover: #1A1621;
-    --color-popover-foreground: #FAF7F2;
-    --color-primary: #E6A86C;
-    --color-primary-foreground: #0B0A0F;
-    --color-secondary: #4A3F5C;
-    --color-secondary-foreground: #FAF7F2;
-    --color-muted: #2D2438;
-    --color-muted-foreground: #C4B5A0;
-    --color-accent: #E6A86C;
-    --color-accent-foreground: #0B0A0F;
-    --color-destructive: #EF4444;
-    --color-destructive-foreground: #FAF7F2;
-    --color-border: #3D3349;
-    --color-input: #2D2438;
-    --color-ring: #E6A86C;
-    
-    --color-sidebar: #0F0F12;
-    --color-sidebar-foreground: #FAF7F2;
-    --color-sidebar-primary: #E6A86C;
-    --color-sidebar-primary-foreground: #0B0A0F;
-    --color-sidebar-accent: #E6A86C;
-    --color-sidebar-accent-foreground: #0B0A0F;
-    --color-sidebar-border: #3D3349;
-    --color-sidebar-ring: #E6A86C;
-  }
+@theme {
+  /* Tailwind v4 semantic colors - no :root needed */
+  --color-background: #0B0A0F;
+  --color-foreground: #FAF7F2;
+  --color-card: #1A1621;
+  --color-card-foreground: #FAF7F2;
+  --color-popover: #1A1621;
+  --color-popover-foreground: #FAF7F2;
+  --color-primary: #E6A86C;
+  --color-primary-foreground: #0B0A0F;
+  --color-secondary: #4A3F5C;
+  --color-secondary-foreground: #FAF7F2;
+  --color-muted: #2D2438;
+  --color-muted-foreground: #C4B5A0;
+  --color-accent: #E6A86C;
+  --color-accent-foreground: #0B0A0F;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FAF7F2;
+  --color-border: #3D3349;
+  --color-input: #2D2438;
+  --color-ring: #E6A86C;
+  
+  --color-sidebar: #0F0F12;
+  --color-sidebar-foreground: #FAF7F2;
+  --color-sidebar-primary: #E6A86C;
+  --color-sidebar-primary-foreground: #0B0A0F;
+  --color-sidebar-accent: #E6A86C;
+  --color-sidebar-accent-foreground: #0B0A0F;
+  --color-sidebar-border: #3D3349;
+  --color-sidebar-ring: #E6A86C;
 }
 
 @layer base {
@@ -49,6 +47,21 @@
 @layer utilities {
   .text-shadow {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Fix dropdown backgrounds for Tailwind v4 compatibility */
+  [data-radix-select-content] {
+    background-color: var(--color-card) !important;
+    border: 1px solid var(--color-border) !important;
+  }
+  
+  [data-radix-select-item] {
+    background-color: transparent;
+  }
+  
+  [data-radix-select-item]:hover {
+    background-color: var(--color-accent) !important;
+    color: var(--color-accent-foreground) !important;
   }
   
   /* Category background colors for calendar blocks */

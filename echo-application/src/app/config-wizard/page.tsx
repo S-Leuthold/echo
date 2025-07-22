@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WeeklyCalendar } from "@/components/weekly-calendar";
 import { RecurrenceSelector } from "@/components/recurrence-selector";
+import { Trash2 } from "lucide-react";
 
 type BlockType = "anchor" | "fixed" | "flex";
 
@@ -235,6 +236,110 @@ export default function ConfigWizard() {
     }
   };
 
+  const handleReminderDelete = (reminderId: string) => {
+    setState(prev => ({
+      ...prev,
+      reminders: prev.reminders.filter(r => r.id !== reminderId)
+    }));
+
+    // Update localStorage
+    try {
+      const updatedReminders = state.reminders.filter(r => r.id !== reminderId);
+      localStorage.setItem('echo_reminders', JSON.stringify(updatedReminders));
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+    }
+  };
+
+  // Helper function to calculate relative time
+  const getRelativeTime = (dateStr: string, recurrence: string): string => {
+    const today = new Date();
+    const inputDate = new Date(dateStr + 'T00:00:00');
+    
+    // For yearly recurrence, calculate the next occurrence
+    let dueDate = inputDate;
+    if (recurrence === 'yearly') {
+      const currentYear = today.getFullYear();
+      const thisYearDate = new Date(currentYear, inputDate.getMonth(), inputDate.getDate());
+      const nextYearDate = new Date(currentYear + 1, inputDate.getMonth(), inputDate.getDate());
+      
+      // Use this year's date if it hasn't passed, otherwise next year's
+      dueDate = thisYearDate >= today ? thisYearDate : nextYearDate;
+    }
+    
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Tomorrow";
+    if (diffDays === -1) return "Yesterday";
+    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+    if (diffDays <= 7) return `${diffDays} days`;
+    
+    return dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Helper function to determine urgency
+  const getUrgencyLevel = (dateStr: string, recurrence: string): 'overdue' | 'urgent' | 'soon' | 'normal' => {
+    const today = new Date();
+    const inputDate = new Date(dateStr + 'T00:00:00');
+    
+    // For yearly recurrence, calculate the next occurrence
+    let dueDate = inputDate;
+    if (recurrence === 'yearly') {
+      const currentYear = today.getFullYear();
+      const thisYearDate = new Date(currentYear, inputDate.getMonth(), inputDate.getDate());
+      const nextYearDate = new Date(currentYear + 1, inputDate.getMonth(), inputDate.getDate());
+      
+      // Use this year's date if it hasn't passed, otherwise next year's
+      dueDate = thisYearDate >= today ? thisYearDate : nextYearDate;
+    }
+    
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'overdue';
+    if (diffDays <= 1) return 'urgent';
+    if (diffDays <= 3) return 'soon';
+    return 'normal';
+  };
+
+  const handleBlockDelete = async (blockId: string) => {
+    setState(prev => ({
+      ...prev,
+      knownBlocks: prev.knownBlocks.filter(b => b.id !== blockId)
+    }));
+
+    // Auto-save configuration to server
+    try {
+      const updatedBlocks = state.knownBlocks.filter(b => b.id !== blockId);
+      const response = await fetch('http://localhost:8000/config/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          known_blocks: updatedBlocks
+        })
+      });
+
+      if (response.ok) {
+        console.log('Block deleted and configuration auto-saved');
+      } else {
+        console.warn('Failed to auto-save after block deletion');
+      }
+    } catch (error) {
+      console.error('Error auto-saving after block deletion:', error);
+    }
+  };
+
+  // Sort reminders chronologically
+  const sortedReminders = [...state.reminders].sort((a, b) => {
+    const dateA = new Date(a.due_date + 'T00:00:00').getTime();
+    const dateB = new Date(b.due_date + 'T00:00:00').getTime();
+    return dateA - dateB;
+  });
+
   const openModal = (block?: KnownBlock, reminder?: Reminder) => {
     setState(prev => ({
       ...prev,
@@ -299,57 +404,61 @@ export default function ConfigWizard() {
   // };
 
   return (
-    <div className="container max-w-full mx-auto p-6">
+    <div className="container max-w-full mx-auto p-6 h-screen flex flex-col">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Echo Configuration Wizard</h1>
-          <p className="text-muted-foreground">Build your weekly schedule with recurring blocks and manage reminders</p>
+          <h1 className="text-3xl font-bold mb-2">Echo Configuration Wizard</h1>
+          <p className="text-muted-foreground text-lg">Build your weekly schedule with recurring blocks and manage reminders</p>
         </div>
       </div>
 
       {/* Action Cards - Upper section */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h3 className="text-lg font-semibold mb-4">Create Blocks and Reminders</h3>
-        <div className="grid gap-4 md:grid-cols-4 max-w-6xl">
+        <div className="grid gap-6 md:grid-cols-4 max-w-6xl">
           {BLOCK_TYPES.map(type => (
             <Card 
               key={type.value} 
-              className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
+              className="p-5 cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 group relative overflow-hidden"
               onClick={() => {
                 const newBlock = createNewBlock();
                 newBlock.type = type.value;
                 openModal(newBlock);
               }}
             >
-              <h4 className="font-medium text-sm">{type.label}</h4>
-              <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
-              <div className="mt-2 flex justify-end">
-                <span className="text-xs text-primary">Click to create →</span>
+              <h4 className="font-medium text-sm mb-2">{type.label}</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">{type.description}</p>
+              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
+                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                  <span className="text-xs text-accent-foreground font-bold">+</span>
+                </div>
               </div>
             </Card>
           ))}
           
           {/* Add Reminder Card */}
           <Card 
-            className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
+            className="p-5 cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 group relative overflow-hidden"
             onClick={() => openModal(undefined, createNewReminder())}
           >
-            <h4 className="font-medium text-sm">Add Reminder</h4>
-            <p className="text-xs text-muted-foreground mt-1">Bills, deadlines, and important dates</p>
-            <div className="mt-2 flex justify-end">
-              <span className="text-xs text-primary">Click to create →</span>
+            <h4 className="font-medium text-sm mb-2">Add Reminder</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">Bills, deadlines, and important dates</p>
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
+              <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                <span className="text-xs text-accent-foreground font-bold">+</span>
+              </div>
             </div>
           </Card>
         </div>
       </div>
 
       {/* Main Content - Lower 2/3 */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: '3fr 1fr' }}>
+      <div className="grid gap-6" style={{ gridTemplateColumns: '3fr 1fr', height: '500px' }}>
         {/* Weekly Calendar - 3/4 width */}
-        <div>
+        <div className="h-full">
           {loading ? (
-            <Card className="p-8">
+            <Card className="p-8 flex-1">
               <p className="text-center text-muted-foreground">
                 Loading configuration...
               </p>
@@ -371,9 +480,10 @@ export default function ConfigWizard() {
                 // Find the original block and edit it
                 const originalBlock = state.knownBlocks.find(b => b.id === block.id);
                 if (originalBlock) {
-                  openModal({ ...originalBlock });
+                  openModal({ ...originalBlock }, undefined);
                 }
               }}
+              onBlockDelete={handleBlockDelete}
               onTimeSlotClick={(day, time) => {
                 const newBlock = createNewBlock();
                 newBlock.start_time = time;
@@ -385,45 +495,76 @@ export default function ConfigWizard() {
         </div>
 
         {/* Reminders & Deadlines - 1/4 width */}
-        <div>
-          <Card className="h-[540px]">
+        <div className="h-full">
+          <Card className="h-full bg-card/50 backdrop-blur-sm border-border/50">
             <CardHeader className="pb-3">
               <div>
-                <CardTitle>Reminders & Deadlines ({state.reminders.length})</CardTitle>
+                <CardTitle>Reminders & Deadlines</CardTitle>
                 <CardDescription>
                   Bills, deadlines, and important dates
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="h-full overflow-y-auto">
-              {state.reminders.length === 0 ? (
+            <CardContent className="flex-1 overflow-y-auto min-h-0">
+              {sortedReminders.length === 0 ? (
                 <div className="text-center text-muted-foreground py-16">
                   <p className="text-sm">No reminders yet</p>
                   <p className="text-xs mt-2">Click "Add Reminder" above to create your first reminder.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {state.reminders.map(reminder => (
-                    <Card 
-                      key={reminder.id} 
-                      className={`p-3 cursor-pointer hover:shadow-sm transition-all ${
-                        reminder.is_completed ? 'opacity-60' : ''
-                      }`}
-                      onClick={() => openModal(undefined, reminder)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className={`font-medium text-sm ${
+                <div className="space-y-1.5">
+                  {sortedReminders.map(reminder => {
+                    const urgency = getUrgencyLevel(reminder.due_date, reminder.recurrence);
+                    const relativeTime = getRelativeTime(reminder.due_date, reminder.recurrence);
+                    const recurrenceText = reminder.recurrence === 'none' ? '' : reminder.recurrence.charAt(0).toUpperCase() + reminder.recurrence.slice(1);
+                    
+                    return (
+                      <div 
+                        key={reminder.id} 
+                        className={`group relative p-2.5 rounded-md cursor-pointer hover:shadow-sm transition-all duration-200 border-l-2 ${
+                          reminder.is_completed ? 'opacity-60' : ''
+                        } ${
+                          urgency === 'overdue' ? 'border-l-red-500 bg-red-500/5 hover:bg-red-500/10' :
+                          urgency === 'urgent' ? 'border-l-orange-500 bg-orange-500/5 hover:bg-orange-500/10' :
+                          urgency === 'soon' ? 'border-l-accent bg-accent/5 hover:bg-accent/10' :
+                          'border-l-border bg-card/30 hover:bg-card/50'
+                        }`}
+                        onClick={() => openModal(undefined, reminder)}
+                      >
+                        {/* Delete button - appears on hover */}
+                        <button
+                          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-destructive p-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReminderDelete(reminder.id);
+                          }}
+                          title="Delete reminder"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                        
+                        <div className="flex-1 pr-6">
+                          {/* Line 1: Title */}
+                          <h4 className={`text-sm leading-tight mb-0.5 font-medium ${
                             reminder.is_completed ? 'line-through' : ''
                           }`}>{reminder.name}</h4>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            <p>Due: {new Date(reminder.due_date).toLocaleDateString()}</p>
-                            <p className="capitalize">{reminder.category} • {reminder.recurrence}</p>
-                          </div>
+                          
+                          {/* Line 2: Metadata - only show if there's meaningful info */}
+                          {(relativeTime || recurrenceText) && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              {relativeTime && (
+                                <span className={urgency === 'overdue' ? 'text-red-400' : urgency === 'urgent' ? 'text-orange-400' : ''}>
+                                  {relativeTime}
+                                </span>
+                              )}
+                              {relativeTime && recurrenceText && <span>•</span>}
+                              {recurrenceText && <span className="capitalize">{recurrenceText}</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -458,7 +599,15 @@ interface BlockEditorModalProps {
 }
 
 function BlockEditorModal({ block, onSave, onCancel }: BlockEditorModalProps) {
-  const [editBlock, setEditBlock] = useState<KnownBlock>(block);
+  // Ensure the block has a properly initialized recurrence object
+  const initialBlock = {
+    ...block,
+    recurrence: block.recurrence || {
+      type: "weekly" as const,
+      days: block.days || ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    }
+  };
+  const [editBlock, setEditBlock] = useState<KnownBlock>(initialBlock);
 
   // Sync days with recurrence for backward compatibility
   const handleRecurrenceChange = (newRecurrence: Recurrence) => {
@@ -666,6 +815,8 @@ function BlockEditorModal({ block, onSave, onCancel }: BlockEditorModalProps) {
           
           <div className="flex gap-2">
             <Button 
+              variant="default"
+              className="border border-accent"
               onClick={() => {
                 console.log('Save button clicked with block:', editBlock);
                 onSave(editBlock);
@@ -779,6 +930,8 @@ function ReminderEditorModal({ reminder, onSave, onCancel }: ReminderEditorModal
               
               <div className="flex gap-2">
                 <Button 
+                  variant="default"
+                  className="border border-accent"
                   onClick={() => {
                     console.log('Save reminder clicked with:', editReminder);
                     onSave(editReminder);
