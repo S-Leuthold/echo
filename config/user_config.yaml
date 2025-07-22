@@ -1,101 +1,93 @@
-# Echo Configuration File
-# Copy this to config/user_config.yaml and update with your settings
-
-# Default Schedule Settings
 defaults:
-  wake_time: "07:00"
-  sleep_time: "22:00"
-
-# Weekly Schedule (simplified for testing)
+  wake_time: 07:00
+  sleep_time: '22:00'
 weekly_schedule:
   monday:
-    - name: "Morning Routine"
-      start_time: "07:00"
-      duration: 60
-      category: "personal"
-    - name: "Work"
-      start_time: "08:00"
-      duration: 480
-      category: "work"
-    - name: "Evening Routine"
-      start_time: "18:00"
-      duration: 120
-      category: "personal"
-  
+    anchors:
+    - time: "09:00\u201310:00"
+      category: personal
+      task: Test Block
+      description: Test description
+    fixed: []
+    flex: []
   tuesday:
-    - name: "Morning Routine"
-      start_time: "07:00"
-      duration: 60
-      category: "personal"
-    - name: "Work"
-      start_time: "08:00"
-      duration: 480
-      category: "work"
-    - name: "Evening Routine"
-      start_time: "18:00"
-      duration: 120
-      category: "personal"
-
-# Projects (simplified for testing)
+    anchors:
+    - time: "09:00\u201310:00"
+      category: personal
+      task: Test Block
+      description: Test description
+    fixed: []
+    flex: []
+  wednesday:
+    anchors: []
+    fixed: []
+    flex: []
+  thursday:
+    anchors: []
+    fixed: []
+    flex: []
+  friday:
+    anchors: []
+    fixed: []
+    flex: []
+  saturday:
+    anchors: []
+    fixed: []
+    flex: []
+  sunday:
+    anchors: []
+    fixed: []
+    flex: []
 projects:
   echo:
-    name: "Echo Development"
-    status: "active"
-    current_focus: "Email integration testing"
-  
+    name: Echo Development
+    status: active
+    current_focus: Email integration testing
   personal:
-    name: "Personal Projects"
-    status: "active"
-    current_focus: "General productivity"
-
-# Profiles (simplified for testing)
+    name: Personal Projects
+    status: active
+    current_focus: General productivity
 profiles:
   default:
-    name: "Default Profile"
+    name: Default Profile
     overrides: {}
-
-# Email Integration Settings
 email:
-  # Microsoft Graph API Configuration
   graph_api:
     client_id: ${ECHO_GRAPH_CLIENT_ID}
     client_secret: ${ECHO_GRAPH_CLIENT_SECRET}
     redirect_uri: ${ECHO_GRAPH_REDIRECT_URI}
     scopes:
-      - "Mail.Read"
-      - "Mail.ReadWrite"
-      - "User.Read"
-  # Email Processing Settings
+    - Mail.Read
+    - Mail.ReadWrite
+    - User.Read
   important_senders:
-    - "ceo@company.com"
-    - "manager@company.com"
-    - "client@company.com"
-    - "professor@colostate.edu"
-    - "advisor@colostate.edu"
-    - "sam.leuthold@colostate.edu"
-    - "samleuthold@colostate.edu"
-  
+  - ceo@company.com
+  - manager@company.com
+  - client@company.com
+  - professor@colostate.edu
+  - advisor@colostate.edu
+  - sam.leuthold@colostate.edu
+  - samleuthold@colostate.edu
   urgent_keywords:
-    - "urgent"
-    - "asap"
-    - "deadline"
-    - "important"
-    - "critical"
-    - "emergency"
-    - "immediate"
-  
+  - urgent
+  - asap
+  - deadline
+  - important
+  - critical
+  - emergency
+  - immediate
   action_keywords:
-    - "please"
-    - "can you"
-    - "need"
-    - "review"
-    - "send"
-    - "schedule"
-    - "meeting"
-    - "respond"
-    - "reply"
-    - "follow up"
-    - "accepted"
-    - "presentation"
-    - "expire"
-    - "token"
+  - please
+  - can you
+  - need
+  - review
+  - send
+  - schedule
+  - meeting
+  - respond
+  - reply
+  - follow up
+  - accepted
+  - presentation
+  - expire
+  - token

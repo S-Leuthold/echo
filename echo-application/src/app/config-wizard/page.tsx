@@ -5,11 +5,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WeeklyCalendar } from "@/components/weekly-calendar";
+import { RecurrenceSelector } from "@/components/recurrence-selector";
 
 type BlockType = "anchor" | "fixed" | "flex";
+
+interface Recurrence {
+  type: "weekly" | "bi-weekly" | "monthly";
+  days?: string[]; // For weekly/bi-weekly
+  week?: "A" | "B"; // For bi-weekly
+  monthlyType?: "date" | "weekday"; // For monthly
+  monthlyDate?: number; // 1-31 for date type
+  monthlyWeek?: "first" | "second" | "third" | "fourth" | "last"; // For weekday type  
+  monthlyWeekday?: string; // monday, tuesday, etc for weekday type
+}
 
 interface KnownBlock {
   id: string;
@@ -19,6 +30,8 @@ interface KnownBlock {
   duration: number; // in minutes
   category: string;
   description?: string;
+  recurrence: Recurrence;
+  // Keep days for backward compatibility with existing code
   days: string[]; // Which days of the week this applies to
 }
 
@@ -89,24 +102,41 @@ export default function ConfigWizard() {
   }, []);
 
   const createNewBlock = (): KnownBlock => ({
-    id: Date.now().toString(),
+    id: `new_${Date.now()}`,
     name: "",
     type: "anchor",
     start_time: "09:00",
     duration: 60,
     category: "Personal",
     description: "",
-    days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    recurrence: {
+      type: "weekly",
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    days: ["monday", "tuesday", "wednesday", "thursday", "friday"] // Keep for backward compatibility
   });
 
   const handleBlockSave = (block: KnownBlock) => {
-    setState(prev => ({
-      ...prev,
-      knownBlocks: prev.editingBlock 
+    // Generate a proper ID for new blocks
+    if (block.id.startsWith('new_')) {
+      block.id = `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    setState(prev => {
+      const isEditing = prev.editingBlock && !prev.editingBlock.id.startsWith('new_');
+      const updatedBlocks = isEditing
         ? prev.knownBlocks.map(b => b.id === block.id ? block : b)
-        : [...prev.knownBlocks, block],
-      editingBlock: null
-    }));
+        : [...prev.knownBlocks, block];
+        
+      console.log('Saving block:', block);
+      console.log('Updated blocks:', updatedBlocks);
+      
+      return {
+        ...prev,
+        knownBlocks: updatedBlocks,
+        editingBlock: null
+      };
+    });
   };
 
   const handleBlockDelete = (blockId: string) => {
@@ -166,21 +196,30 @@ export default function ConfigWizard() {
           <CardContent>
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Block Types</h3>
+                <h3 className="text-lg font-semibold mb-4">Choose a Block Type to Get Started</h3>
                 <div className="grid gap-4 md:grid-cols-3">
                   {BLOCK_TYPES.map(type => (
-                    <Card key={type.value} className="p-4">
+                    <Card 
+                      key={type.value} 
+                      className="p-4 cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200"
+                      onClick={() => {
+                        const newBlock = createNewBlock();
+                        newBlock.type = type.value;
+                        setState(prev => ({ 
+                          ...prev, 
+                          step: 2,
+                          editingBlock: newBlock
+                        }));
+                      }}
+                    >
                       <h4 className="font-medium text-sm">{type.label}</h4>
                       <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
+                      <div className="mt-2 flex justify-end">
+                        <span className="text-xs text-primary">Click to create →</span>
+                      </div>
                     </Card>
                   ))}
                 </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={() => setState(prev => ({ ...prev, step: 2 }))}>
-                  Start Building Schedule
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -190,7 +229,7 @@ export default function ConfigWizard() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto p-6">
+    <div className="container max-w-full mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Known Blocks Configuration</h1>
@@ -206,74 +245,104 @@ export default function ConfigWizard() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Known Blocks List */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Known Blocks ({state.knownBlocks.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Loading configuration...
-                </p>
-              ) : state.knownBlocks.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No blocks configured yet. Add your first block to get started.
-                </p>
-              ) : (
+      <div className="grid gap-6 lg:grid-cols-4">
+        {/* Left Panel - Block Editor */}
+        <div className="lg:col-span-1">
+          {state.editingBlock ? (
+            <BlockEditor
+              block={state.editingBlock}
+              onSave={handleBlockSave}
+              onCancel={() => setState(prev => ({ ...prev, editingBlock: null }))}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Block Editor</CardTitle>
+                <CardDescription>
+                  Click &ldquo;Add New Block&rdquo; above or click on a time slot in the calendar to create a new block.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
-                  {state.knownBlocks.map(block => (
-                    <Card key={block.id} className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{block.name}</h4>
-                            <Badge variant={block.type === 'anchor' ? 'default' : block.type === 'fixed' ? 'destructive' : 'secondary'}>
-                              {block.type}
-                            </Badge>
-                            <Badge variant="outline">{block.category}</Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <p>{block.start_time} - {addMinutes(block.start_time, block.duration)} ({block.duration} min)</p>
-                            <p>Days: {block.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")}</p>
-                            {block.description && <p className="italic">{block.description}</p>}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
+                  <div className="text-sm text-muted-foreground">
+                    <p><strong>{state.knownBlocks.length}</strong> blocks configured</p>
+                  </div>
+                  
+                  {state.knownBlocks.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Quick Actions:</h4>
+                      <div className="space-y-1">
+                        {state.knownBlocks.slice(0, 3).map(block => (
+                          <button
+                            key={block.id}
                             onClick={() => setState(prev => ({ ...prev, editingBlock: { ...block } }))}
+                            className="w-full text-left text-xs p-2 rounded hover:bg-accent transition-colors"
                           >
-                            Edit
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleBlockDelete(block.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
+                            Edit &ldquo;{block.name}&rdquo;
+                          </button>
+                        ))}
+                        {state.knownBlocks.length > 3 && (
+                          <p className="text-xs text-muted-foreground">
+                            +{state.knownBlocks.length - 3} more blocks
+                          </p>
+                        )}
                       </div>
-                    </Card>
-                  ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Block Editor */}
-        {state.editingBlock && (
-          <BlockEditor
-            block={state.editingBlock}
-            onSave={handleBlockSave}
-            onCancel={() => setState(prev => ({ ...prev, editingBlock: null }))}
-          />
-        )}
+        {/* Main Content Area - Weekly Calendar */}
+        <div className="lg:col-span-3">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Calendar View</CardTitle>
+                <CardDescription>
+                  Your recurring blocks visualized across the week. Click on blocks to edit them or on empty time slots to create new ones.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            
+            {loading ? (
+              <Card className="p-8">
+                <p className="text-center text-muted-foreground">
+                  Loading configuration...
+                </p>
+              </Card>
+            ) : (
+              <WeeklyCalendar
+                blocks={state.knownBlocks.map(block => ({
+                  ...block,
+                  id: block.id,
+                  name: block.name,
+                  type: block.type,
+                  start_time: block.start_time,
+                  duration: block.duration,
+                  category: block.category,
+                  days: block.days,
+                  description: block.description
+                }))}
+                onBlockClick={(block) => {
+                  // Find the original block and edit it
+                  const originalBlock = state.knownBlocks.find(b => b.id === block.id);
+                  if (originalBlock) {
+                    setState(prev => ({ ...prev, editingBlock: { ...originalBlock } }));
+                  }
+                }}
+                onTimeSlotClick={(day, time) => {
+                  const newBlock = createNewBlock();
+                  newBlock.start_time = time;
+                  newBlock.days = [day];
+                  setState(prev => ({ ...prev, editingBlock: newBlock }));
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -288,19 +357,35 @@ interface BlockEditorProps {
 function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
   const [editBlock, setEditBlock] = useState<KnownBlock>(block);
 
-  const handleDayToggle = (day: string) => {
+  // Sync days with recurrence for backward compatibility
+  const handleRecurrenceChange = (newRecurrence: Recurrence) => {
+    let updatedDays: string[] = [];
+    
+    if (newRecurrence.type === "weekly" || newRecurrence.type === "bi-weekly") {
+      updatedDays = newRecurrence.days || [];
+    } else if (newRecurrence.type === "monthly") {
+      // For monthly, we'll use a placeholder - in practice, this would be calculated
+      updatedDays = ["monday"]; // Placeholder
+    }
+    
     setEditBlock(prev => ({
       ...prev,
-      days: prev.days.includes(day) 
-        ? prev.days.filter(d => d !== day)
-        : [...prev.days, day]
+      recurrence: newRecurrence,
+      days: updatedDays
+    }));
+  };
+
+  const handleFlexPreferenceChange = (field: string, value: string) => {
+    setEditBlock(prev => ({
+      ...prev,
+      [field]: value
     }));
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{editBlock.id === Date.now().toString() ? "New Block" : "Edit Block"}</CardTitle>
+        <CardTitle>{editBlock.id.startsWith('new_') ? "New Block" : "Edit Block"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -329,28 +414,81 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="start_time">Start Time</Label>
-            <Input
-              id="start_time"
-              type="time"
-              value={editBlock.start_time}
-              onChange={(e) => setEditBlock(prev => ({ ...prev, start_time: e.target.value }))}
-            />
+        {/* Time fields - different for flex vs other types */}
+        {editBlock.type === "flex" ? (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="preferred_time">Preferred Time</Label>
+              <Select 
+                value={editBlock.start_time || "09:00"} 
+                onValueChange={(value) => setEditBlock(prev => ({ ...prev, start_time: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select preferred time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="morning">Morning (6AM - 12PM)</SelectItem>
+                  <SelectItem value="afternoon">Afternoon (12PM - 5PM)</SelectItem>
+                  <SelectItem value="evening">Evening (5PM - 10PM)</SelectItem>
+                  <SelectItem value="09:00">Specific time: 9:00 AM</SelectItem>
+                  <SelectItem value="14:00">Specific time: 2:00 PM</SelectItem>
+                  <SelectItem value="19:00">Specific time: 7:00 PM</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                The AI planner will try to schedule this block during your preferred time.
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="15"
+                step="15"
+                value={editBlock.duration}
+                onChange={(e) => setEditBlock(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="constraints">Constraints (Optional)</Label>
+              <Input
+                id="constraints"
+                placeholder="e.g., Must be done before 5 PM"
+                value={editBlock.description || ""}
+                onChange={(e) => setEditBlock(prev => ({ ...prev, description: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Any time constraints or preferences for this flexible block.
+              </p>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="duration">Duration (minutes)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min="15"
-              step="15"
-              value={editBlock.duration}
-              onChange={(e) => setEditBlock(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
-            />
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="start_time">Start Time</Label>
+              <Input
+                id="start_time"
+                type="time"
+                value={editBlock.start_time}
+                onChange={(e) => setEditBlock(prev => ({ ...prev, start_time: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="15"
+                step="15"
+                value={editBlock.duration}
+                onChange={(e) => setEditBlock(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <Label htmlFor="category">Category</Label>
@@ -368,47 +506,68 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
           </Select>
         </div>
 
-        <div>
-          <Label>Days of Week</Label>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {DAYS_OF_WEEK.map(day => (
-              <button
-                key={day}
-                type="button"
-                onClick={() => handleDayToggle(day)}
-                className={`px-3 py-1 text-xs rounded-full border ${
-                  editBlock.days.includes(day)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background border-border hover:bg-accent"
-                }`}
-              >
-                {day.charAt(0).toUpperCase() + day.slice(1, 3)}
-              </button>
-            ))}
+        {/* Recurrence Pattern */}
+        <RecurrenceSelector
+          recurrence={editBlock.recurrence}
+          onChange={handleRecurrenceChange}
+        />
+
+        {/* Description - only show for non-flex blocks */}
+        {editBlock.type !== "flex" && (
+          <div>
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Textarea
+              id="description"
+              value={editBlock.description || ""}
+              onChange={(e) => setEditBlock(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Additional details about this block..."
+              rows={2}
+            />
           </div>
-        </div>
+        )}
 
-        <div>
-          <Label htmlFor="description">Description (Optional)</Label>
-          <Textarea
-            id="description"
-            value={editBlock.description || ""}
-            onChange={(e) => setEditBlock(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Additional details about this block..."
-            rows={2}
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => onSave(editBlock)} 
-            disabled={!editBlock.name.trim() || editBlock.days.length === 0}
-          >
-            Save Block
-          </Button>
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
+        <div className="flex flex-col gap-2">
+          {/* Validation messages */}
+          {(() => {
+            const errors = [];
+            if (!editBlock.name.trim()) errors.push("Block name is required.");
+            
+            if (editBlock.recurrence.type === "weekly" || editBlock.recurrence.type === "bi-weekly") {
+              if (!editBlock.recurrence.days || editBlock.recurrence.days.length === 0) {
+                errors.push("At least one day must be selected.");
+              }
+            }
+            
+            if (editBlock.recurrence.type === "monthly") {
+              if (editBlock.recurrence.monthlyType === "date" && !editBlock.recurrence.monthlyDate) {
+                errors.push("Monthly date is required.");
+              }
+              if (editBlock.recurrence.monthlyType === "weekday" && (!editBlock.recurrence.monthlyWeek || !editBlock.recurrence.monthlyWeekday)) {
+                errors.push("Monthly weekday pattern is required.");
+              }
+            }
+            
+            return errors.length > 0 && (
+              <p className="text-sm text-red-500">
+                {errors.join(" ")}
+              </p>
+            );
+          })()}
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                console.log('Save button clicked with block:', editBlock);
+                onSave(editBlock);
+              }} 
+              disabled={!editBlock.name.trim() || editBlock.days.length === 0}
+            >
+              Save Block
+            </Button>
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
