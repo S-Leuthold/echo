@@ -266,6 +266,11 @@
   .bg-planning-active { background-color: var(--planning-active); }
   .bg-planning-completed { background-color: var(--planning-completed); }
   .text-planning { color: var(--planning); }
+
+  /* Text shadow utility for better readability on colored backgrounds */
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
   
   /* RESEARCH */
   .border-research { border-color: var(--research); }

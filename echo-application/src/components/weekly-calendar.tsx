@@ -19,8 +19,8 @@ interface WeeklyCalendarProps {
   onTimeSlotClick?: (day: string, time: string) => void;
 }
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 // Generate time slots from 5 AM to 10 PM in 30-minute increments
 const generateTimeSlots = () => {
@@ -60,14 +60,7 @@ const getCategoryColor = (category: string) => {
   return colorMap[category.toLowerCase()] || 'bg-muted';
 };
 
-const getBlockTypeIcon = (type: string) => {
-  switch (type) {
-    case 'anchor': return '⚓';
-    case 'fixed': return '📌';
-    case 'flex': return '🔄';
-    default: return '📋';
-  }
-};
+// Removed block type icons for cleaner calendar view
 
 const timeToMinutes = (timeStr: string): number => {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -102,7 +95,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
     return (
       <div
         key={`${block.id}-${dayIndex}`}
-        className={`absolute left-1 right-1 rounded-md p-2 text-xs cursor-pointer transition-all hover:shadow-md hover:scale-105 z-10 ${getCategoryColor(block.category)} text-white`}
+        className={`absolute left-1 right-1 rounded-md p-2 text-xs cursor-pointer transition-all hover:shadow-md hover:scale-105 z-10 ${getCategoryColor(block.category)} border border-white/20`}
         style={{
           top: `${startPosition}rem`,
           height: `${heightRem}rem`,
@@ -111,17 +104,14 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
         onClick={() => onBlockClick?.(block)}
         title={`${block.name} (${block.start_time} - ${minutesToTime(endMinutes)})`}
       >
-        <div className="flex items-start justify-between">
-          <span className="font-medium leading-tight">{getBlockTypeIcon(block.type)} {block.name}</span>
-        </div>
-        <div className="mt-1 text-xs opacity-90">
-          {block.start_time} - {minutesToTime(endMinutes)}
-        </div>
-        {block.description && (
-          <div className="mt-1 text-xs opacity-75 truncate">
-            {block.description}
+        <div className="h-full flex flex-col justify-between overflow-hidden">
+          <div className="font-medium leading-tight text-white text-shadow truncate">
+            {block.name}
           </div>
-        )}
+          <div className="text-xs text-white/90 text-shadow">
+            {block.start_time} - {minutesToTime(endMinutes)}
+          </div>
+        </div>
       </div>
     );
   };
@@ -138,9 +128,7 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
             {timeSlots.map((slot, index) => (
               <div
                 key={slot.time}
-                className={`h-10 flex items-center justify-end pr-2 text-xs text-muted-foreground border-r ${
-                  index % 2 === 0 ? 'border-border' : 'border-transparent'
-                }`}
+                className={`h-10 flex items-center justify-end pr-2 text-xs text-muted-foreground border-r border-border/30`}
               >
                 {index % 2 === 0 && slot.displayTime}
               </div>
@@ -161,8 +149,8 @@ export function WeeklyCalendar({ blocks, onBlockClick, onTimeSlotClick }: Weekly
               {timeSlots.map((slot, slotIndex) => (
                 <div
                   key={`${day}-${slot.time}`}
-                  className={`h-10 border-b cursor-pointer hover:bg-accent/20 transition-colors ${
-                    slotIndex % 2 === 0 ? 'border-border/50' : 'border-border/20'
+                  className={`h-10 cursor-pointer hover:bg-accent/20 transition-colors ${
+                    slotIndex % 2 === 0 ? 'border-b border-border/30' : 'border-b border-dotted border-border/15'
                   }`}
                   onClick={() => onTimeSlotClick?.(DAY_KEYS[dayIndex], slot.time)}
                   title={`${day} ${slot.displayTime}`}

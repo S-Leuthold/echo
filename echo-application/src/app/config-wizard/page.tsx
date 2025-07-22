@@ -116,7 +116,7 @@ export default function ConfigWizard() {
     days: ["monday", "tuesday", "wednesday", "thursday", "friday"] // Keep for backward compatibility
   });
 
-  const handleBlockSave = (block: KnownBlock) => {
+  const handleBlockSave = async (block: KnownBlock) => {
     // Generate a proper ID for new blocks
     if (block.id.startsWith('new_')) {
       block.id = `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -138,6 +138,34 @@ export default function ConfigWizard() {
         showModal: false
       };
     });
+
+    // Auto-save configuration to server
+    try {
+      setLoading(true);
+      const updatedBlocks = state.editingBlock && !state.editingBlock.id.startsWith('new_')
+        ? state.knownBlocks.map(b => b.id === block.id ? block : b)
+        : [...state.knownBlocks, block];
+        
+      const response = await fetch('http://localhost:8000/config/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          known_blocks: updatedBlocks
+        })
+      });
+
+      if (response.ok) {
+        console.log('Configuration auto-saved successfully');
+      } else {
+        console.warn('Failed to auto-save configuration');
+      }
+    } catch (error) {
+      console.error('Error auto-saving configuration:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openModal = (block?: KnownBlock) => {
@@ -208,9 +236,6 @@ export default function ConfigWizard() {
           <h1 className="text-2xl font-bold">Echo Configuration Wizard</h1>
           <p className="text-muted-foreground">Build your weekly schedule with recurring blocks and manage reminders</p>
         </div>
-        <Button onClick={handleExportConfig} disabled={state.knownBlocks.length === 0 || loading}>
-          {loading ? "Saving..." : "Save Configuration"}
-        </Button>
       </div>
 
       {/* Block Type Cards - Upper 1/3 */}
@@ -240,16 +265,7 @@ export default function ConfigWizard() {
       {/* Main Content - Lower 2/3 */}
       <div className="grid gap-6" style={{ gridTemplateColumns: '3fr 1fr' }}>
         {/* Weekly Calendar - 3/4 width */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Weekly Calendar View ({state.knownBlocks.length} blocks)</CardTitle>
-              <CardDescription>
-                Your recurring blocks visualized across the week. Click on blocks to edit them or on empty time slots to create new ones.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
+        <div>
           {loading ? (
             <Card className="p-8">
               <p className="text-center text-muted-foreground">
@@ -287,16 +303,23 @@ export default function ConfigWizard() {
         </div>
 
         {/* Reminders & Deadlines - 1/4 width */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Reminders & Deadlines</CardTitle>
-              <CardDescription>
-                Non-calendar events like bills, deadlines, and important dates.
-              </CardDescription>
+        <div>
+          <Card className="h-[540px]">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Reminders & Deadlines</CardTitle>
+                  <CardDescription>
+                    Bills, deadlines, and important dates
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline">
+                  + Add Reminder
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-center text-muted-foreground py-8">
+            <CardContent className="h-full">
+              <div className="text-center text-muted-foreground py-16">
                 <p className="text-sm">Coming soon!</p>
                 <p className="text-xs mt-2">This section will manage bills, deadlines, and other important reminders that inform your daily planning.</p>
               </div>
