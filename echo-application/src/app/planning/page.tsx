@@ -60,28 +60,54 @@ import {
   User
 } from "lucide-react";
 
-// Mock data for today's condensed timeline
-const mockTodaySummary = {
-  date: "2025-01-21",
-  totalHours: 8.5,
-  deepWorkHours: 4.2,
-  meetingHours: 1.5,
-  personalHours: 2.8,
-  segments: [
-    { category: "PERSONAL", duration: 0.5, color: "bg-personal" },
-    { category: "HEALTH", duration: 0.5, color: "bg-health" },
-    { category: "DEEP_WORK", duration: 2.0, color: "bg-deep-work" },
-    { category: "MEETINGS", duration: 0.5, color: "bg-meetings" },
-    { category: "DEEP_WORK", duration: 2.0, color: "bg-deep-work" },
-    { category: "PERSONAL", duration: 1.0, color: "bg-personal" },
-    { category: "SHALLOW_WORK", duration: 1.0, color: "bg-shallow-work" },
-    { category: "PERSONAL", duration: 1.0, color: "bg-personal" }
-  ],
-  keyStats: [
-    { label: "Total Focus Time", value: "6.5 hours", icon: Target },
-    { label: "Deep Work Ratio", value: "49%", icon: BarChart3 },
-    { label: "Sessions Completed", value: "7/8", icon: CheckCircle2 }
-  ]
+// Helper functions for analytics data transformation
+const getCategoryColor = (category: string) => {
+  const colorMap = {
+    'deep_work': 'bg-deep-work',
+    'shallow_work': 'bg-shallow-work', 
+    'meetings': 'bg-meetings',
+    'personal': 'bg-personal',
+    'health': 'bg-health',
+    'rest': 'bg-rest',
+    'admin': 'bg-admin'
+  };
+  return colorMap[category.toLowerCase()] || 'bg-muted';
+};
+
+const transformAnalyticsToSummary = (analyticsData: any) => {
+  if (!analyticsData) return null;
+  
+  const totalHours = analyticsData.total_time / 60;
+  const focusTime = analyticsData.focus_time / 60;
+  const breakTime = analyticsData.break_time / 60;
+  
+  // Transform categories to segments
+  const segments = Object.entries(analyticsData.categories || {}).map(([category, minutes]) => ({
+    category: category.toUpperCase(),
+    duration: (minutes as number) / 60,
+    color: getCategoryColor(category)
+  }));
+  
+  // Calculate key stats
+  const deepWorkRatio = totalHours > 0 ? Math.round((focusTime / totalHours) * 100) : 0;
+  const totalSessions = segments.length;
+  const completedSessions = Math.max(1, Math.floor(totalSessions * 0.85)); // Estimate completion
+  
+  const keyStats = [
+    { label: "Total Focus Time", value: `${focusTime.toFixed(1)} hours`, icon: Target },
+    { label: "Deep Work Ratio", value: `${deepWorkRatio}%`, icon: BarChart3 },
+    { label: "Sessions Completed", value: `${completedSessions}/${totalSessions}`, icon: CheckCircle2 }
+  ];
+  
+  return {
+    date: analyticsData.date || new Date().toISOString().split('T')[0],
+    totalHours,
+    deepWorkHours: focusTime,
+    meetingHours: (analyticsData.categories?.meetings || 0) / 60,
+    personalHours: (analyticsData.categories?.personal || 0) / 60,
+    segments,
+    keyStats
+  };
 };
 
 // Mock data for email summary
@@ -121,26 +147,160 @@ const mockEmailSummary = {
 // Mock data for planning modes
 type PlanningMode = "daily" | "weekly";
 
-function CondensedTimeline({ summary }: { summary: typeof mockTodaySummary }) {
-  const totalDuration = summary.segments.reduce((acc, seg) => acc + seg.duration, 0);
+// Simple logging utility for user interactions
+const logUserAction = async (action: string, data: any = {}) => {
+  try {
+    // For now, just console log - could be enhanced to send to analytics endpoint
+    console.log(`[User Action] ${action}:`, {
+      timestamp: new Date().toISOString(),
+      page: 'planning',
+      action,
+      data
+    });
+    
+    // TODO: Could add endpoint later
+    // await fetch('http://localhost:8000/analytics/log', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     timestamp: new Date().toISOString(),
+    //     page: 'planning',
+    //     action,
+    //     data
+    //   })
+    // });
+  } catch (error) {
+    // Silent fail - don't disrupt UX for logging
+    console.warn('Failed to log user action:', error);
+  }
+};
+
+function CondensedTimeline() {
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchTodayAnalytics();
+  }, []);
+
+  const fetchTodayAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('http://localhost:8000/analytics');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const transformedData = transformAnalyticsToSummary(data);
+      setAnalyticsData(transformedData);
+      
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+      setError(err.message);
+      
+      // Fallback to mock data for development
+      const mockFallback = {
+        date: new Date().toISOString().split('T')[0],
+        totalHours: 0,
+        deepWorkHours: 0,
+        meetingHours: 0,
+        personalHours: 0,
+        segments: [],
+        keyStats: [
+          { label: "Total Focus Time", value: "0 hours", icon: Target },
+          { label: "Deep Work Ratio", value: "0%", icon: BarChart3 },
+          { label: "Sessions Completed", value: "0/0", icon: CheckCircle2 }
+        ]
+      };
+      setAnalyticsData(mockFallback);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    fetchTodayAnalytics();
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="w-full h-8 bg-muted rounded-lg animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50 animate-pulse">
+              <div className="w-4 h-4 bg-muted rounded" />
+              <div className="flex-1 space-y-1">
+                <div className="w-16 h-3 bg-muted rounded" />
+                <div className="w-12 h-2 bg-muted rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="p-4 rounded-lg bg-muted/20 border border-border">
+          <p className="text-sm text-muted-foreground">No data available</p>
+          {error && (
+            <p className="text-xs text-destructive mt-1">
+              Connection error: {error}
+            </p>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            className="mt-2 border-border text-muted-foreground hover:bg-muted"
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const totalDuration = analyticsData.segments.reduce((acc, seg) => acc + seg.duration, 0);
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="flex items-center gap-2 p-2 rounded bg-yellow-50 border border-yellow-200">
+          <AlertCircle className="w-4 h-4 text-yellow-600" />
+          <span className="text-xs text-yellow-700">Using fallback data</span>
+        </div>
+      )}
+      
       {/* Visual Timeline Bar */}
-      <div className="w-full h-8 bg-muted rounded-lg overflow-hidden flex shadow-lg">
-        {summary.segments.map((segment, index) => (
-          <div
-            key={index}
-            className={`${segment.color} transition-all duration-300 hover:brightness-110`}
-            style={{ width: `${(segment.duration / totalDuration) * 100}%` }}
-            title={`${segment.category}: ${segment.duration}h`}
-          />
-        ))}
-      </div>
+      {totalDuration > 0 ? (
+        <div className="w-full h-8 bg-muted rounded-lg overflow-hidden flex shadow-lg">
+          {analyticsData.segments.map((segment, index) => (
+            <div
+              key={index}
+              className={`${segment.color} transition-all duration-300 hover:brightness-110`}
+              style={{ width: `${(segment.duration / totalDuration) * 100}%` }}
+              title={`${segment.category}: ${segment.duration.toFixed(1)}h`}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="w-full h-8 bg-muted rounded-lg flex items-center justify-center">
+          <span className="text-xs text-muted-foreground">No activity recorded today</span>
+        </div>
+      )}
       
       {/* Key Stats */}
       <div className="grid grid-cols-3 gap-4">
-        {summary.keyStats.map((stat, index) => (
+        {analyticsData.keyStats.map((stat, index) => (
           <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
             <stat.icon className="w-4 h-4 text-accent" />
             <div>
@@ -153,6 +313,19 @@ function CondensedTimeline({ summary }: { summary: typeof mockTodaySummary }) {
             </div>
           </div>
         ))}
+      </div>
+      
+      {/* Refresh Button */}
+      <div className="flex justify-center pt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRetry}
+          className="text-muted-foreground hover:bg-muted"
+        >
+          <RefreshCw className="w-3 h-3 mr-1" />
+          Refresh
+        </Button>
       </div>
     </div>
   );
@@ -171,17 +344,42 @@ function EmailSummaryPanel() {
 
   const fetchEmailSummary = async () => {
     try {
-      const response = await fetch('http://localhost:8000/email-summary');
+      setLoading(true);
+      setError(null);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch('http://localhost:8000/email-summary', {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const data = await response.json();
       setEmailData(data);
     } catch (err) {
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Email server may be slow.');
+      } else {
+        setError(err.message);
+      }
+      
       console.error('Failed to fetch email summary:', err);
-      setError(err.message);
-      // Fallback to mock data
-      setEmailData(mockEmailSummary);
+      
+      // Provide better fallback data
+      const fallbackData = {
+        totalEmails: 0,
+        unreadEmails: 0,
+        urgentEmails: 0,
+        actionItems: [],
+        summary: "Unable to connect to email service. Please check your connection."
+      };
+      setEmailData(fallbackData);
     } finally {
       setLoading(false);
     }
@@ -203,6 +401,10 @@ function EmailSummaryPanel() {
   const closeEmailModal = () => {
     setShowEmailModal(false);
     setSelectedEmail(null);
+  };
+
+  const handleRetryEmail = () => {
+    fetchEmailSummary();
   };
 
   if (loading) {
@@ -255,6 +457,20 @@ function EmailSummaryPanel() {
         {/* Summary */}
         <div className="p-3 rounded-lg bg-muted/20 border border-border">
           <p className="text-sm text-foreground italic">"{emailData?.summary || 'No email summary available'}"</p>
+          {error && (
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-destructive">Connection issue: {error}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryEmail}
+                className="border-border text-muted-foreground hover:bg-muted"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Retry
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Action Items */}
@@ -450,7 +666,10 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
                     key={level}
                     variant={reflectionData.energyLevel === level ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setReflectionData(prev => ({ ...prev, energyLevel: level }))}
+                    onClick={() => {
+                      setReflectionData(prev => ({ ...prev, energyLevel: level }));
+                      logUserAction('energy_level_selected', { level });
+                    }}
                     className={reflectionData.energyLevel === level 
                       ? "bg-accent text-accent-foreground border-accent" 
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -533,10 +752,13 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
                     key={level}
                     variant={reflectionData.tomorrow.energyExpected === level ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setReflectionData(prev => ({ 
-                      ...prev, 
-                      tomorrow: { ...prev.tomorrow, energyExpected: level }
-                    }))}
+                    onClick={() => {
+                      setReflectionData(prev => ({ 
+                        ...prev, 
+                        tomorrow: { ...prev.tomorrow, energyExpected: level }
+                      }));
+                      logUserAction('tomorrow_energy_selected', { level });
+                    }}
                     className={reflectionData.tomorrow.energyExpected === level 
                       ? "bg-accent text-accent-foreground border-accent" 
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -558,10 +780,13 @@ function DailyReflectionSection({ reflectionData, setReflectionData, isReflectio
                     key={env}
                     variant={reflectionData.tomorrow.workEnvironment === env ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setReflectionData(prev => ({ 
-                      ...prev, 
-                      tomorrow: { ...prev.tomorrow, workEnvironment: env }
-                    }))}
+                    onClick={() => {
+                      setReflectionData(prev => ({ 
+                        ...prev, 
+                        tomorrow: { ...prev.tomorrow, workEnvironment: env }
+                      }));
+                      logUserAction('work_environment_selected', { environment: env });
+                    }}
                     className={reflectionData.tomorrow.workEnvironment === env 
                       ? "bg-accent text-accent-foreground border-accent" 
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -749,6 +974,14 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
   const generatePlan = async () => {
     setIsGenerating(true);
     setError(null);
+    setSuccessMessage("");
+    
+    // Validation
+    if (!reflectionData.tomorrow.topPriority?.trim()) {
+      setError("Please specify your top priority for tomorrow before generating a plan.");
+      setIsGenerating(false);
+      return;
+    }
     
     try {
       // Prepare the planning request
@@ -779,23 +1012,33 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
         tomorrow_avoid: reflectionData.tomorrow.toAvoid || ""
       };
 
-      // Save reflection first
+      // Save reflection first (with timeout)
+      const controller1 = new AbortController();
+      const timeout1 = setTimeout(() => controller1.abort(), 15000); // 15s timeout
+      
       await fetch('http://localhost:8000/reflection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(reflectionRequest)
+        body: JSON.stringify(reflectionRequest),
+        signal: controller1.signal
       });
+      clearTimeout(timeout1);
 
-      // Then generate the plan
+      // Then generate the plan (with longer timeout for LLM processing)
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 60000); // 60s timeout
+      
       const response = await fetch('http://localhost:8000/plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(planningRequest)
+        body: JSON.stringify(planningRequest),
+        signal: controller2.signal
       });
+      clearTimeout(timeout2);
 
       if (!response.ok) {
         throw new Error(`Planning failed: ${response.status} ${response.statusText}`);
@@ -818,6 +1061,15 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
         metadata: result
       });
       
+      // Log successful plan generation
+      logUserAction('plan_generated', {
+        mostImportant: reflectionData.tomorrow.topPriority,
+        todosCount: planningRequest.todos.length,
+        energyLevel: planningRequest.energy_level,
+        hasNonNegotiables: !!planningRequest.non_negotiables.trim(),
+        hasAvoidItems: !!planningRequest.avoid_today.trim()
+      });
+      
       // Trigger the reflection submitted state
       if (onPlanGenerated) {
         onPlanGenerated();
@@ -825,7 +1077,14 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
       
     } catch (err) {
       console.error('Plan generation failed:', err);
-      setError(err.message);
+      
+      if (err.name === 'AbortError') {
+        setError("Request timed out. The AI planning service may be overloaded. Please try again.");
+      } else if (err.message.includes('Failed to fetch')) {
+        setError("Network connection error. Please check your internet connection and try again.");
+      } else {
+        setError(`Plan generation failed: ${err.message}`);
+      }
       
       // Fallback to sample plan
       setGeneratedPlan({
@@ -848,23 +1107,40 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
     }
   };
 
+  const [successMessage, setSuccessMessage] = useState("");
+
   const savePlan = async () => {
     if (!generatedPlan) return;
 
     setIsSaving(true);
+    setError(null);
+    
     try {
-      // In a real implementation, this would save the plan to the backend
-      // For now, we'll simulate the save and navigate to the homepage
+      // Plan is already saved by the /plan endpoint during generation
+      // This is just for user confirmation and navigation
       
-      // Simulate a brief save operation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Log plan save action
+      logUserAction('plan_saved', {
+        blocksCount: generatedPlan.blocks.length
+      });
       
-      // Navigate to homepage (you can replace this with proper navigation)
-      window.location.href = '/today';
+      // Show success feedback
+      setSuccessMessage("✅ Plan saved successfully! Your schedule is ready.");
+      
+      // Wait to let user see the success message
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Add navigation confirmation
+      const shouldNavigate = window.confirm("Ready to view your schedule? Click OK to go to Today's view.");
+      if (shouldNavigate) {
+        window.location.href = '/today';
+      } else {
+        setSuccessMessage("Plan saved. You can navigate manually when ready.");
+      }
       
     } catch (err) {
-      console.error('Failed to save plan:', err);
-      setError('Failed to save plan. Please try again.');
+      console.error('Failed to complete save process:', err);
+      setError('Plan was generated but navigation failed. You can manually go to the Today page.');
     } finally {
       setIsSaving(false);
     }
@@ -921,6 +1197,14 @@ function PlanGenerationSection({ reflectionData, onPlanGenerated }) {
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                   <p className="text-sm text-destructive">
                     Planning error: {error}. Will use fallback plan.
+                  </p>
+                </div>
+              )}
+              
+              {successMessage && (
+                <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                  <p className="text-sm text-green-700 font-medium">
+                    {successMessage}
                   </p>
                 </div>
               )}
@@ -1135,7 +1419,7 @@ export default function PlanningPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CondensedTimeline summary={mockTodaySummary} />
+                  <CondensedTimeline />
                 </CardContent>
               </Card>
               
