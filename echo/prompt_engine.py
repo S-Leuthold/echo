@@ -4,9 +4,10 @@
 # PROJECT: Echo
 #
 # PURPOSE:
-#   Handles prompts for two LLM personas:
+#   Handles prompts for LLM personas:
 #   1. The Planner: Fills schedule gaps with raw, structured blocks.
-#   2. The Enricher: Adds personality (notes, emojis) to a complete plan.
+#   2. The Enricher: Adds personality (notes, icons) to a complete plan.
+#   3. The Context Briefer: Synthesizes tomorrow's context and insights.
 #
 # ==============================================================================
 
@@ -362,7 +363,7 @@ Add strategic context and motivation that explains WHY each block is positioned 
 # ENHANCEMENT GUIDELINES
 For each block, add:
 1. **Strategic Note**: Why this timing is optimal and how it builds momentum (10-15 words max)
-2. **Contextual Emoji**: Visual representation of energy and strategic purpose
+2. **Contextual Icon**: Lucide icon name representing energy and strategic purpose
 3. **Motivational Framing**: Connect immediate task to larger objectives
 
 # NOTE CRAFTING PRINCIPLES
@@ -372,22 +373,28 @@ For each block, add:
 - **Concrete**: Specific outcomes rather than generic encouragement
 - **Brief**: Maximum 15 words for clarity and impact
 
-# EMOJI SELECTION STRATEGY
-- 🚀 High-impact work advancing major goals
-- 💡 Creative and strategic thinking sessions
-- ⚡ High-energy deep work blocks
-- 🎯 Focused execution on specific deliverables
-- 📧 Communication and relationship management
-- 🌱 Foundation-building and routine work
-- 🔄 Processing, organizing, and admin work
-- 🎨 Creative work and ideation
-- 🛡️ Personal care and energy management
+# LUCIDE ICON SELECTION STRATEGY
+- **Rocket** - High-impact work advancing major goals
+- **Lightbulb** - Creative and strategic thinking sessions
+- **Zap** - High-energy deep work blocks
+- **Target** - Focused execution on specific deliverables
+- **Mail** - Communication and relationship management
+- **Sprout** - Foundation-building and routine work
+- **RefreshCw** - Processing, organizing, and admin work
+- **Palette** - Creative work and ideation
+- **Shield** - Personal care and energy management
+- **Code** - Development and technical work
+- **Calendar** - Meetings and scheduled events
+- **BookOpen** - Learning and research
+- **Coffee** - Breaks and transitions
+- **Dumbbell** - Exercise and physical activity
+- **Home** - Personal time and routines
 
 # OUTPUT REQUIREMENTS
-Return the EXACT same JSON array with added "note" and "emoji" fields:
+Return the EXACT same JSON array with added "note" and "icon" fields:
 {{
   "start": "09:00", "end": "10:30", "label": "Echo Development | Refactor", "type": "flex", "meta": {{}},
-  "emoji": "🚀", "note": "Strategic session unlocking tomorrow's milestone delivery"
+  "icon": "Rocket", "note": "Strategic session unlocking tomorrow's milestone delivery"
 }}
 
 # QUALITY STANDARDS
@@ -435,7 +442,8 @@ def parse_enricher_response(json_text: str, original_plan: List[Block]) -> List[
             if start_key in enriched_map:
                 enriched_block = enriched_map[start_key]
                 block.meta["note"] = enriched_block.get("note", "")
-                block.label = f"{enriched_block.get('emoji', '').strip()} {block.label}".strip()
+                block.meta["icon"] = enriched_block.get("icon", "Calendar")  # Store icon name in meta
+                # Don't modify label - keep it clean without emoji/icon prefix
 
         return original_plan
     except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError) as e:
@@ -674,6 +682,167 @@ def _calculate_gaps_to_fill(existing_blocks: List[Block], wake_time: time, sleep
         formatted_gaps.append(f"{i}. Block {i}: {gap}")
     
     return "\n".join(formatted_gaps)
+
+# ==============================================================================
+# --- CONVERSATION-AWARE EMAIL PROCESSING ---
+# ==============================================================================
+
+def build_conversation_aware_email_prompt(conversations: Dict[str, List[Dict]]) -> str:
+    """Build thread-aware email processing prompt for conversation intelligence."""
+    
+    conversation_summaries = []
+    for conv_id, thread in conversations.items():
+        if not thread:
+            continue
+            
+        # Build thread context
+        thread_context = _build_thread_context(thread)
+        conversation_summaries.append(thread_context)
+    
+    prompt = f"""You are the Conversation Intelligence Engine for Echo, a planning system that treats email threads as ongoing dialogues rather than isolated messages.
+
+## Your Mission
+Analyze email conversations holistically, understanding the full context of each thread to extract actionable intelligence for daily planning.
+
+## Key Principles
+1. **Thread Context Awareness**: Always consider the full conversation history, not individual emails
+2. **Three-Category Extraction**: Classify extracted items into exactly three categories
+3. **Conversation State Understanding**: Recognize dialogue patterns, urgency evolution, and resolution status
+4. **Strategic Intelligence**: Surface insights that help with planning and prioritization
+
+## Email Conversations to Analyze
+{chr(10).join(conversation_summaries)}
+
+## Required Output Format
+Return a JSON object with this exact structure:
+
+{{
+    "conversation_summary": "Brief overview of conversation landscape and key themes",
+    "actionable_inputs": [
+        {{
+            "conversation_id": "string",
+            "action": "What I need to do (specific task)",
+            "context": "Why this matters in the conversation flow",
+            "source": "Which specific email/person requested this",
+            "urgency": "immediate|today|this_week|low",
+            "estimated_time": "time estimate in minutes",
+            "thread_priority": "critical|high|medium|low"
+        }}
+    ],
+    "my_commitments": [
+        {{
+            "conversation_id": "string", 
+            "commitment": "What I promised to do",
+            "context": "Background of this commitment",
+            "promised_to": "Who I made this commitment to",
+            "deadline": "When I said I'd deliver (if specified)",
+            "status": "pending|overdue|unclear",
+            "estimated_time": "time estimate in minutes"
+        }}
+    ],
+    "my_requests": [
+        {{
+            "conversation_id": "string",
+            "request": "What I'm waiting on from others", 
+            "context": "Why I need this",
+            "waiting_on": "Who should provide this",
+            "requested_when": "When I made the request",
+            "follow_up_needed": "Whether I should follow up",
+            "blocking": "What this is blocking for me"
+        }}
+    ],
+    "conversation_intelligence": {{
+        "high_priority_threads": ["List of conversation IDs needing immediate attention"],
+        "stalled_conversations": ["Conversations that may need follow-up"],
+        "strategic_insights": ["Key patterns or insights about communication flow"],
+        "recommended_actions": ["Strategic recommendations for conversation management"]
+    }}
+}}
+
+## Analysis Guidelines
+- **Actionable Inputs**: Tasks others have explicitly or implicitly assigned to you
+- **My Commitments**: Promises you've made in writing to others  
+- **My Requests**: Things you've asked others to do, creating dependencies
+- **Thread Priority**: Based on conversation dynamics, not just individual email importance
+- **Context**: Always explain WHY something matters in the conversation flow
+- **Strategic Intelligence**: Look for patterns, escalations, and optimization opportunities
+
+Focus on conversation-level intelligence that enables strategic planning and communication management."""
+
+    return prompt
+
+def _build_thread_context(thread: List[Dict]) -> str:
+    """Build contextual summary of an email thread for LLM processing."""
+    if not thread:
+        return ""
+    
+    # Sort chronologically
+    thread.sort(key=lambda x: x.get('receivedDateTime', ''))
+    
+    # Extract key metadata
+    conversation_id = thread[0].get('conversation_id', 'unknown')
+    topic = thread[0].get('subject', 'No Subject')
+    participants = set()
+    
+    for email in thread:
+        if email.get('from'):
+            participants.add(email['from']['emailAddress']['address'])
+        if email.get('toRecipients'):
+            participants.update([r['emailAddress']['address'] for r in email['toRecipients']])
+    
+    # Build conversation flow
+    thread_flow = []
+    for i, email in enumerate(thread):
+        sender = email.get('from', {}).get('emailAddress', {}).get('address', 'Unknown')
+        received_time = email.get('receivedDateTime', '')[:10]  # Just the date
+        body_preview = email.get('bodyPreview', '')[:200] + ('...' if len(email.get('bodyPreview', '')) > 200 else '')
+        
+        thread_flow.append(f"  {i+1}. {sender} ({received_time}): {body_preview}")
+    
+    context = f"""
+### Conversation: {topic}
+- **ID**: {conversation_id}
+- **Participants**: {', '.join(list(participants))}
+- **Thread Length**: {len(thread)} messages
+- **Timeline**: {thread[0].get('receivedDateTime', '')[:10]} to {thread[-1].get('receivedDateTime', '')[:10]}
+
+**Conversation Flow**:
+{chr(10).join(thread_flow)}
+"""
+    
+    return context
+
+def parse_conversation_aware_response(llm_response: str) -> Dict:
+    """Parse the LLM response for thread-aware conversation intelligence."""
+    try:
+        import json
+        response_data = json.loads(llm_response)
+        
+        # Validate required structure
+        required_keys = ['conversation_summary', 'actionable_inputs', 'my_commitments', 'my_requests', 'conversation_intelligence']
+        for key in required_keys:
+            if key not in response_data:
+                raise ValueError(f"Missing required key: {key}")
+        
+        return response_data
+        
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse conversation-aware response: {e}")
+        logger.error(f"Raw response: {llm_response}")
+        
+        # Return fallback structure
+        return {
+            'conversation_summary': 'Failed to parse conversation intelligence',
+            'actionable_inputs': [],
+            'my_commitments': [], 
+            'my_requests': [],
+            'conversation_intelligence': {
+                'high_priority_threads': [],
+                'stalled_conversations': [],
+                'strategic_insights': ['Error parsing conversation data'],
+                'recommended_actions': ['Review email processing manually']
+            }
+        }
 
 # ==============================================================================
 # --- PERSONA 4: The Session Crafter ---
@@ -1576,7 +1745,8 @@ def build_email_aware_planner_prompt(
     config: Config,
     email_context: Optional[Dict] = None,
     journal_context: Optional[Dict[str, str]] = None,
-    recent_trends: Optional[Dict[str, str]] = None
+    recent_trends: Optional[Dict[str, str]] = None,
+    email_brief: Optional[Dict] = None
 ) -> str:
     """
     Build the planner prompt with email context for enhanced planning.
@@ -1679,6 +1849,40 @@ def build_email_aware_planner_prompt(
         if "recent_mood" in recent_trends:
             trends_str += f"- **Recent Mood**: {recent_trends['recent_mood']}\n"
     
+    # Build email brief section with proactive time blocks
+    email_brief_str = ""
+    suggested_blocks_str = ""
+    if email_brief:
+        email_brief_str = "\n## Daily Email Brief - Proactive Time Blocks:\n"
+        
+        metrics = email_brief.get('metrics', {})
+        email_brief_str += f"- **Total Email Actions**: {metrics.get('actionable_inputs', 0)}\n"
+        email_brief_str += f"- **Commitments to Track**: {metrics.get('my_commitments', 0)}\n"
+        email_brief_str += f"- **Pending Requests**: {metrics.get('my_requests', 0)}\n"
+        email_brief_str += f"- **Estimated Time**: {metrics.get('total_estimated_time', 0)} minutes\n"
+        
+        # Add suggested time blocks
+        time_blocks = email_brief.get('time_blocks_needed', [])
+        if time_blocks:
+            suggested_blocks_str = "\n## REQUIRED Email-Derived Time Blocks:\n"
+            suggested_blocks_str += "IMPORTANT: You MUST include these blocks in your schedule:\n"
+            for i, block in enumerate(time_blocks, 1):
+                duration = block['duration_minutes']
+                label = block['label']
+                preferred = block.get('preferred_time', 'anytime')
+                priority = block['priority']
+                context = block.get('context', '')
+                
+                suggested_blocks_str += f"{i}. **{label}** ({duration} mins, {preferred} preferred, {priority} priority)\n"
+                if context:
+                    suggested_blocks_str += f"   Context: {context}\n"
+            
+            suggested_blocks_str += "\nScheduling Instructions:\n"
+            suggested_blocks_str += "- Schedule 'morning' preferred blocks between 08:00-12:00\n"
+            suggested_blocks_str += "- Schedule 'afternoon' preferred blocks between 13:00-17:00\n"
+            suggested_blocks_str += "- High priority blocks should be scheduled during peak energy hours\n"
+            suggested_blocks_str += "- Consolidate related email blocks into larger 'Admin | Email & Task Processing' blocks\n"
+    
     prompt = f"""You are a JSON API that generates a complete daily schedule with enhanced context from emails and recent reflections.
 
 ## Rules
@@ -1724,12 +1928,324 @@ def build_email_aware_planner_prompt(
 
 {email_context_str}
 
+{email_brief_str}
+
+{suggested_blocks_str}
+
 {journal_context_str}
 
 {trends_str}
 
 Your Task:
-Generate a JSON array of blocks for the entire day. Create appropriate "Admin | Email & Admin" blocks for email processing - do not create individual email tasks. Email details will be handled during session spin-up.
+Generate a JSON array of blocks for the entire day. If email brief provided required time blocks, you MUST include them in your schedule. Create appropriate "Admin | Email & Admin" blocks for email processing - do not create individual email tasks. Email details will be handled during session spin-up.
 """
     
     return prompt
+
+def build_refinement_enhanced_planner_prompt(
+    most_important: str,
+    todos: List[str],
+    energy_level: str,
+    non_negotiables: str,
+    avoid_today: str,
+    fixed_events: List[Dict],
+    config: Config,
+    email_context: Optional[Dict] = None,
+    journal_context: Optional[Dict[str, str]] = None,
+    recent_trends: Optional[Dict[str, str]] = None,
+    email_brief: Optional[Dict] = None,
+    refinement_feedback: Optional[List[str]] = None,
+    previous_plan: Optional[List[Dict]] = None,
+    refinement_history: Optional[List[Dict]] = None
+) -> str:
+    """
+    Build an enhanced planner prompt that incorporates user refinement feedback.
+    
+    Args:
+        (Same as build_email_aware_planner_prompt, plus:)
+        refinement_feedback: List of user refinement requests
+        previous_plan: The plan that's being refined
+        refinement_history: Previous refinements to avoid repetition
+        
+    Returns:
+        Enhanced planner prompt with refinement context
+    """
+    
+    # Start with base prompt
+    base_prompt = build_email_aware_planner_prompt(
+        most_important=most_important,
+        todos=todos,
+        energy_level=energy_level,
+        non_negotiables=non_negotiables,
+        avoid_today=avoid_today,
+        fixed_events=fixed_events,
+        config=config,
+        email_context=email_context,
+        journal_context=journal_context,
+        recent_trends=recent_trends,
+        email_brief=email_brief
+    )
+    
+    if not refinement_feedback:
+        return base_prompt
+    
+    # Build refinement context section
+    refinement_context = "\n\n## PLAN REFINEMENT REQUEST:\n"
+    refinement_context += "The user has reviewed the initial plan and provided the following refinement feedback:\n\n"
+    
+    for i, feedback in enumerate(refinement_feedback, 1):
+        refinement_context += f"{i}. \"{feedback}\"\n"
+    
+    # Add previous plan context if available
+    if previous_plan:
+        refinement_context += "\n## CURRENT PLAN TO REFINE:\n"
+        refinement_context += "Here is the current plan that needs refinement:\n"
+        for block in previous_plan[:5]:  # Show first 5 blocks for context
+            start = block.get('start', 'Unknown')
+            end = block.get('end', 'Unknown')
+            title = block.get('title', 'Unknown')
+            refinement_context += f"- {start}-{end}: {title}\n"
+        if len(previous_plan) > 5:
+            refinement_context += f"... and {len(previous_plan) - 5} more blocks\n"
+    
+    # Add refinement history to avoid repetition
+    if refinement_history:
+        refinement_context += "\n## PREVIOUS REFINEMENTS:\n"
+        refinement_context += "Previous refinements have been made. Avoid repeating these exact changes:\n"
+        for i, prev_ref in enumerate(refinement_history[-3:], 1):  # Last 3 refinements
+            refinement_context += f"{i}. {prev_ref.get('feedback', 'Unknown change')}\n"
+    
+    # Add refinement instructions
+    refinement_context += "\n## REFINEMENT INSTRUCTIONS:\n"
+    refinement_context += "**CRITICAL**: You must address the user's refinement feedback while:\n"
+    refinement_context += "1. Preserving all fixed events and non-negotiables\n"
+    refinement_context += "2. Maintaining the 06:00-22:00 schedule with no gaps\n"
+    refinement_context += "3. Keeping block durations between 45-120 minutes\n"
+    refinement_context += "4. Honoring email brief time block requirements\n"
+    refinement_context += "5. Explaining your changes in the context of user feedback\n"
+    refinement_context += "6. Only making changes that directly address the feedback\n\n"
+    refinement_context += "Generate a refined JSON schedule that incorporates the user's feedback.\n"
+    
+    # Combine base prompt with refinement context
+    enhanced_prompt = base_prompt + refinement_context
+    
+    return enhanced_prompt
+
+def parse_refinement_feedback(feedback_text: str) -> List[str]:
+    """Parse user refinement feedback into structured format."""
+    if not feedback_text:
+        return []
+    
+    # Simple parsing - split by common delimiters and clean
+    feedback_items = []
+    
+    # Split by periods, semicolons, or "and"
+    import re
+    potential_items = re.split(r'[.;]|\band\b', feedback_text)
+    
+    for item in potential_items:
+        cleaned = item.strip()
+        if cleaned and len(cleaned) > 5:  # Filter out very short fragments
+            feedback_items.append(cleaned)
+    
+    # If no splitting worked, treat the whole thing as one item
+    if not feedback_items:
+        feedback_items = [feedback_text.strip()]
+    
+    return feedback_items
+
+def detect_refinement_scope(feedback: List[str]) -> str:
+    """
+    Detect the scope of refinement needed to optimize API calls.
+    
+    Returns:
+        'minor': Small time shifts, block reordering
+        'moderate': Block duration changes, category swaps
+        'major': Significant restructuring needed
+    """
+    if not feedback:
+        return 'minor'
+    
+    combined_feedback = ' '.join(feedback).lower()
+    
+    # Major refinement indicators
+    major_keywords = [
+        'completely', 'totally', 'restructure', 'redesign', 'start over',
+        'wrong approach', 'different strategy', 'major change'
+    ]
+    
+    # Moderate refinement indicators  
+    moderate_keywords = [
+        'longer', 'shorter', 'swap', 'replace', 'different time', 
+        'change duration', 'move to morning', 'move to afternoon'
+    ]
+    
+    # Minor refinement indicators
+    minor_keywords = [
+        'shift', 'adjust', 'tweak', 'small change', 'little earlier',
+        'bit later', 'few minutes', 'slightly'
+    ]
+    
+    if any(keyword in combined_feedback for keyword in major_keywords):
+        return 'major'
+    elif any(keyword in combined_feedback for keyword in moderate_keywords):
+        return 'moderate'
+    elif any(keyword in combined_feedback for keyword in minor_keywords):
+        return 'minor'
+    else:
+        # Default to moderate for unclear feedback
+        return 'moderate'
+
+
+# ==============================================================================
+# --- CONTEXT BRIEFING FUNCTIONALITY ---
+# ==============================================================================
+
+CONTEXT_BRIEFING_PROMPT_TEMPLATE = """\
+# PERSONA: The Context Briefer
+You are an intelligent assistant who synthesizes tomorrow's context to provide users with a comprehensive "lay of the land" briefing. Your tone is clear, organized, and forward-looking.
+
+## Your Mission
+Analyze all available context about tomorrow and create a structured briefing that helps the user understand what's on their plate, what commitments they have, and what insights from recent work sessions should inform their planning.
+
+## Context Sources
+
+### Email Intelligence
+{email_context}
+
+### Fixed Calendar Events
+{calendar_events}
+
+### Recent Session Insights
+{session_insights}
+
+### Upcoming Reminders & Deadlines
+{reminders}
+
+## Output Format
+Generate a clean, well-organized briefing in markdown format with these sections:
+
+### 📧 On Your Plate
+- List new action items and commitments from email
+- Include estimated time when available
+- Note any urgent items
+
+### 📅 Confirmed Schedule  
+- List fixed meetings and appointments with times
+- Note any preparation needed
+
+### 📝 From Recent Sessions
+- Surface insights and todos from recent work sessions
+- Highlight items that need continuation or follow-up
+- Note any blockers or dependencies identified
+
+### ⚠️ Deadlines & Reminders
+- List upcoming deadlines and their urgency
+- Include any reminders or follow-ups due
+
+Focus on being helpful and actionable. If a section has no relevant information, include it but note "Nothing scheduled" or "No new items."
+"""
+
+def build_context_briefing_prompt(
+    email_context: str,
+    calendar_events: List[Dict[str, Any]],
+    session_insights: List[Dict[str, Any]],
+    reminders: List[Dict[str, Any]]
+) -> str:
+    """
+    Build the context briefing prompt with all available intelligence.
+    
+    Args:
+        email_context: Email summary and action items
+        calendar_events: List of fixed events for tomorrow
+        session_insights: Recent session logs with todos/insights
+        reminders: Upcoming reminders and deadlines
+        
+    Returns:
+        Formatted context briefing prompt
+    """
+    
+    # Format calendar events
+    calendar_text = ""
+    if calendar_events:
+        for event in calendar_events:
+            time_str = f"{event.get('start', 'TBD')} - {event.get('end', 'TBD')}"
+            calendar_text += f"- {time_str}: {event.get('title', 'Untitled Event')}\n"
+    else:
+        calendar_text = "No fixed events scheduled for tomorrow."
+    
+    # Format session insights
+    insights_text = ""
+    if session_insights:
+        for session in session_insights[-5:]:  # Last 5 sessions
+            date = session.get('date', 'Recent')
+            project = session.get('project', 'General')
+            todos = session.get('todos', [])
+            insights = session.get('insights', [])
+            
+            insights_text += f"\n**{date} - {project}:**\n"
+            
+            if todos:
+                for todo in todos:
+                    insights_text += f"  • TODO: {todo}\n"
+            
+            if insights:
+                for insight in insights:
+                    insights_text += f"  • INSIGHT: {insight}\n"
+    else:
+        insights_text = "No recent session insights available."
+    
+    # Format reminders
+    reminders_text = ""
+    if reminders:
+        for reminder in reminders:
+            urgency = reminder.get('urgency', 'normal')
+            urgency_emoji = {'high': '🔥', 'medium': '⚡', 'low': '📅'}.get(urgency, '📅')
+            reminders_text += f"- {urgency_emoji} {reminder.get('text', 'Reminder')}\n"
+    else:
+        reminders_text = "No upcoming reminders."
+    
+    return CONTEXT_BRIEFING_PROMPT_TEMPLATE.format(
+        email_context=email_context or "No new email items to review.",
+        calendar_events=calendar_text,
+        session_insights=insights_text,
+        reminders=reminders_text
+    )
+
+def parse_context_briefing_response(response_text: str) -> Dict[str, Any]:
+    """
+    Parse the context briefing response into structured data.
+    
+    Args:
+        response_text: Raw markdown response from LLM
+        
+    Returns:
+        Dictionary with briefing sections
+    """
+    
+    return {
+        "briefing_text": response_text.strip(),
+        "sections": {
+            "email": _extract_section(response_text, "📧 On Your Plate"),
+            "calendar": _extract_section(response_text, "📅 Confirmed Schedule"),
+            "sessions": _extract_section(response_text, "📝 From Recent Sessions"),
+            "reminders": _extract_section(response_text, "⚠️ Deadlines & Reminders")
+        }
+    }
+
+def _extract_section(text: str, section_header: str) -> str:
+    """Extract a specific section from the briefing text."""
+    lines = text.split('\n')
+    section_lines = []
+    in_section = False
+    
+    for line in lines:
+        if section_header in line:
+            in_section = True
+            continue
+        elif in_section and line.startswith('###'):
+            break
+        elif in_section:
+            section_lines.append(line)
+    
+    return '\n'.join(section_lines).strip()

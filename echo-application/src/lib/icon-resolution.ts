@@ -32,6 +32,8 @@ import {
   Target,
   Zap,
   HelpCircle,
+  Rocket,
+  Lightbulb,
   type LucideIcon
 } from "lucide-react";
 
@@ -152,6 +154,38 @@ const keywordIconMap: Record<string, LucideIcon> = {
   'construction': Hammer
 };
 
+// Direct Lucide icon name mapping (for backend-generated icon names)
+const lucideNameIconMap: Record<string, LucideIcon> = {
+  'Rocket': Rocket,
+  'Lightbulb': Lightbulb,
+  'Zap': Zap,
+  'Target': Target,
+  'Calendar': Calendar,
+  'Brain': Brain,
+  'Users': Users,
+  'Code': Code,
+  'Briefcase': Briefcase,
+  'BookOpen': BookOpen,
+  'Dumbbell': Dumbbell,
+  'Coffee': Coffee,
+  'Mail': Mail,
+  'Phone': Phone,
+  'Car': Car,
+  'Plane': Plane,
+  'Clock': Clock,
+  'HeartPulse': HeartPulse,
+  'Utensils': Utensils,
+  'PenTool': PenTool,
+  'Music': Music,
+  'Camera': Camera,
+  'Sparkles': Sparkles,
+  'Hammer': Hammer,
+  'Palette': Palette,
+  'TreePine': TreePine,
+  'Bed': Bed,
+  'HelpCircle': HelpCircle
+};
+
 // Category fallback mapping
 const categoryIconMap: Record<string, LucideIcon> = {
   'deep_work': Brain,
@@ -174,18 +208,44 @@ const categoryIconMap: Record<string, LucideIcon> = {
 
 export interface IconResolutionResult {
   icon: LucideIcon;
-  source: 'keyword' | 'category' | 'fallback';
+  source: 'lucide_name' | 'keyword' | 'category' | 'fallback';
   matchedTerm?: string;
 }
 
 export class IconResolutionService {
   /**
+   * Resolves icon from backend-generated Lucide icon name
+   * @param iconName - The Lucide icon name from the backend
+   * @returns IconResolutionResult with the icon and metadata
+   */
+  static resolveIconByName(iconName: string): IconResolutionResult {
+    if (lucideNameIconMap[iconName]) {
+      return {
+        icon: lucideNameIconMap[iconName],
+        source: 'lucide_name',
+        matchedTerm: iconName
+      };
+    }
+    
+    // Fallback if icon name not found
+    return {
+      icon: HelpCircle,
+      source: 'fallback'
+    };
+  }
+
+  /**
    * Resolves the most appropriate icon for a time block
    * @param title - The block's title/name
    * @param category - The block's category
+   * @param iconName - Optional direct icon name from backend
    * @returns IconResolutionResult with the icon and metadata
    */
-  static resolveIcon(title: string, category: string): IconResolutionResult {
+  static resolveIcon(title: string, category: string, iconName?: string): IconResolutionResult {
+    // Step 0: If we have a direct icon name from backend, use it
+    if (iconName) {
+      return this.resolveIconByName(iconName);
+    }
     // Step 1: Try to match keywords in title (case insensitive)
     const titleLower = title.toLowerCase();
     

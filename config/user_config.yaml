@@ -23,8 +23,19 @@ weekly_schedule:
       category: personal
       task: Commute to the Gym
       description: Ride my bike to Midtown Fitness
+    - time: "08:15\u201308:45"
+      category: personal
+      task: Commute to Guild Row
+      description: 'Riding my bike to work. '
+    - time: "16:30\u201317:45"
+      category: exercise
+      task: Strength Training
+      description: Trying to get big and strong dawg.
     fixed: []
-    flex: []
+    flex:
+    - time: "12:30\u201313:00"
+      category: meals
+      task: Lunch
   tuesday:
     anchors:
     - time: "05:30\u201306:00"
@@ -37,12 +48,28 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
+        too long. '
     - time: "16:15\u201316:30"
       category: personal
       task: Commute to the Gym
       description: Ride my bike to Midtown Fitness
+    - time: "08:15\u201308:45"
+      category: personal
+      task: Commute to Guild Row
+      description: 'Riding my bike to work. '
+    - time: "16:30\u201317:45"
+      category: exercise
+      task: Strength Training
+      description: Trying to get big and strong dawg.
     fixed: []
-    flex: []
+    flex:
+    - time: "12:30\u201313:00"
+      category: meals
+      task: Lunch
   wednesday:
     anchors:
     - time: "05:30\u201306:00"
@@ -55,12 +82,28 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
+        too long. '
     - time: "16:15\u201316:30"
       category: personal
       task: Commute to the Gym
       description: Ride my bike to Midtown Fitness
+    - time: "08:15\u201308:45"
+      category: personal
+      task: Commute to Guild Row
+      description: 'Riding my bike to work. '
+    - time: "16:30\u201317:45"
+      category: exercise
+      task: Strength Training
+      description: Trying to get big and strong dawg.
     fixed: []
-    flex: []
+    flex:
+    - time: "12:30\u201313:00"
+      category: meals
+      task: Lunch
   thursday:
     anchors:
     - time: "05:30\u201306:00"
@@ -73,12 +116,28 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
+        too long. '
     - time: "16:15\u201316:30"
       category: personal
       task: Commute to the Gym
       description: Ride my bike to Midtown Fitness
+    - time: "08:15\u201308:45"
+      category: personal
+      task: Commute to Guild Row
+      description: 'Riding my bike to work. '
+    - time: "16:30\u201317:45"
+      category: exercise
+      task: Strength Training
+      description: Trying to get big and strong dawg.
     fixed: []
-    flex: []
+    flex:
+    - time: "12:30\u201313:00"
+      category: meals
+      task: Lunch
   friday:
     anchors:
     - time: "05:30\u201306:00"
@@ -91,12 +150,28 @@ weekly_schedule:
       task: Breakfast
       description: 'I eat for about 30 minutes most morning, and also make smoothies
         for my wife and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
+        too long. '
     - time: "16:15\u201316:30"
       category: personal
       task: Commute to the Gym
       description: Ride my bike to Midtown Fitness
+    - time: "08:15\u201308:45"
+      category: personal
+      task: Commute to Guild Row
+      description: 'Riding my bike to work. '
+    - time: "16:30\u201317:45"
+      category: exercise
+      task: Strength Training
+      description: Trying to get big and strong dawg.
     fixed: []
-    flex: []
+    flex:
+    - time: "12:30\u201313:00"
+      category: meals
+      task: Lunch
   saturday:
     anchors: []
     fixed: []

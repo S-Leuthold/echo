@@ -1,37 +1,270 @@
 {
   "date": "2025-07-22",
-  "blocks": [],
-  "email_context": {
-    "total_unresponded": 2,
-    "urgent_count": 1,
-    "high_priority_count": 2,
-    "scheduling_recommendations": [
-      {
-        "email_id": "email1",
-        "action_item": "Respond to urgent email",
-        "priority": "critical",
-        "time_allocation": 30,
-        "recommended_time": "morning"
-      }
-    ],
-    "response_time_estimates": {
-      "total_estimated_time": 30
+  "created_at": "2025-07-22T21:54:00.689556",
+  "blocks": [
+    {
+      "start": "06:00:00",
+      "end": "07:00:00",
+      "label": "Personal | Morning Routine",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "07:00:00",
+      "end": "09:00:00",
+      "label": "Echo | Geoderma Review",
+      "type": "flex",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "09:00:00",
+      "end": "10:30:00",
+      "label": "Admin | Email & Admin",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "10:30:00",
+      "end": "12:00:00",
+      "label": "Echo | Geoderma Review",
+      "type": "flex",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "12:00:00",
+      "end": "13:00:00",
+      "label": "Personal | Lunch Break",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "13:00:00",
+      "end": "14:00:00",
+      "label": "Echo | Buy Tickets to Spain",
+      "type": "flex",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "14:00:00",
+      "end": "15:00:00",
+      "label": "Echo | Horizons Development",
+      "type": "flex",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "15:00:00",
+      "end": "15:50:00",
+      "label": "Meeting | K. Jasko",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "15:50:00",
+      "end": "17:00:00",
+      "label": "Admin | Email & Admin",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "17:00:00",
+      "end": "18:00:00",
+      "label": "Personal | Dinner Break",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "18:00:00",
+      "end": "20:00:00",
+      "label": "Echo | Geoderma Review",
+      "type": "flex",
+      "icon": "Rocket",
+      "note": ""
+    },
+    {
+      "start": "20:00:00",
+      "end": "22:00:00",
+      "label": "Personal | Evening Routine",
+      "type": "anchor",
+      "icon": "Rocket",
+      "note": ""
     }
-  },
-  "user_input": {
-    "most_important": "Finish project",
-    "todos": [
-      "Review code",
-      "Update docs"
-    ],
-    "energy_level": "8",
-    "non_negotiables": "Team meeting",
-    "avoid_today": "Social media"
-  },
-  "planning_stats": {
-    "total_scheduled": 1,
-    "total_completed": 0,
-    "pending_scheduled": 1,
-    "completion_rate": 0.0
+  ],
+  "metadata": {
+    "email_context": {
+      "summary": "There are five emails that require attention. The first email is about the ending of CSU's EndNote site license and requires further steps. The second email is a request to preview shared team values before a meeting. The third email is a response to a previous email about a KFS document. The fourth email is a query about handling time off for an employee. The fifth email is a reminder to review the agenda for a management team meeting.",
+      "action_items": [
+        {
+          "action": "Understand the changes regarding CSU's EndNote site license",
+          "specific_description": "Review the email about CSU's EndNote site license ending and understand the next steps that need to be taken.",
+          "sender": "cas_it_notification@Mail.colostate.edu",
+          "subject": "CSU's EndNote Site License Ending: Important Information & Next Steps",
+          "deadline": null,
+          "priority": "high"
+        },
+        {
+          "action": "Preview Shared Team Values",
+          "specific_description": "Review the Shared Team Values document before the management team meeting.",
+          "sender": "brenner.17@osu.edu",
+          "subject": "Please preview Our Shared Values Before Tomorrow's MT meeting",
+          "deadline": "Before tomorrow's meeting",
+          "priority": "medium"
+        },
+        {
+          "action": "Respond to Sam's email",
+          "specific_description": "Respond to Sam's email regarding the KFS document.",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "deadline": null,
+          "priority": "medium"
+        },
+        {
+          "action": "Answer time off questions",
+          "specific_description": "Respond to Sam's email about how to handle time off for an employee who is taking classes.",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "subject": "Time off questions.",
+          "deadline": null,
+          "priority": "medium"
+        },
+        {
+          "action": "Review meeting agenda",
+          "specific_description": "Review the agenda for the management team meeting.",
+          "sender": "kroeger.68@osu.edu",
+          "subject": "RE: LBC-SAS Management Team Monthly Meeting",
+          "deadline": "Before tomorrow's meeting at 2:00 PM ET",
+          "priority": "medium"
+        }
+      ],
+      "total_unresponded": 5,
+      "urgent_count": 1,
+      "high_priority_count": 2,
+      "emails": [
+        {
+          "subject": "CSU's EndNote Site License Ending: Important Information & Next Steps",
+          "sender": "cas_it_notification@Mail.colostate.edu",
+          "received": "2025-07-22T21:26:53Z",
+          "importance": "medium",
+          "urgency": "high",
+          "has_action": false
+        },
+        {
+          "subject": "Please preview Our Shared Values Before Tomorrow's MT meeting  ",
+          "sender": "brenner.17@osu.edu",
+          "received": "2025-07-22T20:34:12Z",
+          "importance": "medium",
+          "urgency": "medium",
+          "has_action": true
+        },
+        {
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "received": "2025-07-22T20:21:45Z",
+          "importance": "high",
+          "urgency": "medium",
+          "has_action": true
+        },
+        {
+          "subject": "Time off questions.",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "received": "2025-07-22T20:20:45Z",
+          "importance": "high",
+          "urgency": "medium",
+          "has_action": false
+        },
+        {
+          "subject": "RE: LBC-SAS Management Team Monthly Meeting",
+          "sender": "kroeger.68@osu.edu",
+          "received": "2025-07-22T19:31:05Z",
+          "importance": "medium",
+          "urgency": "medium",
+          "has_action": true
+        }
+      ],
+      "scheduling_recommendations": [
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEMAAC5DlNXqJybR4xjpQmjUmjjAAP_iNsMAAA=",
+          "subject": "CSU's EndNote Site License Ending: Important Information & Next Steps",
+          "sender": "cas_it_notification@Mail.colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Respond to CSU's EndNote Site License Ending: Important Information & Next Steps from cas_it_notification@Mail.colostate.edu"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEMAAC5DlNXqJybR4xjpQmjUmjjAAP_iNsJAAA=",
+          "subject": "Please preview Our Shared Values Before Tomorrow's MT meeting  ",
+          "sender": "brenner.17@osu.edu",
+          "priority": "medium",
+          "time_allocation": 15,
+          "recommended_time": "afternoon",
+          "action_item": "Respond to Please preview Our Shared Values Before Tomorrow's MT meeting   from brenner.17@osu.edu"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEJAAC5DlNXqJybR4xjpQmjUmjjAAP_iNcQAAA=",
+          "subject": "Re: KFS colostate : Your Action List has a document that needs your attention:",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Respond to Re: KFS colostate : Your Action List has a document that needs your attention: from Sam.Leuthold@colostate.edu"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEJAAC5DlNXqJybR4xjpQmjUmjjAAP_iNcPAAA=",
+          "subject": "Time off questions.",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Respond to Time off questions. from Sam.Leuthold@colostate.edu"
+        },
+        {
+          "email_id": "AAMkADIwMDBmMGY0LWVkY2YtNGJmMC1iYzhkLTcyYTFjODYxMWZiZQBGAAAAAACgfuXwqEkUQIt_jpJWr9FhBwC5DlNXqJybR4xjpQmjUmjjAAAAAAEMAAC5DlNXqJybR4xjpQmjUmjjAAP_iNsHAAA=",
+          "subject": "RE: LBC-SAS Management Team Monthly Meeting",
+          "sender": "kroeger.68@osu.edu",
+          "priority": "medium",
+          "time_allocation": 15,
+          "recommended_time": "afternoon",
+          "action_item": "Respond to RE: LBC-SAS Management Team Monthly Meeting from kroeger.68@osu.edu"
+        }
+      ],
+      "response_time_estimates": {
+        "total_estimated_time": 90,
+        "time_estimates": {
+          "critical": 30,
+          "high": 20,
+          "medium": 15,
+          "low": 10
+        },
+        "email_count": 5
+      }
+    },
+    "journal_context": {
+      "tomorrow_focus": "Avoid distractions",
+      "tomorrow_energy": "Good",
+      "non_negotiables": "7",
+      "avoid_tomorrow": "Complete email integration",
+      "today_energy": "No fixed events",
+      "today_mood": "8",
+      "date": "2025-07-20"
+    },
+    "user_input": {
+      "most_important": "I need to finish the Geoderma Review",
+      "todos": [
+        "Buy tickets to Spain",
+        "horizons development. "
+      ],
+      "energy_level": "7",
+      "non_negotiables": "Meeting with K. Jasko from 3 - 3:50",
+      "avoid_today": ""
+    }
   }
 }

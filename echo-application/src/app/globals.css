@@ -64,7 +64,7 @@
     color: var(--color-accent-foreground) !important;
   }
   
-  /* Category background colors for calendar blocks */
+  /* Category background colors for calendar blocks (legacy - kept for compatibility) */
   .bg-deep-work-active { background-color: #2F7439; }
   .bg-shallow-work-active { background-color: #B8C5A1; }
   .bg-meetings-active { background-color: #D65555; }
@@ -81,4 +81,40 @@
   .bg-writing-active { background-color: #2F7439; }
   .bg-social-active { background-color: #CBC4FF; }
   .bg-rest-active { background-color: #8590A0; }
+  
+  /* Category border colors for outline-based styling */
+  .border-deep-work-active { border-color: #2F7439; }
+  .border-shallow-work-active { border-color: #B8C5A1; }
+  .border-meetings-active { border-color: #D65555; }
+  .border-personal-active { border-color: #CBC4FF; }
+  .border-health-active { border-color: #EDCF5A; }
+  .border-meals-active { border-color: #F49F56; }
+  .border-transit-active { border-color: #8590A0; }
+  .border-planning-active { border-color: #7C7FF5; }
+  .border-research-active { border-color: #F060A9; }
+  .border-admin-active { border-color: #B8C5A1; }
+  .border-work-active { border-color: #B8C5A1; }
+  .border-exercise-active { border-color: #EDCF5A; }
+  .border-learning-active { border-color: #2F7439; }
+  .border-writing-active { border-color: #2F7439; }
+  .border-social-active { border-color: #CBC4FF; }
+  .border-rest-active { border-color: #8590A0; }
+  
+  /* Category text colors for accent elements */
+  .text-deep-work-active { color: #2F7439; }
+  .text-shallow-work-active { color: #B8C5A1; }
+  .text-meetings-active { color: #D65555; }
+  .text-personal-active { color: #CBC4FF; }
+  .text-health-active { color: #EDCF5A; }
+  .text-meals-active { color: #F49F56; }
+  .text-transit-active { color: #8590A0; }
+  .text-planning-active { color: #7C7FF5; }
+  .text-research-active { color: #F060A9; }
+  .text-admin-active { color: #B8C5A1; }
+  .text-work-active { color: #B8C5A1; }
+  .text-exercise-active { color: #EDCF5A; }
+  .text-learning-active { color: #2F7439; }
+  .text-writing-active { color: #2F7439; }
+  .text-social-active { color: #CBC4FF; }
+  .text-rest-active { color: #8590A0; }
 }

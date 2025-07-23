@@ -19,7 +19,7 @@ import asyncio
 # Echo imports
 from echo.config_loader import load_config
 from echo.email_processor import OutlookEmailProcessor
-from echo.prompt_engine import build_email_aware_planner_prompt, parse_planner_response, build_enricher_prompt, parse_enricher_response
+from echo.prompt_engine import build_email_aware_planner_prompt, parse_planner_response, build_enricher_prompt, parse_enricher_response, build_refinement_enhanced_planner_prompt, parse_refinement_feedback, detect_refinement_scope, build_context_briefing_prompt, parse_context_briefing_response
 from echo.journal import get_recent_reflection_context, analyze_energy_mood_trends
 from echo.models import Block, BlockType, Config
 from echo.analytics import calculate_daily_stats, get_recent_stats, categorize_block
@@ -76,7 +76,7 @@ class BlockResponse(BaseModel):
     id: str
     start_time: str
     end_time: str
-    emoji: str
+    icon: str
     project_name: str
     task_name: str
     note: str
@@ -143,6 +143,22 @@ class ReflectionRequest(BaseModel):
     tomorrow_non_negotiables: str
     tomorrow_avoid: str
 
+class PlanRefinementRequest(BaseModel):
+    """Model for plan refinement requests"""
+    refinement_feedback: str
+    previous_plan: List[Dict[str, Any]]
+    original_request: PlanningRequest
+    refinement_history: Optional[List[Dict[str, Any]]] = None
+
+class PlanRefinementResponse(BaseModel):
+    """Model for plan refinement responses"""
+    status: str
+    message: str
+    refined_blocks: List[Dict[str, Any]]
+    refinement_scope: str
+    changes_made: List[str]
+    plan_file: Optional[str] = None
+
 class KnownBlock(BaseModel):
     """Model for known block configuration"""
     id: str
@@ -153,6 +169,7 @@ class KnownBlock(BaseModel):
     category: str
     description: Optional[str] = None
     days: List[str]  # days of the week
+    preferred_time: Optional[str] = None  # For flex blocks
 
 class ConfigRequest(BaseModel):
     """Model for configuration wizard requests"""
@@ -276,7 +293,7 @@ async def get_today_schedule():
             task_name = label_parts[1] if len(label_parts) > 1 else block.label
             
             # Get enricher data if available
-            emoji = "🚀"  # Default
+            icon = "Rocket"  # Default
             note = ""     # Default
             
             # Check if plan data has enricher information
@@ -286,7 +303,7 @@ async def get_today_schedule():
                     for saved_block in plan_data.get("blocks", []):
                         if (saved_block.get("start") == block.start.strftime("%H:%M:%S") and 
                             saved_block.get("end") == block.end.strftime("%H:%M:%S")):
-                            emoji = saved_block.get("emoji", "🚀")
+                            icon = saved_block.get("icon", "Rocket")
                             note = saved_block.get("note", "")
                             break
             
@@ -294,7 +311,7 @@ async def get_today_schedule():
                 id=f"block_{block.start.isoformat()}",
                 start_time=block.start.isoformat(),
                 end_time=block.end.isoformat(),
-                emoji=emoji,
+                icon=icon,
                 project_name=project_name,
                 task_name=task_name,
                 note=note,
@@ -425,11 +442,13 @@ async def create_plan(request: PlanningRequest):
         if not config:
             raise HTTPException(status_code=500, detail="Configuration not loaded")
         
-        # Get email context
+        # Get email context and daily brief
         email_context = {}
+        email_brief = {}
         if email_processor:
             try:
                 email_context = email_processor.get_email_planning_context(days=7)
+                email_brief = email_processor.get_daily_email_brief(days=1)
             except Exception as e:
                 logger.warning(f"Failed to get email context: {e}")
         
@@ -437,7 +456,7 @@ async def create_plan(request: PlanningRequest):
         journal_context = get_recent_reflection_context(days=7)
         recent_trends = analyze_energy_mood_trends(days=7)
         
-        # Build planning prompt
+        # Build planning prompt with proactive email time blocks
         prompt = build_email_aware_planner_prompt(
             most_important=request.most_important,
             todos=request.todos,
@@ -448,7 +467,8 @@ async def create_plan(request: PlanningRequest):
             config=config,
             email_context=email_context,
             journal_context=journal_context[0] if journal_context else None,
-            recent_trends=recent_trends
+            recent_trends=recent_trends,
+            email_brief=email_brief
         )
         
         # Call LLM to generate plan using two-stage architecture
@@ -459,7 +479,7 @@ async def create_plan(request: PlanningRequest):
             planner_response = _call_llm(client, prompt)
             blocks = parse_planner_response(planner_response)
             
-            # Stage 2: Enricher adds emojis and notes
+            # Stage 2: Enricher adds icons and notes
             enricher_prompt = build_enricher_prompt(blocks)
             enricher_response = _call_llm(client, enricher_prompt)
             enriched_blocks = parse_enricher_response(enricher_response, blocks)
@@ -496,7 +516,7 @@ async def create_plan(request: PlanningRequest):
                     "end": block.end.strftime("%H:%M:%S"),
                     "label": block.label,
                     "type": block.type.value if hasattr(block.type, 'value') else str(block.type),
-                    "emoji": getattr(block, 'emoji', '🚀'),  # Use enricher emoji or default
+                    "icon": getattr(block, 'icon', 'Rocket'),  # Use enricher icon or default
                     "note": getattr(block, 'note', '')       # Use enricher note or empty
                 }
                 plan_data["blocks"].append(block_data)
@@ -620,17 +640,372 @@ async def get_email_summary():
             "summary": f"Email summary unavailable: {str(e)}"
         }
 
+@app.get("/conversation-intelligence")
+async def get_conversation_intelligence():
+    """Get thread-aware conversation intelligence for planning."""
+    try:
+        if not email_processor:
+            return {
+                "conversation_summary": "Email integration not configured",
+                "actionable_inputs": [],
+                "my_commitments": [],
+                "my_requests": [],
+                "conversation_intelligence": {
+                    "high_priority_threads": [],
+                    "stalled_conversations": [],
+                    "strategic_insights": ["Email processor not available"],
+                    "recommended_actions": ["Configure email integration"]
+                }
+            }
+        
+        # Get conversation intelligence with thread-aware processing
+        intelligence = email_processor.get_conversation_intelligence(days=7)
+        
+        return intelligence
+        
+    except Exception as e:
+        logger.error(f"Error getting conversation intelligence: {e}")
+        # Return graceful fallback
+        return {
+            "conversation_summary": f"Conversation intelligence unavailable: {str(e)}",
+            "actionable_inputs": [],
+            "my_commitments": [],
+            "my_requests": [],
+            "conversation_intelligence": {
+                "high_priority_threads": [],
+                "stalled_conversations": [],
+                "strategic_insights": ["Error in conversation processing"],
+                "recommended_actions": ["Check email processor configuration"]
+            }
+        }
+
+@app.get("/daily-email-brief")
+async def get_daily_email_brief_endpoint():
+    """Get comprehensive daily email brief with proactive time blocks."""
+    try:
+        if not email_processor:
+            return {
+                "date": datetime.now().strftime('%Y-%m-%d'),
+                "conversation_summary": "Email integration not configured",
+                "metrics": {"actionable_inputs": 0, "my_commitments": 0, "my_requests": 0},
+                "priority_actions": [],
+                "urgent_commitments": [],
+                "blocking_requests": [],
+                "strategic_insights": [],
+                "time_blocks_needed": [],
+                "follow_up_scheduling": []
+            }
+        
+        # Get the daily brief
+        brief = email_processor.get_daily_email_brief(days=1)
+        
+        return brief
+        
+    except Exception as e:
+        logger.error(f"Error getting daily email brief: {e}")
+        # Return graceful fallback
+        return {
+            "date": datetime.now().strftime('%Y-%m-%d'),
+            "conversation_summary": f"Brief unavailable: {str(e)}",
+            "metrics": {"actionable_inputs": 0, "my_commitments": 0, "my_requests": 0},
+            "priority_actions": [],
+            "urgent_commitments": [],
+            "blocking_requests": [],
+            "strategic_insights": [],
+            "time_blocks_needed": [],
+            "follow_up_scheduling": []
+        }
+
+@app.get("/context-briefing")
+async def get_context_briefing():
+    """Generate tomorrow's context briefing with comprehensive intelligence."""
+    try:
+        if not config:
+            raise HTTPException(status_code=500, detail="Configuration not loaded")
+        
+        # Get email context
+        email_context = ""
+        if email_processor:
+            try:
+                email_brief = email_processor.get_daily_email_brief(days=1)
+                email_context = email_brief.get('conversation_summary', '')
+                
+                # Add priority actions
+                priority_actions = email_brief.get('priority_actions', [])
+                if priority_actions:
+                    email_context += f"\n\nPriority Actions:\n"
+                    for action in priority_actions[:5]:  # Top 5
+                        email_context += f"- {action.get('action', 'Unknown action')}\n"
+                        
+            except Exception as e:
+                logger.warning(f"Failed to get email context for briefing: {e}")
+                email_context = "Email context unavailable."
+        
+        # Get fixed calendar events for tomorrow (placeholder - would integrate with actual calendar)
+        calendar_events = []
+        # TODO: Integrate with calendar API to get tomorrow's fixed events
+        
+        # Get session insights from recent work logs
+        session_insights = []
+        try:
+            from pathlib import Path
+            import glob
+            
+            # Look for recent session logs in logs directory
+            logs_dir = Path("logs")
+            if logs_dir.exists():
+                # Get the most recent log files
+                log_files = list(logs_dir.glob("*.md"))
+                log_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                
+                for log_file in log_files[:5]:  # Last 5 sessions
+                    try:
+                        with open(log_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            
+                        # Extract todos and insights from log content
+                        todos = []
+                        insights = []
+                        
+                        # Simple parsing of markdown logs
+                        lines = content.split('\n')
+                        for line in lines:
+                            line_lower = line.lower().strip()
+                            if any(keyword in line_lower for keyword in ['todo', 'need to', 'should', 'must']):
+                                todos.append(line.strip('- ').strip())
+                            elif any(keyword in line_lower for keyword in ['insight', 'learned', 'discovered', 'realized']):
+                                insights.append(line.strip('- ').strip())
+                        
+                        if todos or insights:
+                            session_insights.append({
+                                'date': log_file.stem,
+                                'project': 'Recent Work',  # Could be extracted from log content
+                                'todos': todos[:3],  # Limit to top 3
+                                'insights': insights[:2]  # Limit to top 2
+                            })
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to parse log file {log_file}: {e}")
+                        continue
+                        
+        except Exception as e:
+            logger.warning(f"Failed to get session insights: {e}")
+        
+        # Get reminders from the reminder system
+        reminders = []
+        try:
+            # For now, we'll create some sample reminders that should show up
+            # In the future, this would read from a database or config file
+            from datetime import datetime, timedelta
+            tomorrow = datetime.now() + timedelta(days=1)
+            
+            # Sample reminders for testing - in production this would come from the database
+            reminders = [
+                {
+                    'text': 'Pay Amex bill',
+                    'urgency': 'high',
+                    'due_date': tomorrow.strftime('%Y-%m-%d')
+                },
+                {
+                    'text': 'Submit quarterly report',
+                    'urgency': 'medium',
+                    'due_date': (tomorrow + timedelta(days=2)).strftime('%Y-%m-%d')
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"Failed to load reminders: {e}")
+            reminders = []
+        
+        # Build the context briefing prompt
+        prompt = build_context_briefing_prompt(
+            email_context=email_context,
+            calendar_events=calendar_events,
+            session_insights=session_insights,
+            reminders=reminders
+        )
+        
+        # Call LLM to generate briefing
+        client = _get_openai_client()
+        response = _call_llm(client, prompt)
+        
+        # Parse the response
+        briefing_data = parse_context_briefing_response(response)
+        
+        return {
+            "status": "success",
+            "briefing": briefing_data["briefing_text"],
+            "sections": briefing_data["sections"],
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating context briefing: {e}")
+        # Return graceful fallback
+        return {
+            "status": "error",
+            "briefing": f"**Context Briefing Unavailable**\n\nUnable to generate briefing: {str(e)}\n\nPlease proceed with manual planning.",
+            "sections": {
+                "email": "No email context available",
+                "calendar": "No calendar events loaded", 
+                "sessions": "No session insights available",
+                "reminders": "No reminders loaded"
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.post("/plan/refine", response_model=PlanRefinementResponse)
+async def refine_plan(request: PlanRefinementRequest):
+    """Refine an existing plan based on user feedback."""
+    try:
+        if not config:
+            raise HTTPException(status_code=500, detail="Configuration not loaded")
+        
+        # Parse the refinement feedback
+        feedback_items = parse_refinement_feedback(request.refinement_feedback)
+        
+        if not feedback_items:
+            raise HTTPException(status_code=400, detail="No valid refinement feedback provided")
+        
+        # Detect refinement scope for optimization
+        refinement_scope = detect_refinement_scope(feedback_items)
+        
+        logger.info(f"Processing {refinement_scope} refinement with {len(feedback_items)} feedback items")
+        
+        # Get email context and daily brief (same as original planning)
+        email_context = {}
+        email_brief = {}
+        if email_processor:
+            try:
+                email_context = email_processor.get_email_planning_context(days=7)
+                email_brief = email_processor.get_daily_email_brief(days=1)
+            except Exception as e:
+                logger.warning(f"Failed to get email context for refinement: {e}")
+        
+        # Get journal context
+        journal_context = get_recent_reflection_context(days=7)
+        recent_trends = analyze_energy_mood_trends(days=7)
+        
+        # Build the refinement-enhanced planning prompt
+        prompt = build_refinement_enhanced_planner_prompt(
+            most_important=request.original_request.most_important,
+            todos=request.original_request.todos,
+            energy_level=request.original_request.energy_level,
+            non_negotiables=request.original_request.non_negotiables,
+            avoid_today=request.original_request.avoid_today,
+            fixed_events=request.original_request.fixed_events,
+            config=config,
+            email_context=email_context,
+            journal_context=journal_context[0] if journal_context else None,
+            recent_trends=recent_trends,
+            email_brief=email_brief,
+            refinement_feedback=feedback_items,
+            previous_plan=request.previous_plan,
+            refinement_history=request.refinement_history
+        )
+        
+        # Call LLM to generate refined plan using two-stage architecture
+        try:
+            client = _get_openai_client()
+            
+            # Stage 1: Planner generates refined structure
+            planner_response = _call_llm(client, prompt)
+            refined_blocks = parse_planner_response(planner_response)
+            
+            # Stage 2: Enricher adds icons and notes (skip if minor refinement)
+            if refinement_scope in ['moderate', 'major']:
+                enricher_prompt = build_enricher_prompt(refined_blocks)
+                enricher_response = _call_llm(client, enricher_prompt)
+                refined_blocks = parse_enricher_response(enricher_response, refined_blocks)
+            else:
+                # For minor refinements, preserve existing enrichment
+                logger.info("Skipping enricher stage for minor refinement")
+            
+            # Save refined plan to file
+            today = date.today()
+            plan_file = Path(f"plans/{today.isoformat()}-refined-plan.json")
+            plan_file.parent.mkdir(exist_ok=True)
+            
+            plan_data = {
+                "date": today.isoformat(),
+                "created_at": datetime.now().isoformat(),
+                "refinement_applied": True,
+                "refinement_scope": refinement_scope,
+                "original_feedback": request.refinement_feedback,
+                "parsed_feedback": feedback_items,
+                "blocks": [],
+                "metadata": {
+                    "email_context": email_context,
+                    "journal_context": journal_context[0] if journal_context else None,
+                    "refinement_history": request.refinement_history,
+                    "original_request": {
+                        "most_important": request.original_request.most_important,
+                        "todos": request.original_request.todos,
+                        "energy_level": request.original_request.energy_level,
+                        "non_negotiables": request.original_request.non_negotiables,
+                        "avoid_today": request.original_request.avoid_today
+                    }
+                }
+            }
+            
+            # Convert refined blocks to JSON format
+            for block in refined_blocks:
+                block_data = {
+                    "start": block.start.strftime("%H:%M:%S"),
+                    "end": block.end.strftime("%H:%M:%S"),
+                    "label": block.label,
+                    "type": block.type.value if hasattr(block.type, 'value') else str(block.type),
+                    "icon": getattr(block, 'icon', 'Rocket'),
+                    "note": getattr(block, 'note', '')
+                }
+                plan_data["blocks"].append(block_data)
+            
+            # Save refined plan
+            with open(plan_file, 'w') as f:
+                json.dump(plan_data, f, indent=2)
+            
+            # Generate change summary
+            changes_made = [
+                f"Applied {refinement_scope} refinement",
+                f"Processed {len(feedback_items)} feedback items",
+                f"Generated {len(refined_blocks)} refined blocks"
+            ]
+            
+            # Add specific change descriptions based on feedback
+            for feedback in feedback_items[:3]:  # Top 3 feedback items
+                changes_made.append(f"Addressed: '{feedback[:50]}...' " if len(feedback) > 50 else f"Addressed: '{feedback}'")
+            
+            logger.info(f"Successfully refined plan with {refinement_scope} changes")
+            
+            return PlanRefinementResponse(
+                status="success",
+                message=f"Plan successfully refined with {refinement_scope} changes",
+                refined_blocks=plan_data["blocks"],
+                refinement_scope=refinement_scope,
+                changes_made=changes_made,
+                plan_file=str(plan_file)
+            )
+            
+        except Exception as llm_error:
+            logger.error(f"LLM refinement error: {llm_error}")
+            raise HTTPException(status_code=500, detail=f"Failed to refine plan: {str(llm_error)}")
+        
+    except Exception as e:
+        logger.error(f"Error refining plan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def generate_today_plan() -> List[Block]:
     """Generate a plan for today using the LLM."""
     try:
         if not config:
             raise ValueError("Configuration not loaded")
         
-        # Get email context
+        # Get email context and daily brief
         email_context = {}
+        email_brief = {}
         if email_processor:
             try:
                 email_context = email_processor.get_email_planning_context(days=7)
+                email_brief = email_processor.get_daily_email_brief(days=1)
             except Exception as e:
                 logger.warning(f"Failed to get email context for auto-plan: {e}")
         
@@ -638,7 +1013,7 @@ async def generate_today_plan() -> List[Block]:
         journal_context = get_recent_reflection_context(days=7)
         recent_trends = analyze_energy_mood_trends(days=7)
         
-        # Build prompt with default values
+        # Build prompt with default values and email brief
         prompt = build_email_aware_planner_prompt(
             most_important="Focus on high-priority tasks",
             todos=["Complete outstanding work"],
@@ -649,7 +1024,8 @@ async def generate_today_plan() -> List[Block]:
             config=config,
             email_context=email_context,
             journal_context=journal_context[0] if journal_context else None,
-            recent_trends=recent_trends
+            recent_trends=recent_trends,
+            email_brief=email_brief
         )
         
         # Call LLM
@@ -831,10 +1207,14 @@ async def load_existing_config():
                             start_time = start_time.strip()
                             end_time = end_time.strip()
                             
-                            # Calculate duration
-                            start_h, start_m = map(int, start_time.split(":"))
-                            end_h, end_m = map(int, end_time.split(":"))
-                            duration = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+                            # Calculate duration with error handling
+                            try:
+                                start_h, start_m = map(int, start_time.split(":"))
+                                end_h, end_m = map(int, end_time.split(":"))
+                                duration = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+                            except (ValueError, IndexError) as e:
+                                logger.warning(f"Invalid time format in config: start='{start_time}', end='{end_time}', time_range='{time_range}'. Skipping block.")
+                                continue
                             
                             # Create unique key for similar blocks
                             name = block.get("task", block.get("label", ""))
