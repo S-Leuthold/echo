@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { IconResolutionService } from "@/lib/icon-resolution";
 import { ChevronRight, ChevronLeft, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail, CheckCircle2, Info, Activity, Sun, Coffee, Car, Briefcase, NotebookText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,9 +19,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const API_CONFIG = {
   BASE_URL: 'http://localhost:8000',
   TIMEOUTS: {
-    CONTEXT_BRIEFING: 60000, // 60 seconds (Claude can take a while)
-    ANALYTICS: 5000,         // 5 seconds
-    PLAN_GENERATION: 15000   // 15 seconds
+    CONTEXT_BRIEFING: 120000, // 120 seconds (multiple AI calls)
+    ANALYTICS: 5000,          // 5 seconds
+    PLAN_GENERATION: 30000    // 30 seconds
   },
   POLL_INTERVALS: {
     BACKGROUND_FETCH: 500    // 500ms
@@ -36,6 +38,16 @@ const WIZARD_CONFIG = {
     { value: 'home', label: 'Home' },
     { value: 'cafe', label: 'Cafe' },
     { value: 'office', label: 'Office' }
+  ],
+  TASK_DURATIONS: [
+    { value: '15min', label: '15 min' },
+    { value: '30min', label: '30 min' },
+    { value: '45min', label: '45 min' },
+    { value: '1h', label: '1 hour' },
+    { value: '1h 15min', label: '1h 15min' },
+    { value: '1h 30min', label: '1h 30min' },
+    { value: '1h 45min', label: '1h 45min' },
+    { value: '2h', label: '2 hours' }
   ]
 } as const;
 
@@ -105,10 +117,21 @@ interface ContextBriefingData {
   selectedAppointments: string[];
 }
 
+interface TaskWithTime {
+  title: string;
+  estimatedTime: string; // e.g., "2h", "30min", "1h 30min"
+}
+
+interface AppointmentWithTime {
+  title: string;
+  startTime: string; // e.g., "09:00"
+  endTime: string;   // e.g., "10:30"
+}
+
 interface PlanningPromptsData {
   oneThing: string;
-  tasks: string[];
-  appointments: string[];
+  tasks: TaskWithTime[];
+  appointments: AppointmentWithTime[];
   energyLevel: number;
   workEnvironment: string;
 }
@@ -609,13 +632,13 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
         console.log('🧹 Cleared stale localStorage reminder data');
         
         console.log('🚀 Fetching context briefing from API...');
-        const response = await fetch('http://localhost:8000/context-briefing', {
+        const response = await fetchWithTimeout('http://localhost:8000/context-briefing', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({})
-        });
+        }, API_CONFIG.TIMEOUTS.CONTEXT_BRIEFING);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -711,54 +734,110 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
 
           {/* Email Summary */}
           <section>
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-6">
               <Mail className="w-5 h-5 text-accent" />
               <h3 className="text-xl font-medium text-foreground">Email Summary</h3>
             </div>
-            {briefing?.email_summary?.action_items && briefing.email_summary.action_items.length > 0 ? (
-              <div className="space-y-4">
-                {briefing.email_summary.action_items.map((task: any, index: number) => (
-                  <div key={index} className="flex items-start justify-between gap-6 py-4">
-                    <div className="flex-1">
-                      <div className="font-medium text-foreground mb-2">{task.content}</div>
-                      <div className="text-sm text-muted-foreground mb-3">
-                        Due: {task.due_date} • Timeline: {task.timeline} • From: {task.person}
+            
+            {/* Scrollable email container */}
+            <div className="max-h-[25vh] overflow-y-auto pr-2 space-y-4">
+              {/* Action Items */}
+              {briefing?.email_summary?.action_items && briefing.email_summary.action_items.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-accent mb-2 uppercase tracking-wide">Action Items</h4>
+                  <div className="space-y-2">
+                    {briefing.email_summary.action_items.map((task: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between gap-4 py-2 px-3 border-l-4 border-accent bg-accent/5 rounded-r-md hover:bg-accent/10 transition-colors cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground text-sm truncate">{task.content}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {task.person} • Due: {task.due_date} • {task.timeline}
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className={`text-xs font-medium shrink-0 h-7 px-2 border transition-all duration-200 ${selectedTasks.includes(task.content) 
+                            ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                            : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                          onClick={() => addTaskToPlan(task)}
+                        >
+                          {selectedTasks.includes(task.content) ? '✓' : '+'}
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {task.type}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {task.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className={`text-xs font-medium shrink-0 border transition-all duration-200 ${selectedTasks.includes(task.content) 
-                        ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
-                        : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
-                      onClick={() => addTaskToPlan(task)}
-                    >
-                      {selectedTasks.includes(task.content) ? '✓ Added' : '+ Add to Plan'}
-                    </Button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground italic">
-                No email action items requiring attention. Your inbox is clear.
-              </p>
-            )}
+                </div>
+              )}
+
+              {/* Response Needed */}
+              {briefing?.email_summary?.response_needed && briefing.email_summary.response_needed.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-accent mb-2 uppercase tracking-wide">Response Needed</h4>
+                  <div className="space-y-2">
+                    {briefing.email_summary.response_needed.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between gap-4 py-2 px-3 border-l-4 border-accent bg-accent/5 rounded-r-md hover:bg-accent/10 transition-colors cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground text-sm truncate">{item.content}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.person} • {item.days_old} days old • {item.urgency}
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className={`text-xs font-medium shrink-0 h-7 px-2 border transition-all duration-200 ${selectedTasks.includes(item.content) 
+                            ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                            : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                          onClick={() => addTaskToPlan(item)}
+                        >
+                          {selectedTasks.includes(item.content) ? '✓' : '+'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Information Updates */}
+              {briefing?.email_summary?.information && briefing.email_summary.information.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-accent mb-2 uppercase tracking-wide">Information Updates</h4>
+                  <div className="space-y-2">
+                    {briefing.email_summary.information.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center gap-4 py-2 px-3 border-l-4 border-accent bg-accent/5 rounded-r-md hover:bg-accent/10 transition-colors cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground text-sm truncate">{item.content}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.person} • {item.timestamp_context}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {(!briefing?.email_summary?.action_items?.length && 
+                !briefing?.email_summary?.response_needed?.length && 
+                !briefing?.email_summary?.information?.length) && (
+                <p className="text-muted-foreground italic">
+                  No email items requiring attention. Your inbox is clear.
+                </p>
+              )}
+            </div>
           </section>
 
           {/* Commitments & Deadlines */}
           <section>
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-6">
               <Calendar className="w-5 h-5 text-accent" />
               <h3 className="text-xl font-medium text-foreground">Commitments & Deadlines</h3>
             </div>
+            
+            {/* Scrollable commitments container */}
+            <div className="max-h-[25vh] overflow-y-auto pr-2 space-y-4">
             
             {/* Urgent Deadlines */}
             {briefing?.commitments_deadlines?.urgent_deadlines && briefing.commitments_deadlines.urgent_deadlines.length > 0 && (
@@ -847,22 +926,26 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
               </div>
             )}
 
-            {/* Empty state */}
-            {(!briefing?.commitments_deadlines?.reminders?.length && 
-              !briefing?.commitments_deadlines?.fixed_meetings?.length && 
-              !briefing?.commitments_deadlines?.urgent_deadlines?.length) && (
-              <p className="text-muted-foreground italic">
-                No urgent deadlines, reminders, or meetings scheduled. Perfect for deep work.
-              </p>
-            )}
+              {/* Empty state */}
+              {(!briefing?.commitments_deadlines?.reminders?.length && 
+                !briefing?.commitments_deadlines?.fixed_meetings?.length && 
+                !briefing?.commitments_deadlines?.urgent_deadlines?.length) && (
+                <p className="text-muted-foreground italic">
+                  No urgent deadlines, reminders, or meetings scheduled. Perfect for deep work.
+                </p>
+              )}
+            </div>
           </section>
 
           {/* Session Notes */}
           <section>
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-6">
               <NotebookText className="w-5 h-5 text-accent" />
               <h3 className="text-xl font-medium text-foreground">Session Notes</h3>
             </div>
+            
+            {/* Scrollable session notes container */}
+            <div className="max-h-[25vh] overflow-y-auto pr-2 space-y-4">
             {briefing?.session_notes?.pending_commitments && briefing.session_notes.pending_commitments.length > 0 ? (
               <div className="space-y-4">
                 {briefing.session_notes.pending_commitments.map((task: any, index: number) => (
@@ -899,6 +982,7 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
                 No pending commitments from recent sessions. You're all caught up.
               </p>
             )}
+            </div>
           </section>
 
         </div>
@@ -944,29 +1028,45 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
   const selectedAppointments = wizardData.contextBriefing?.selectedAppointments || [];
   
   const [oneThing, setOneThing] = useState("");
-  const [tasks, setTasks] = useState<string[]>(
-    selectedTasks.length > 0 ? [...selectedTasks, ""] : [""]
+  const [tasks, setTasks] = useState<TaskWithTime[]>(
+    selectedTasks.length > 0 
+      ? [...selectedTasks.map(task => ({ title: task, estimatedTime: "" })), { title: "", estimatedTime: "" }]
+      : [{ title: "", estimatedTime: "" }]
   );
   
   console.log('PlanningPromptsStep received selectedTasks:', selectedTasks);
-  const [appointments, setAppointments] = useState<string[]>(
-    selectedAppointments.length > 0 ? [...selectedAppointments, ""] : [""]
+  const [appointments, setAppointments] = useState<AppointmentWithTime[]>(
+    selectedAppointments.length > 0 
+      ? [...selectedAppointments.map(apt => {
+          // Parse existing natural language appointments like "9:00 AM - Meeting with team"
+          const timeMatch = apt.match(/^([0-9]{1,2}:[0-9]{2}\s*(?:AM|PM)?(?:\s*-\s*[0-9]{1,2}:[0-9]{2}\s*(?:AM|PM)?)?)/i);
+          if (timeMatch) {
+            const [startTime, endTime] = apt.split(' - ');
+            return {
+              title: apt.replace(timeMatch[0], '').replace(/^\s*-?\s*/, '').trim(),
+              startTime: startTime.trim(),
+              endTime: endTime ? endTime.split(' ')[0] + ' ' + endTime.split(' ')[1] : ""
+            };
+          }
+          return { title: apt, startTime: "", endTime: "" };
+        }), { title: "", startTime: "", endTime: "" }]
+      : [{ title: "", startTime: "", endTime: "" }]
   );
   const [energyLevel, setEnergyLevel] = useState(7);
   const [workEnvironment, setWorkEnvironment] = useState("home");
 
-  const addTask = (): void => setTasks([...tasks, ""]);
-  const updateTask = (index: number, value: string): void => {
+  const addTask = (): void => setTasks([...tasks, { title: "", estimatedTime: "" }]);
+  const updateTask = (index: number, field: 'title' | 'estimatedTime', value: string): void => {
     const newTasks = [...tasks];
-    newTasks[index] = value;
+    newTasks[index] = { ...newTasks[index], [field]: value };
     setTasks(newTasks);
   };
   const removeTask = (index: number): void => setTasks(tasks.filter((_, i) => i !== index));
 
-  const addAppointment = (): void => setAppointments([...appointments, ""]);
-  const updateAppointment = (index: number, value: string): void => {
+  const addAppointment = (): void => setAppointments([...appointments, { title: "", startTime: "", endTime: "" }]);
+  const updateAppointment = (index: number, field: 'title' | 'startTime' | 'endTime', value: string): void => {
     const newAppointments = [...appointments];
-    newAppointments[index] = value;
+    newAppointments[index] = { ...newAppointments[index], [field]: value };
     setAppointments(newAppointments);
   };
   const removeAppointment = (index: number): void => setAppointments(appointments.filter((_, i) => i !== index));
@@ -974,8 +1074,8 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
   const handleGenerate = (): void => {
     const planningData: PlanningPromptsData = {
       oneThing,
-      tasks: tasks.filter(t => t.trim()),
-      appointments: appointments.filter(a => a.trim()),
+      tasks: tasks.filter(t => t.title.trim()),
+      appointments: appointments.filter(a => a.title.trim()),
       energyLevel,
       workEnvironment
     };
@@ -1008,20 +1108,35 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
             />
           </div>
 
-          {/* Tasks */}
+          {/* Tasks with Time Estimates */}
           <div className="space-y-4">
             <label className="text-lg font-medium text-foreground">
               What other tasks are on your radar?
             </label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {tasks.map((task, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex gap-3">
                   <Input
-                    value={task}
-                    onChange={(e) => updateTask(index, e.target.value)}
+                    value={task.title}
+                    onChange={(e) => updateTask(index, 'title', e.target.value)}
                     placeholder={`Task ${index + 1}...`}
                     className="flex-1"
                   />
+                  <Select
+                    value={task.estimatedTime}
+                    onValueChange={(value) => updateTask(index, 'estimatedTime', value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WIZARD_CONFIG.TASK_DURATIONS.map((duration) => (
+                        <SelectItem key={duration.value} value={duration.value}>
+                          {duration.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {tasks.length > 1 && (
                     <Button 
                       onClick={() => removeTask(index)}
@@ -1037,29 +1152,48 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
               <Button onClick={addTask} variant="ghost" size="sm" className="text-accent">
                 + Add task
               </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Time estimates help the AI create a more realistic schedule (max 2h for deep work)
+              </p>
             </div>
           </div>
 
-          {/* Appointments */}
+          {/* Appointments with Structured Times */}
           <div className="space-y-4">
             <label className="text-lg font-medium text-foreground">
               Any fixed meetings or appointments?
             </label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {appointments.map((appointment, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex gap-3 items-center">
                   <Input
-                    value={appointment}
-                    onChange={(e) => updateAppointment(index, e.target.value)}
-                    placeholder="9:00 AM - Meeting with team..."
+                    value={appointment.title}
+                    onChange={(e) => updateAppointment(index, 'title', e.target.value)}
+                    placeholder="Meeting with team..."
                     className="flex-1"
+                  />
+                  <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    type="time"
+                    value={appointment.startTime}
+                    onChange={(e) => updateAppointment(index, 'startTime', e.target.value)}
+                    className="w-28"
+                    placeholder="09:00"
+                  />
+                  <span className="text-muted-foreground text-sm flex-shrink-0">to</span>
+                  <Input
+                    type="time"
+                    value={appointment.endTime}
+                    onChange={(e) => updateAppointment(index, 'endTime', e.target.value)}
+                    className="w-28"
+                    placeholder="10:30"
                   />
                   {appointments.length > 1 && (
                     <Button 
                       onClick={() => removeAppointment(index)}
                       variant="ghost" 
                       size="sm"
-                      className="px-3"
+                      className="px-3 flex-shrink-0"
                     >
                       ×
                     </Button>
@@ -1069,6 +1203,9 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
               <Button onClick={addAppointment} variant="ghost" size="sm" className="text-accent">
                 + Add appointment
               </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Structured times help the AI schedule around your fixed commitments
+              </p>
             </div>
           </div>
 
@@ -1411,16 +1548,46 @@ function PlanTimeline({ schedule }: { schedule: any[] }) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium">{block.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {block.startTime} - {block.endTime}
-                    </p>
-                    {block.rationale && (
-                      <p className="text-xs text-foreground">{block.rationale}</p>
-                    )}
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs font-medium">{block.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {block.startTime} - {block.endTime} ({block.duration})
+                      </p>
+                      {block.isConfigBlock && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400">📌 Config Block</p>
+                      )}
+                    </div>
+                    
+                    {/* Show Claude's reasoning for AI blocks or config description */}
                     {block.note && (
-                      <p className="text-xs italic text-muted-foreground">"{block.note}"</p>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          {block.isConfigBlock ? "Description:" : "AI Reasoning:"}
+                        </p>
+                        <p className="text-xs text-foreground leading-relaxed">
+                          {block.note}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Show rationale if available */}
+                    {block.rationale && block.rationale !== block.note && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Context:</p>
+                        <p className="text-xs text-muted-foreground italic">
+                          {block.rationale}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Fallback if no meaningful description */}
+                    {!block.note && !block.rationale && (
+                      <p className="text-xs text-muted-foreground italic">
+                        {block.isConfigBlock 
+                          ? "Part of your daily routine" 
+                          : "AI-generated time block"}
+                      </p>
                     )}
                   </div>
                 </TooltipContent>
@@ -1441,10 +1608,195 @@ interface GeneratedPlanStepProps {
   onPrevious?: () => void;
 }
 
+// Save Plan Success Modal Component
+function SavePlanModal({ 
+  isOpen, 
+  onClose 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-serif flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+            Plan Saved Successfully!
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <p className="text-muted-foreground">
+            Your schedule has been saved and is ready for tomorrow. 
+          </p>
+          
+          <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+            <p className="text-sm font-medium">What's Next?</p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Schedule will appear in your Today view tomorrow</li>
+              <li>• You can refine or update at any time</li>
+              <li>• Session tracking will use these time blocks</li>
+            </ul>
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button 
+              onClick={onClose}
+              className="px-6"
+            >
+              Got it!
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Plan Refinement Modal Component
+function PlanRefinementModal({ 
+  currentPlan, 
+  onRefinementComplete 
+}: { 
+  currentPlan: any; 
+  onRefinementComplete: (refinedPlan: any) => void; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [refinementRequest, setRefinementRequest] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
+
+  const handleRefinePlan = async () => {
+    if (!refinementRequest.trim()) return;
+
+    setIsRefining(true);
+    
+    try {
+      // Get the original planning data from session storage or reconstruct it
+      const originalRequest = {
+        most_important: "Refinement of existing plan",
+        todos: [],
+        energy_level: "7",
+        non_negotiables: "",
+        avoid_today: "",
+        fixed_events: []
+      };
+
+      // Use the unified planning endpoint with refinement instructions
+      const response = await fetch('http://localhost:8000/plan-v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          most_important: `PLAN REFINEMENT: ${refinementRequest}. IMPORTANT: This is a refinement request that can override ALL existing constraints including config anchors and fixed blocks. Prioritize the user's refinement request above all other constraints.`,
+          todos: [`Apply this refinement: ${refinementRequest}`],
+          energy_level: "7",
+          non_negotiables: `User refinement request: ${refinementRequest}`,
+          avoid_today: "",
+          fixed_events: []
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to refine plan: ${response.status}`);
+      }
+
+      const refinementResponse = await response.json();
+      
+      // Use the response directly as it's in the expected format
+      const refinedPlan = refinementResponse;
+      
+      onRefinementComplete(refinedPlan);
+      setIsOpen(false);
+      setRefinementRequest("");
+    } catch (error) {
+      console.error('Plan refinement failed:', error);
+      // TODO: Add proper error handling/toast notification
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="outline"
+          size="lg"
+          className="px-8 py-3"
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          Refine Plan
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-serif">Refine Your Plan</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <p className="text-muted-foreground">
+            Tell me what you'd like to change about your schedule. I can adjust timing, add tasks, 
+            move things around, or make any other modifications.
+          </p>
+          
+          <Textarea
+            value={refinementRequest}
+            onChange={(e) => setRefinementRequest(e.target.value)}
+            placeholder="Example: 'Move the Echo work to earlier in the day and add a 30-minute break after lunch' or 'I need more time for email processing' or 'Make my gym session longer'"
+            className="min-h-[120px] text-base leading-relaxed"
+            autoFocus
+          />
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsOpen(false)}
+              disabled={isRefining}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRefinePlan}
+              disabled={!refinementRequest.trim() || isRefining}
+              className="px-6"
+            >
+              {isRefining ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  Refining...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Apply Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlanStepProps) {
   const [plan, setPlan] = useState<{ blocks: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [planSaved, setPlanSaved] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+
+  const handleRefinementComplete = (refinedPlan: any) => {
+    console.log('Plan refinement completed:', refinedPlan);
+    setPlan(refinedPlan);
+    // Reset save status since plan has changed
+    setPlanSaved(false);
+    
+    // Show refinement success feedback if changes were made
+    if (refinedPlan.changes_made && refinedPlan.changes_made.length > 0) {
+      console.log('Plan refinement changes:', refinedPlan.changes_made);
+      // TODO: Show toast notification with changes made
+    }
+  };
 
   useEffect(() => {
     console.log('GeneratedPlanStep received planningData:', planningData);
@@ -1468,15 +1820,30 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
           ...fixedEvents.map(event => `${event.time}: ${event.task}`)
         ];
         
-        // Use existing plan generation API with full config data
-        const response = await fetch('http://localhost:8000/plan', {
+        // Convert structured data to backend format
+        const taskStrings = planningData.tasks.map(task => 
+          task.estimatedTime ? `${task.title} (${task.estimatedTime})` : task.title
+        );
+        
+        const appointmentStrings = planningData.appointments.map(appointment => {
+          if (appointment.startTime && appointment.endTime) {
+            return `${appointment.startTime} - ${appointment.endTime}: ${appointment.title}`;
+          } else if (appointment.startTime) {
+            return `${appointment.startTime}: ${appointment.title}`;
+          } else {
+            return appointment.title;
+          }
+        });
+        
+        // Use new Claude-based plan generation API 
+        const response = await fetch('http://localhost:8000/plan-v2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             most_important: planningData.oneThing,
-            todos: planningData.tasks,
+            todos: taskStrings,
             energy_level: planningData.energyLevel.toString(),
-            non_negotiables: planningData.appointments.join(', '),
+            non_negotiables: appointmentStrings.join(', '),
             avoid_today: "",
             fixed_events: scheduledItems
           })
@@ -1560,14 +1927,10 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
           )}
           
           <div className="flex gap-4 ml-auto">
-            <Button 
-              onClick={() => onRefine(plan)}
-              variant="outline"
-              size="lg"
-              className="px-8 py-3"
-            >
-              Offer Refinement
-            </Button>
+            <PlanRefinementModal 
+              currentPlan={plan}
+              onRefinementComplete={handleRefinementComplete}
+            />
             
             <Button 
               onClick={() => {
@@ -1586,15 +1949,30 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
                 
                 // TODO: Also save to server endpoint
                 setPlanSaved(true);
+                setShowSaveModal(true);
               }}
               size="lg"
               className="px-8 py-3"
+              disabled={planSaved}
             >
-              Save Plan
+              {planSaved ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Plan Saved
+                </>
+              ) : (
+                'Save Plan'
+              )}
             </Button>
           </div>
         </div>
       </div>
+      
+      {/* Save Plan Success Modal */}
+      <SavePlanModal 
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+      />
     </div>
   );
 }
