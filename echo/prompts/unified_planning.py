@@ -220,7 +220,8 @@ def build_unified_planning_prompt(
     reminders: List[Dict[str, Any]],
     config: Optional[Config] = None,
     wake_time: str = "06:00",
-    sleep_time: str = "22:00"
+    sleep_time: str = "22:00",
+    routine_overrides: str = ""
 ) -> str:
     """
     Build the unified planning prompt following Claude Opus best practices.
@@ -241,6 +242,7 @@ def build_unified_planning_prompt(
         config: User configuration (optional)
         wake_time: Day start time (default: 06:00)
         sleep_time: Day end time (default: 22:00)
+        routine_overrides: Natural language overrides for usual routine
         
     Returns:
         Complete unified planning prompt for Claude Opus
@@ -347,6 +349,18 @@ def build_unified_planning_prompt(
             if status == 'active':
                 project_section += f"\n- {project_name}: {project_data.get('description', 'No description')}"
 
+    # Handle routine overrides section
+    overrides_section = ""
+    if routine_overrides and routine_overrides.strip():
+        overrides_section = f"""
+
+## **🔥 ROUTINE OVERRIDES - HIGHEST PRIORITY** 
+**User's Specific Changes for Today**: {routine_overrides.strip()}
+
+**CRITICAL INSTRUCTION**: These user overrides take precedence over ALL config blocks, anchors, and usual routines. 
+If the user says "skip breakfast for brunch at 10:30", ignore the breakfast config block and create a brunch block instead.
+Be specific about timing and make the requested changes happen."""
+
     # Combine all context
     context_block = f"""
 # Planning Context
@@ -356,7 +370,7 @@ def build_unified_planning_prompt(
 **Energy Level**: {energy_level}
 **Specific Tasks**: {todos_section}
 **Non-Negotiables**: {non_negotiables}
-**Avoid Today**: {avoid_today}
+**Avoid Today**: {avoid_today}{overrides_section}
 
 ## Schedule Constraints  
 **Day Structure**: {wake_time} - {sleep_time}
@@ -374,6 +388,8 @@ def build_unified_planning_prompt(
 # Your Task
 
 Using the Chain-of-Thought reasoning process, analyze this context comprehensively and generate an optimized daily schedule that maximizes the user's effectiveness while respecting their energy patterns and constraints.
+
+{f"**REMEMBER**: Honor the routine overrides above - they override all other constraints including config blocks." if routine_overrides and routine_overrides.strip() else ""}
 
 Think step by step through your analysis, then provide the structured planning response."""
 

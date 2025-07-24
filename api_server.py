@@ -34,7 +34,7 @@ from echo.config_loader import load_config
 from echo.email_processor import OutlookEmailProcessor
 from echo.journal import get_recent_reflection_context, analyze_energy_mood_trends
 from echo.models import Block, BlockType, Config
-from echo.prompts.unified_planning import call_unified_planning
+from echo.prompts.unified_planning import UnifiedPlanResponse, build_unified_planning_prompt
 from echo.session import SessionState
 
 # Intelligence systems - new four-panel architecture
@@ -220,6 +220,7 @@ class PlanningRequest(BaseModel):
     non_negotiables: str
     avoid_today: str
     fixed_events: List[str]
+    routine_overrides: Optional[str] = ""
 
 class ReflectionRequest(BaseModel):
     day_rating: int
@@ -491,6 +492,7 @@ For each block, provide ONLY the rationale text (no block names or numbers). For
 Focus on timing logic, energy matching, and task progression. Keep each rationale to 1-2 sentences maximum.
 """
 
+        from echo.cli import _call_llm
         response = _call_llm(client, rationale_prompt)
         
         # Parse rationale responses
@@ -960,6 +962,185 @@ async def get_sessions():
         logger.error(f"Error getting sessions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/plan-v2")
+async def create_plan_v2(request: PlanningRequest):
+    """Clean Claude-based plan generation with structured output."""
+    try:
+        if not config:
+            raise HTTPException(status_code=500, detail="Configuration not loaded")
+        
+        # Initialize Claude client
+        client = _get_claude_client()
+        from echo.cli import _call_llm
+        
+        # Get real context data like the working context briefing system
+        from echo.prompts.unified_planning import UnifiedPlanResponse, build_unified_planning_prompt, UNIFIED_PLANNING_INSTRUCTIONS
+        
+        # Get email context with error handling
+        email_context = {}
+        if email_processor:
+            try:
+                email_context = email_processor.get_email_planning_context(days=1)
+                logger.info(f"Email context type: {type(email_context)}")
+                if isinstance(email_context, str):
+                    logger.warning("Email context is string, converting to dict")
+                    email_context = {"error": email_context}
+            except Exception as e:
+                logger.warning(f"Failed to get email context: {e}")
+                email_context = {}
+        
+        # Debug and get config fixed events
+        config_fixed_events = []
+        wake_time = "06:00"  # Default
+        sleep_time = "22:00"  # Default
+        
+        if config:
+            # Get actual wake/sleep times from config
+            if hasattr(config, 'defaults'):
+                wake_time = getattr(config.defaults, 'wake_time', '06:00')
+                sleep_time = getattr(config.defaults, 'sleep_time', '22:00')
+                logger.info(f"Using config times: wake={wake_time}, sleep={sleep_time}")
+            
+            # Debug weekly schedule structure
+            if hasattr(config, 'weekly_schedule'):
+                today_name = datetime.now().strftime('%A').lower()
+                logger.info(f"Looking for schedule for {today_name}")
+                logger.info(f"Available days in weekly_schedule: {list(config.weekly_schedule.keys()) if config.weekly_schedule else 'None'}")
+                
+                today_schedule = config.weekly_schedule.get(today_name, {})
+                logger.info(f"Today's schedule keys: {list(today_schedule.keys()) if today_schedule else 'Empty'}")
+                
+                for block_type in ['anchors', 'fixed']:
+                    blocks = today_schedule.get(block_type, [])
+                    logger.info(f"Found {len(blocks)} {block_type} blocks")
+                    
+                    for block in blocks:
+                        logger.info(f"Processing block: {block}")
+                        # Handle both dict and object formats
+                        if hasattr(block, '__dict__'):
+                            task_name = getattr(block, 'task', 'Unknown Task')
+                            time_str = getattr(block, 'time', '')
+                            category = getattr(block, 'category', 'general')
+                        else:
+                            task_name = block.get('task', 'Unknown Task')
+                            time_str = block.get('time', '')
+                            category = block.get('category', 'general')
+                        
+                        # Create dict format expected by build_unified_planning_prompt  
+                        # Handle en-dash (–) in time range
+                        if '–' in time_str:  # en-dash
+                            start_time, end_time = time_str.split('–')
+                        elif '-' in time_str:  # regular dash
+                            start_time, end_time = time_str.split('-')
+                        else:
+                            start_time = time_str
+                            end_time = ''
+                        
+                        event_dict = {
+                            "start": start_time.strip(),
+                            "end": end_time.strip() if end_time else '',
+                            "title": task_name,
+                            "category": category,
+                            "type": block_type
+                        }
+                        config_fixed_events.append(event_dict)
+                        logger.info(f"Created event dict: {event_dict}")
+                        # Removed duplicate logging
+            else:
+                logger.warning("No weekly_schedule found in config")
+        else:
+            logger.warning("No config available")
+        
+        logger.info(f"Total config fixed events: {len(config_fixed_events)}")
+        
+        # Debug email context structure
+        logger.info(f"Email context keys: {list(email_context.keys()) if email_context else 'Empty'}")
+        if email_context.get('action_items'):
+            logger.info(f"First action item type: {type(email_context['action_items'][0])}")
+            logger.info(f"First action item: {email_context['action_items'][0]}")
+        
+        # Process Session Intelligence for planning context
+        session_context = []
+        try:
+            from echo.session_intelligence import SessionNotesAnalyzer
+            client = _get_claude_client()
+            session_intelligence = SessionNotesAnalyzer(client)
+            session_files = _get_recent_session_files(days=3)
+            session_data = session_intelligence.extract_next_items(session_files)
+            # Convert session data to list format expected by planning prompt
+            if isinstance(session_data, dict) and 'pending_items' in session_data:
+                session_context = session_data['pending_items']
+            logger.info(f"Loaded {len(session_context)} session insights for planning")
+        except Exception as e:
+            logger.warning(f"Failed to process session intelligence for planning: {e}")
+            session_context = []
+
+        # Build comprehensive prompt using existing system with actual wake/sleep times
+        logger.info(f"Calling build_unified_planning_prompt with {len(config_fixed_events)} calendar events")
+        try:
+            structured_prompt = build_unified_planning_prompt(
+                most_important=request.most_important,
+                todos=request.todos,
+                energy_level=request.energy_level, 
+                non_negotiables=request.non_negotiables,
+                avoid_today=request.avoid_today,
+                email_context=email_context,
+                calendar_events=config_fixed_events,
+                session_insights=session_context,
+                reminders=[],
+                config=config,
+                wake_time=wake_time,
+                sleep_time=sleep_time,
+                routine_overrides=request.routine_overrides
+            )
+            logger.info("build_unified_planning_prompt completed successfully")
+        except Exception as e:
+            logger.error(f"Error in build_unified_planning_prompt: {e}")
+            raise
+        
+        # Combine instructions with context
+        full_prompt = UNIFIED_PLANNING_INSTRUCTIONS + "\n\n" + structured_prompt
+        
+        # Call Claude Opus with structured output and full context (use Opus for strategic planning intelligence)
+        response = _call_llm(client, full_prompt, response_format=UnifiedPlanResponse, model="opus")
+        
+        # Convert to the format the frontend expects
+        blocks = []
+        if hasattr(response, 'schedule'):
+            for time_block in response.schedule:
+                # Ensure proper capitalization in project labels
+                label = time_block.title
+                if '|' in label:
+                    project, task = label.split('|', 1)
+                    project = project.strip().title()  # Capitalize project name
+                    task = task.strip()
+                    label = f"{project} | {task}"
+                
+                block_dict = {
+                    "start": time_block.start,
+                    "end": time_block.end,
+                    "label": label,
+                    "type": time_block.type,
+                    "meta": {
+                        "rationale": time_block.note,
+                        "icon": time_block.icon,
+                        "priority": time_block.priority,
+                        "energy_requirement": time_block.energy_requirement
+                    }
+                }
+                blocks.append(block_dict)
+        
+        return {
+            "status": "success",
+            "message": "Plan generated successfully with Claude v2",
+            "blocks": blocks,
+            "plan_file": f"plans/{date.today().isoformat()}-claude-v2-plan.json"
+        }
+        
+    except Exception as e:
+        logger.error(f"Plan generation v2 failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(e)}")
+
 @app.post("/plan")
 async def create_plan(request: PlanningRequest):
     """Create a new plan for today."""
@@ -1043,8 +1224,8 @@ async def create_plan(request: PlanningRequest):
         
         # Call new unified planning system
         try:
-            # TODO: Replace OpenAI with Claude Opus for plan generation
-            client = _get_openai_client()
+            # Using Claude for structured plan generation  
+            client = _get_claude_client()
             
             # Use the new unified planning system - single API call
             blocks, reasoning = call_unified_planning(
@@ -1508,12 +1689,29 @@ async def refine_plan(request: PlanRefinementRequest):
         
         # Call LLM to generate refined plan using two-stage architecture
         try:
-            # TODO: Replace OpenAI with Claude Opus for plan generation
-            client = _get_openai_client()
+            # Using Claude for structured plan generation  
+            client = _get_claude_client()
             
             # Single-stage: Planner generates refined structure (skip enricher)
-            planner_response = _call_llm(client, prompt)
-            refined_blocks = parse_planner_response(planner_response)
+            # Use structured output for refinement too
+            planner_response = _call_llm(client, prompt, response_format=UnifiedPlanResponse)
+            
+            # Convert structured response to blocks
+            refined_blocks = []
+            for time_block in planner_response.schedule:
+                block = Block(
+                    start=time.fromisoformat(time_block.start),
+                    end=time.fromisoformat(time_block.end),
+                    label=time_block.title,
+                    type=BlockType(time_block.type),
+                    meta={
+                        'rationale': time_block.note,
+                        'icon': time_block.icon,
+                        'priority': time_block.priority,
+                        'energy_requirement': time_block.energy_requirement
+                    }
+                )
+                refined_blocks.append(block)
             
             # Skip enricher stage to reduce API calls
             logger.info("Skipping enricher stage to reduce OpenAI API usage")
@@ -1641,13 +1839,48 @@ async def generate_today_plan() -> List[Block]:
             email_brief=email_brief
         )
         
-        # Call LLM
-        # TODO: Replace OpenAI with Claude Opus for plan generation
-        client = _get_openai_client()
-        response = _call_llm(client, prompt)
+        # Build structured planning prompt
+        from echo.cli import _call_llm
         
-        # Parse and return blocks
-        blocks = parse_planner_response(response)
+        # Using Claude for structured plan generation
+        client = _get_claude_client()
+        
+        # Create structured prompt following best practices
+        structured_prompt = build_unified_planning_prompt(
+            most_important=request.most_important,
+            todos=request.todos,  
+            energy_level=request.energy_level,
+            non_negotiables=request.non_negotiables,
+            avoid_today=request.avoid_today,
+            email_context=email_context,
+            calendar_events=config_fixed_events,
+            session_insights=journal_context or [],
+            reminders=[],
+            config=config
+        )
+        
+        # Call Claude with structured output
+        from echo.prompts.unified_planning import UNIFIED_PLANNING_INSTRUCTIONS
+        full_prompt = UNIFIED_PLANNING_INSTRUCTIONS + "\n\n" + structured_prompt
+        
+        response = _call_llm(client, full_prompt, response_format=UnifiedPlanResponse)
+        
+        # Convert structured response to blocks
+        blocks = []
+        for time_block in response.schedule:
+            block = Block(
+                start=time.fromisoformat(time_block.start),
+                end=time.fromisoformat(time_block.end),
+                label=time_block.title,
+                type=BlockType(time_block.type),
+                meta={
+                    'rationale': time_block.note,
+                    'icon': time_block.icon,
+                    'priority': time_block.priority,
+                    'energy_requirement': time_block.energy_requirement
+                }
+            )
+            blocks.append(block)
         return blocks
         
     except Exception as e:

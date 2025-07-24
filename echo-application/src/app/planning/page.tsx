@@ -134,6 +134,7 @@ interface PlanningPromptsData {
   appointments: AppointmentWithTime[];
   energyLevel: number;
   workEnvironment: string;
+  routineOverrides: string;
 }
 
 interface WizardState {
@@ -1054,6 +1055,7 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
   );
   const [energyLevel, setEnergyLevel] = useState(7);
   const [workEnvironment, setWorkEnvironment] = useState("home");
+  const [routineOverrides, setRoutineOverrides] = useState("");
 
   const addTask = (): void => setTasks([...tasks, { title: "", estimatedTime: "" }]);
   const updateTask = (index: number, field: 'title' | 'estimatedTime', value: string): void => {
@@ -1077,7 +1079,8 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
       tasks: tasks.filter(t => t.title.trim()),
       appointments: appointments.filter(a => a.title.trim()),
       energyLevel,
-      workEnvironment
+      workEnvironment,
+      routineOverrides
     };
     onNext(planningData);
   };
@@ -1248,6 +1251,22 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Routine Overrides */}
+          <div className="space-y-4">
+            <label className="text-lg font-medium text-foreground">
+              Any changes to your usual routine today?
+            </label>
+            <Textarea
+              value={routineOverrides}
+              onChange={(e) => setRoutineOverrides(e.target.value)}
+              placeholder="e.g., 'Skip breakfast for late brunch at 10:30' or 'Move gym session to evening' or 'Need extra prep time for big presentation'"
+              className="min-h-[80px] text-base leading-relaxed border-border/50 focus:border-accent"
+            />
+            <p className="text-xs text-muted-foreground">
+              This will override your config blocks and usual schedule - be specific about timing and changes
+            </p>
           </div>
         </div>
 
@@ -1845,7 +1864,8 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
             energy_level: planningData.energyLevel.toString(),
             non_negotiables: appointmentStrings.join(', '),
             avoid_today: "",
-            fixed_events: scheduledItems
+            fixed_events: scheduledItems,
+            routine_overrides: planningData.routineOverrides || ""
           })
         });
         
