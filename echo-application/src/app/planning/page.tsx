@@ -7,7 +7,37 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { IconResolutionService } from "@/lib/icon-resolution";
-import { ChevronRight, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail } from "lucide-react";
+import { ChevronRight, ChevronLeft, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail, CheckCircle2, Info, Activity, Sun, Coffee, Car, Briefcase, NotebookText } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// ==============================================================================
+// CONSTANTS & CONFIGURATION
+// ==============================================================================
+
+const API_CONFIG = {
+  BASE_URL: 'http://localhost:8000',
+  TIMEOUTS: {
+    CONTEXT_BRIEFING: 60000, // 60 seconds (Claude can take a while)
+    ANALYTICS: 5000,         // 5 seconds
+    PLAN_GENERATION: 15000   // 15 seconds
+  },
+  POLL_INTERVALS: {
+    BACKGROUND_FETCH: 500    // 500ms
+  }
+} as const;
+
+const WIZARD_CONFIG = {
+  ENERGY_LEVELS: [
+    { value: 3, label: 'Low' },
+    { value: 5, label: 'Medium' },
+    { value: 7, label: 'High' }
+  ],
+  WORK_ENVIRONMENTS: [
+    { value: 'home', label: 'Home' },
+    { value: 'cafe', label: 'Cafe' },
+    { value: 'office', label: 'Office' }
+  ]
+} as const;
 
 // ==============================================================================
 // WIZARD TYPES & INTERFACES
@@ -15,33 +45,169 @@ import { ChevronRight, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail }
 
 type WizardStep = 'welcome' | 'day-review' | 'journal' | 'habits' | 'context-briefing' | 'planning-prompts' | 'generated-plan';
 
+interface AnalyticsData {
+  categories: Record<string, number>;
+  total_time: number;
+  focus_time: number;
+  productivity_score: number;
+}
+
+interface JournalData {
+  brainDump: string;
+  improvements: string;
+  gratitude: string;
+}
+
+interface ContextBriefingData {
+  briefing: {
+    executive_summary?: string;
+    email_summary?: {
+      action_items: Array<{
+        content: string;
+        person: string;
+        due_date: string;
+        timeline: string;
+        type: string;
+        priority: string;
+      }>;
+    };
+    commitments_deadlines?: {
+      urgent_deadlines: Array<{
+        title: string;
+        description: string;
+        days_until: number;
+        urgency: string;
+        project: string;
+      }>;
+      reminders: Array<{
+        title: string;
+        description: string;
+        date: string;
+        urgency: string;
+      }>;
+      fixed_meetings: Array<{
+        title: string;
+        time: string;
+        location: string;
+      }>;
+    };
+    session_notes?: {
+      pending_commitments: Array<{
+        commitment: string;
+        context: string;
+        days_pending: number;
+        priority: string;
+        category: string;
+      }>;
+    };
+  };
+  selectedTasks: string[];
+  selectedAppointments: string[];
+}
+
+interface PlanningPromptsData {
+  oneThing: string;
+  tasks: string[];
+  appointments: string[];
+  energyLevel: number;
+  workEnvironment: string;
+}
+
 interface WizardState {
   currentStep: WizardStep;
   data: {
-    dayReview?: any;
-    journal?: {
-      brainDump: string;
-      improvements: string;
-      gratitude: string;
-    };
-    habits?: any;
-    contextBriefing?: any;
-    planningPrompts?: {
-      oneThing: string;
-      tasks: string[];
-      appointments: string[];
-      energyLevel: number;
-      workEnvironment: string;
-    };
-    generatedPlan?: any;
+    dayReview?: { analytics: AnalyticsData };
+    journal?: JournalData;
+    habits?: Record<string, unknown>;
+    contextBriefing?: ContextBriefingData;
+    planningPrompts?: PlanningPromptsData;
+    generatedPlan?: Record<string, unknown>;
   };
 }
+
+interface WizardStepProps {
+  onNext: (data?: any) => void;
+  onPrevious?: () => void;
+}
+
+// ==============================================================================
+// UTILITY FUNCTIONS
+// ==============================================================================
+
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout: number = 5000): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
+const getStoredReminders = (): unknown[] => {
+  try {
+    const savedReminders = localStorage.getItem('echo_reminders');
+    return savedReminders ? JSON.parse(savedReminders) : [];
+  } catch (error) {
+    console.error('Failed to parse stored reminders:', error);
+    return [];
+  }
+};
+
+const setSessionData = (key: string, data: unknown): void => {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Failed to store session data for ${key}:`, error);
+  }
+};
+
+const getSessionData = <T>(key: string): T | null => {
+  try {
+    const data = sessionStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error(`Failed to parse session data for ${key}:`, error);
+    return null;
+  }
+};
 
 // ==============================================================================
 // STEP 0: WELCOME & TRANSITION
 // ==============================================================================
 
-function WelcomeStep({ onNext }: { onNext: () => void }) {
+function WelcomeStep({ onNext }: Pick<WizardStepProps, 'onNext'>) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleStart = async (): Promise<void> => {
+    setIsLoading(true);
+    
+    try {
+      // Just start analytics in background (low cost, safe to preload)
+      fetchWithTimeout(
+        `${API_CONFIG.BASE_URL}/analytics`,
+        {},
+        API_CONFIG.TIMEOUTS.ANALYTICS
+      )
+        .then(response => response.json())
+        .then(data => setSessionData('echo_analytics', data))
+        .catch(error => console.error('Failed to fetch analytics:', error));
+        
+    } catch (error) {
+      console.error('Failed to start background tasks:', error);
+    } finally {
+      // Always proceed to next step, even if background tasks fail
+      onNext();
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20 p-8">
       <div className="max-w-2xl text-center space-y-8">
@@ -65,12 +231,22 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         {/* Call to action */}
         <div className="pt-4">
           <Button 
-            onClick={onNext}
+            onClick={handleStart}
+            disabled={isLoading}
             size="lg"
             className="px-8 py-3 text-lg font-medium bg-accent hover:bg-accent/90 text-accent-foreground"
           >
-            Let's do this
-            <ChevronRight className="w-5 h-5 ml-2" />
+            {isLoading ? (
+              <>
+                <Clock className="w-5 h-5 mr-2 animate-spin" />
+                Starting...
+              </>
+            ) : (
+              <>
+                Let's do this
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -82,27 +258,61 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 // STEP 1: DAY REVIEW
 // ==============================================================================
 
-function DayReviewStep({ onNext }: { onNext: (data: any) => void }) {
-  const [analytics, setAnalytics] = useState<any>(null);
+function DayReviewStep({ onNext, onPrevious }: WizardStepProps) {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/analytics');
-        const data = await response.json();
-        setAnalytics(data);
-      } catch (error) {
-        console.error('Failed to fetch analytics:', error);
-      } finally {
-        setLoading(false);
+    // Check if analytics data is already available from sessionStorage
+    const storedAnalytics = getSessionData<AnalyticsData>('echo_analytics');
+    if (storedAnalytics) {
+      setAnalytics(storedAnalytics);
+      setLoading(false);
+      return;
+    }
+
+    // If no stored data, wait briefly then fetch directly
+    const checkForAnalytics = setInterval(() => {
+      const analyticsData = sessionStorage.getItem('echo_analytics');
+      if (analyticsData) {
+        try {
+          const data = JSON.parse(analyticsData);
+          setAnalytics(data);
+          setLoading(false);
+          clearInterval(checkForAnalytics);
+        } catch (error) {
+          console.error('Failed to parse analytics data:', error);
+        }
       }
+    }, 500);
+
+    // Fallback: if no data after 5 seconds, fetch directly
+    const fallbackTimeout = setTimeout(() => {
+      if (loading) {
+        const fetchAnalytics = async () => {
+          try {
+            const response = await fetch('http://localhost:8000/analytics');
+            const data = await response.json();
+            setAnalytics(data);
+            sessionStorage.setItem('echo_analytics', JSON.stringify(data));
+          } catch (error) {
+            console.error('Failed to fetch analytics:', error);
+          } finally {
+            setLoading(false);
+            clearInterval(checkForAnalytics);
+          }
+        };
+        fetchAnalytics();
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(checkForAnalytics);
+      clearTimeout(fallbackTimeout);
     };
+  }, [loading]);
 
-    fetchAnalytics();
-  }, []);
-
-  const handleContinue = () => {
+  const handleContinue = (): void => {
     onNext({ analytics });
   };
 
@@ -183,13 +393,24 @@ function DayReviewStep({ onNext }: { onNext: (data: any) => void }) {
           </CardContent>
         </Card>
 
-        {/* Continue Button */}
-        <div className="text-center pt-4">
+        {/* Navigation Buttons */}
+        <div className="flex justify-between items-center pt-4">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
           <Button 
             onClick={handleContinue}
             size="lg"
             variant="default"
-            className="px-8 py-3"
+            className="px-8 py-3 ml-auto"
           >
             Continue to Reflection
             <ChevronRight className="w-5 h-5 ml-2" />
@@ -204,7 +425,7 @@ function DayReviewStep({ onNext }: { onNext: (data: any) => void }) {
 // STEP 2: JOURNAL REFLECTION
 // ==============================================================================
 
-function JournalStep({ onNext }: { onNext: (data: any) => void }) {
+function JournalStep({ onNext, onPrevious }: WizardStepProps) {
   const [brainDump, setBrainDump] = useState("");
   const [improvements, setImprovements] = useState("");
   const [gratitude, setGratitude] = useState("");
@@ -238,9 +459,10 @@ function JournalStep({ onNext }: { onNext: (data: any) => void }) {
   const canAdvance = currentPromptData.value.trim().length > 0;
   const isLastPrompt = currentPrompt === prompts.length - 1;
 
-  const handleNext = () => {
+  const handleNext = (): void => {
     if (isLastPrompt) {
-      onNext({ brainDump, improvements, gratitude });
+      const journalData: JournalData = { brainDump, improvements, gratitude };
+      onNext(journalData);
     } else {
       setCurrentPrompt(currentPrompt + 1);
     }
@@ -287,12 +509,23 @@ function JournalStep({ onNext }: { onNext: (data: any) => void }) {
         </div>
 
         {/* Navigation */}
-        <div className="flex justify-center">
+        <div className="flex justify-between items-center">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
           <Button 
             onClick={handleNext}
             disabled={!canAdvance}
             size="lg"
-            className="px-8 py-3"
+            className="px-8 py-3 ml-auto"
           >
             {isLastPrompt ? 'Continue to Habits' : 'Next'}
             <ChevronRight className="w-5 h-5 ml-2" />
@@ -307,8 +540,8 @@ function JournalStep({ onNext }: { onNext: (data: any) => void }) {
 // STEP 3: HABIT TRACKER (Placeholder)
 // ==============================================================================
 
-function HabitsStep({ onNext }: { onNext: (data: any) => void }) {
-  const handleContinue = () => {
+function HabitsStep({ onNext, onPrevious }: WizardStepProps) {
+  const handleContinue = (): void => {
     onNext({ habits: "placeholder" });
   };
 
@@ -330,14 +563,27 @@ function HabitsStep({ onNext }: { onNext: (data: any) => void }) {
           </div>
         </div>
 
-        <Button 
-          onClick={handleContinue}
-          size="lg"
-          className="px-8 py-3"
-        >
-          Continue to Context Briefing
-          <ChevronRight className="w-5 h-5 ml-2" />
-        </Button>
+        <div className="flex justify-between items-center">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
+          <Button 
+            onClick={handleContinue}
+            size="lg"
+            className="px-8 py-3 ml-auto"
+          >
+            Continue to Context Briefing
+            <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -347,28 +593,73 @@ function HabitsStep({ onNext }: { onNext: (data: any) => void }) {
 // STEP 4: CONTEXT BRIEFING
 // ==============================================================================
 
-function ContextBriefingStep({ onNext }: { onNext: (data: any) => void }) {
-  const [briefing, setBriefing] = useState<any>(null);
+function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
+  const [briefing, setBriefing] = useState<ContextBriefingData['briefing'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [selectedAppointments, setSelectedAppointments] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchBriefing = async () => {
       try {
-        const response = await fetch('http://localhost:8000/context-briefing');
+        setLoading(true);
+        
+        // Clear legacy localStorage reminder data that overrides backend config
+        localStorage.removeItem('echo_reminders');
+        console.log('🧹 Cleared stale localStorage reminder data');
+        
+        console.log('🚀 Fetching context briefing from API...');
+        const response = await fetch('http://localhost:8000/context-briefing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({})
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('📊 API Response received:', data);
+        console.log('🔍 Executive Summary:', data.executive_summary);
+        console.log('⚠️ Reminders count:', data.commitments_deadlines?.reminders?.length || 0);
         setBriefing(data);
+        
       } catch (error) {
         console.error('Failed to fetch context briefing:', error);
+        setBriefing(null);
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchBriefing();
   }, []);
 
-  const handleContinue = () => {
-    onNext({ briefing });
+  const addTaskToPlan = (task: { title?: string; content?: string; commitment?: string }): void => {
+    const taskTitle = task.title || task.content || task.commitment || 'Unknown Task';
+    console.log('Adding task to plan:', taskTitle, 'Current selected:', selectedTasks);
+    if (!selectedTasks.includes(taskTitle)) {
+      setSelectedTasks([...selectedTasks, taskTitle]);
+    }
+  };
+
+  const addAppointmentToPlan = (appointment: { time: string; title: string }): void => {
+    const appointmentTitle = `${appointment.time}: ${appointment.title}`;
+    if (!selectedAppointments.includes(appointmentTitle)) {
+      setSelectedAppointments([...selectedAppointments, appointmentTitle]);
+    }
+  };
+
+  const handleContinue = (): void => {
+    const contextData: ContextBriefingData = {
+      briefing: briefing || {},
+      selectedTasks,
+      selectedAppointments
+    };
+    onNext(contextData);
   };
 
   if (loading) {
@@ -377,6 +668,7 @@ function ContextBriefingStep({ onNext }: { onNext: (data: any) => void }) {
         <div className="text-center space-y-4">
           <Brain className="w-8 h-8 mx-auto animate-pulse text-accent" />
           <p className="text-muted-foreground">Analyzing tomorrow's context...</p>
+          <p className="text-sm text-muted-foreground/70">This was started when you clicked "Let's do this"</p>
         </div>
       </div>
     );
@@ -395,67 +687,239 @@ function ContextBriefingStep({ onNext }: { onNext: (data: any) => void }) {
           </p>
         </div>
 
-        {/* Briefing Display */}
-        <div className="space-y-6">
-          {/* Email Section */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Mail className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-medium text-foreground">On Your Plate</h3>
+        {/* Flowing Memo Layout - Single Column */}
+        <div className="space-y-16 max-w-4xl mx-auto">
+          
+          {/* Executive Summary - Most Prominent */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <Brain className="w-6 h-6 text-accent" />
+              <h2 className="text-2xl font-semibold text-foreground">Executive Summary</h2>
+            </div>
+            {briefing?.executive_summary ? (
+              <div className="prose prose-lg max-w-none">
+                <p className="text-foreground leading-relaxed text-lg">
+                  {briefing.executive_summary}
+                </p>
               </div>
-              <div className="text-foreground leading-relaxed">
-                {briefing?.sections?.email || 'No new email items to review.'}
-              </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <p className="text-muted-foreground italic">
+                Your AI assistant is ready to analyze tomorrow's context once data is available.
+              </p>
+            )}
+          </section>
 
-          {/* Calendar Section */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Calendar className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-medium text-foreground">Confirmed Schedule</h3>
+          {/* Email Summary */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <Mail className="w-5 h-5 text-accent" />
+              <h3 className="text-xl font-medium text-foreground">Email Summary</h3>
+            </div>
+            {briefing?.email_summary?.action_items && briefing.email_summary.action_items.length > 0 ? (
+              <div className="space-y-4">
+                {briefing.email_summary.action_items.map((task: any, index: number) => (
+                  <div key={index} className="flex items-start justify-between gap-6 py-4">
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground mb-2">{task.content}</div>
+                      <div className="text-sm text-muted-foreground mb-3">
+                        Due: {task.due_date} • Timeline: {task.timeline} • From: {task.person}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {task.type}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {task.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className={`text-xs font-medium shrink-0 border transition-all duration-200 ${selectedTasks.includes(task.content) 
+                        ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                        : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                      onClick={() => addTaskToPlan(task)}
+                    >
+                      {selectedTasks.includes(task.content) ? '✓ Added' : '+ Add to Plan'}
+                    </Button>
+                  </div>
+                ))}
               </div>
-              <div className="text-foreground leading-relaxed">
-                {briefing?.sections?.calendar || 'No fixed events scheduled.'}
-              </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <p className="text-muted-foreground italic">
+                No email action items requiring attention. Your inbox is clear.
+              </p>
+            )}
+          </section>
 
-          {/* Sessions Section */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Brain className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-medium text-foreground">From Recent Sessions</h3>
+          {/* Commitments & Deadlines */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <Calendar className="w-5 h-5 text-accent" />
+              <h3 className="text-xl font-medium text-foreground">Commitments & Deadlines</h3>
+            </div>
+            
+            {/* Urgent Deadlines */}
+            {briefing?.commitments_deadlines?.urgent_deadlines && briefing.commitments_deadlines.urgent_deadlines.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-red-700 dark:text-red-300 mb-3 uppercase tracking-wide">Urgent Deadlines</h4>
+                <div className="space-y-4">
+                  {briefing.commitments_deadlines.urgent_deadlines.map((deadline: any, index: number) => (
+                    <div key={index} className="flex items-start justify-between gap-6 py-4 border-l-4 border-red-500 pl-4">
+                      <div className="flex-1">
+                        <div className="font-medium text-foreground mb-2">{deadline.title}</div>
+                        <div className="text-sm text-muted-foreground mb-3">
+                          {deadline.description} • Due in {deadline.days_until} days
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="destructive" className="text-xs">
+                            {deadline.urgency.toUpperCase()}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {deadline.project}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className={`text-xs font-medium shrink-0 border transition-all duration-200 ${selectedTasks.includes(deadline.title) 
+                          ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                          : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                        onClick={() => addTaskToPlan(deadline)}
+                      >
+                        {selectedTasks.includes(deadline.title) ? '✓ Added' : '+ Add to Plan'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="text-foreground leading-relaxed">
-                {briefing?.sections?.sessions || 'No recent session insights available.'}
-              </div>
-            </CardContent>
-          </Card>
+            )}
 
-          {/* Reminders Section */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Clock className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-medium text-foreground">Deadlines & Reminders</h3>
+            {/* Reminders */}
+            {briefing?.commitments_deadlines?.reminders && briefing.commitments_deadlines.reminders.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wide">Reminders</h4>
+                <div className="space-y-4">
+                  {briefing.commitments_deadlines.reminders.map((reminder: any, index: number) => (
+                    <div key={index} className="flex items-start justify-between gap-6 py-3 border-l-4 border-accent pl-4">
+                      <div className="flex-1">
+                        <div className="font-medium text-foreground">{reminder.title}</div>
+                        <div className="text-xs text-muted-foreground/70 font-medium tracking-wide">{reminder.description}</div>
+                        {reminder.date && reminder.date !== 'ongoing' && (
+                          <div className="text-xs text-muted-foreground/70 font-medium tracking-wide mt-1">Due: {reminder.date}</div>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {reminder.urgency}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="text-foreground leading-relaxed">
-                {briefing?.sections?.reminders || 'No upcoming reminders.'}
+            )}
+
+            {/* Fixed Meetings */}
+            {briefing?.commitments_deadlines?.fixed_meetings && briefing.commitments_deadlines.fixed_meetings.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">Fixed Meetings</h4>
+                <div className="space-y-4">
+                  {briefing.commitments_deadlines.fixed_meetings.map((meeting: any, index: number) => (
+                    <div key={index} className="flex items-start justify-between gap-6 py-3">
+                      <div className="flex-1">
+                        <div className="font-medium text-foreground">{meeting.title}</div>
+                        <div className="text-sm text-muted-foreground">{meeting.time} • {meeting.location}</div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className={`text-xs font-medium shrink-0 border transition-all duration-200 ${selectedAppointments.includes(`${meeting.time}: ${meeting.title}`) 
+                          ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                          : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                        onClick={() => addAppointmentToPlan(meeting)}
+                      >
+                        {selectedAppointments.includes(`${meeting.time}: ${meeting.title}`) ? '✓ Added' : '+ Add to Plan'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            )}
+
+            {/* Empty state */}
+            {(!briefing?.commitments_deadlines?.reminders?.length && 
+              !briefing?.commitments_deadlines?.fixed_meetings?.length && 
+              !briefing?.commitments_deadlines?.urgent_deadlines?.length) && (
+              <p className="text-muted-foreground italic">
+                No urgent deadlines, reminders, or meetings scheduled. Perfect for deep work.
+              </p>
+            )}
+          </section>
+
+          {/* Session Notes */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <NotebookText className="w-5 h-5 text-accent" />
+              <h3 className="text-xl font-medium text-foreground">Session Notes</h3>
+            </div>
+            {briefing?.session_notes?.pending_commitments && briefing.session_notes.pending_commitments.length > 0 ? (
+              <div className="space-y-4">
+                {briefing.session_notes.pending_commitments.map((task: any, index: number) => (
+                  <div key={index} className="flex items-start justify-between gap-6 py-4 border-l-4 border-accent pl-4">
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground mb-2">{task.commitment}</div>
+                      <div className="text-sm text-muted-foreground mb-3">
+                        {task.context} • {task.days_pending} days pending
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {task.priority}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {task.category}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className={`text-xs font-medium shrink-0 border transition-all duration-200 ${selectedTasks.includes(task.commitment) 
+                        ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90' 
+                        : 'border-accent text-accent hover:bg-accent/10 hover:text-accent-foreground'}`}
+                      onClick={() => addTaskToPlan(task)}
+                    >
+                      {selectedTasks.includes(task.commitment) ? '✓ Added' : '+ Add to Plan'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground italic">
+                No pending commitments from recent sessions. You're all caught up.
+              </p>
+            )}
+          </section>
+
         </div>
 
-        {/* Continue Button */}
-        <div className="text-center pt-4">
+        {/* Navigation Buttons */}
+        <div className="flex justify-between items-center pt-4">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
           <Button 
             onClick={handleContinue}
             size="lg"
-            className="px-8 py-3"
+            className="px-8 py-3 ml-auto"
           >
             Continue to Planning
             <ChevronRight className="w-5 h-5 ml-2" />
@@ -470,38 +934,52 @@ function ContextBriefingStep({ onNext }: { onNext: (data: any) => void }) {
 // STEP 5: PLANNING PROMPTS
 // ==============================================================================
 
-function PlanningPromptsStep({ onNext }: { onNext: (data: any) => void }) {
+interface PlanningPromptsStepProps extends WizardStepProps {
+  wizardData: WizardState['data'];
+}
+
+function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPromptsStepProps) {
+  // Pre-populate with selected items from context briefing
+  const selectedTasks = wizardData.contextBriefing?.selectedTasks || [];
+  const selectedAppointments = wizardData.contextBriefing?.selectedAppointments || [];
+  
   const [oneThing, setOneThing] = useState("");
-  const [tasks, setTasks] = useState<string[]>([""]);
-  const [appointments, setAppointments] = useState<string[]>([""]);
+  const [tasks, setTasks] = useState<string[]>(
+    selectedTasks.length > 0 ? [...selectedTasks, ""] : [""]
+  );
+  
+  console.log('PlanningPromptsStep received selectedTasks:', selectedTasks);
+  const [appointments, setAppointments] = useState<string[]>(
+    selectedAppointments.length > 0 ? [...selectedAppointments, ""] : [""]
+  );
   const [energyLevel, setEnergyLevel] = useState(7);
   const [workEnvironment, setWorkEnvironment] = useState("home");
 
-  const addTask = () => setTasks([...tasks, ""]);
-  const updateTask = (index: number, value: string) => {
+  const addTask = (): void => setTasks([...tasks, ""]);
+  const updateTask = (index: number, value: string): void => {
     const newTasks = [...tasks];
     newTasks[index] = value;
     setTasks(newTasks);
   };
-  const removeTask = (index: number) => setTasks(tasks.filter((_, i) => i !== index));
+  const removeTask = (index: number): void => setTasks(tasks.filter((_, i) => i !== index));
 
-  const addAppointment = () => setAppointments([...appointments, ""]);
-  const updateAppointment = (index: number, value: string) => {
+  const addAppointment = (): void => setAppointments([...appointments, ""]);
+  const updateAppointment = (index: number, value: string): void => {
     const newAppointments = [...appointments];
     newAppointments[index] = value;
     setAppointments(newAppointments);
   };
-  const removeAppointment = (index: number) => setAppointments(appointments.filter((_, i) => i !== index));
+  const removeAppointment = (index: number): void => setAppointments(appointments.filter((_, i) => i !== index));
 
-  const handleGenerate = () => {
-    const data = {
+  const handleGenerate = (): void => {
+    const planningData: PlanningPromptsData = {
       oneThing,
       tasks: tasks.filter(t => t.trim()),
       appointments: appointments.filter(a => a.trim()),
       energyLevel,
       workEnvironment
     };
-    onNext(data);
+    onNext(planningData);
   };
 
   const canGenerate = oneThing.trim().length > 0;
@@ -598,18 +1076,12 @@ function PlanningPromptsStep({ onNext }: { onNext: (data: any) => void }) {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Expected Energy</label>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 1, label: 'Very Low' },
-                  { value: 3, label: 'Low' },
-                  { value: 5, label: 'Medium' },
-                  { value: 7, label: 'High' },
-                  { value: 10, label: 'Very High' }
-                ].map((energy) => (
+              <div className="flex gap-2">
+                {WIZARD_CONFIG.ENERGY_LEVELS.map((energy) => (
                   <button
                     key={energy.value}
                     onClick={() => setEnergyLevel(energy.value)}
-                    className={`px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors flex-1 ${
                       energyLevel === energy.value 
                         ? 'border-accent bg-accent text-accent-foreground shadow-sm' 
                         : 'border-muted-foreground/20 bg-background text-foreground hover:border-accent hover:bg-accent/5'
@@ -624,15 +1096,11 @@ function PlanningPromptsStep({ onNext }: { onNext: (data: any) => void }) {
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Work Environment</label>
               <div className="flex gap-2">
-                {[
-                  { value: 'home', label: 'Home' },
-                  { value: 'cafe', label: 'Cafe' },
-                  { value: 'office', label: 'Office' }
-                ].map((env) => (
+                {WIZARD_CONFIG.WORK_ENVIRONMENTS.map((env) => (
                   <button
                     key={env.value}
                     onClick={() => setWorkEnvironment(env.value)}
-                    className={`px-4 py-2 rounded-md border font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors flex-1 ${
                       workEnvironment === env.value 
                         ? 'border-accent bg-accent text-accent-foreground shadow-sm' 
                         : 'border-muted-foreground/20 bg-background text-foreground hover:border-accent hover:bg-accent/5'
@@ -646,13 +1114,24 @@ function PlanningPromptsStep({ onNext }: { onNext: (data: any) => void }) {
           </div>
         </div>
 
-        {/* Generate Button */}
-        <div className="text-center pt-8">
+        {/* Navigation Buttons */}
+        <div className="flex justify-between items-center pt-8">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
           <Button 
             onClick={handleGenerate}
             disabled={!canGenerate}
             size="lg"
-            className="px-12 py-4 text-lg bg-accent hover:bg-accent/90"
+            className="px-12 py-4 text-lg bg-accent hover:bg-accent/90 ml-auto"
           >
             <Sparkles className="w-5 h-5 mr-2" />
             Generate Tomorrow's Plan
@@ -667,19 +1146,316 @@ function PlanningPromptsStep({ onNext }: { onNext: (data: any) => void }) {
 // STEP 6: GENERATED PLAN (Simplified for now)
 // ==============================================================================
 
-function GeneratedPlanStep({ planningData, onRefine }: { planningData: any; onRefine: (data: any) => void }) {
-  const [plan, setPlan] = useState<any>(null);
+// Timeline utility functions
+const parseTime = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return { hours, minutes };
+};
+
+const mapBlockTypeToCategory = (blockType: string, label: string = '') => {
+  // Enhanced mapping based on block type and label content
+  if (blockType === 'anchor') {
+    if (label.toLowerCase().includes('gym') || label.toLowerCase().includes('workout')) return 'HEALTH';
+    if (label.toLowerCase().includes('breakfast') || label.toLowerCase().includes('lunch') || label.toLowerCase().includes('dinner')) return 'MEALS';
+    if (label.toLowerCase().includes('commute') || label.toLowerCase().includes('drive')) return 'TRANSIT';
+    return 'PERSONAL';
+  }
+  
+  if (label.toLowerCase().includes('email') || label.toLowerCase().includes('admin')) return 'SHALLOW_WORK';
+  if (label.toLowerCase().includes('meeting') || label.toLowerCase().includes('call')) return 'MEETINGS';
+  if (label.toLowerCase().includes('personal') || label.toLowerCase().includes('break')) return 'PERSONAL';
+  
+  return 'DEEP_WORK'; // Default for flex blocks
+};
+
+const getBlockIcon = (label: string, timeCategory: string) => {
+  // Use IconResolutionService logic but simplified for this context
+  const lowerLabel = label.toLowerCase();
+  
+  if (lowerLabel.includes('email') || lowerLabel.includes('admin')) return Mail;
+  if (lowerLabel.includes('gym') || lowerLabel.includes('workout')) return Activity;
+  if (lowerLabel.includes('breakfast') || lowerLabel.includes('lunch') || lowerLabel.includes('dinner')) return Coffee;
+  if (lowerLabel.includes('commute') || lowerLabel.includes('drive')) return Car;
+  if (lowerLabel.includes('meeting') || lowerLabel.includes('call')) return Calendar;
+  if (lowerLabel.includes('morning') || lowerLabel.includes('routine')) return Sun;
+  
+  return Briefcase; // Default work icon
+};
+
+const transformPlanToTimeline = (planData: any) => {
+  if (!planData || !planData.blocks) return [];
+  
+  return planData.blocks.map((block: any, index: number) => {
+    const startTime = parseTime(block.start);
+    const endTime = parseTime(block.end);
+    const startMinutes = startTime.hours * 60 + startTime.minutes;
+    const endMinutes = endTime.hours * 60 + endTime.minutes;
+    const duration = endMinutes - startMinutes;
+    
+    const timeCategory = mapBlockTypeToCategory(block.type, block.label);
+    const IconComponent = getBlockIcon(block.label, timeCategory);
+    
+    // Check if this block is from user config (anchor/fixed) vs AI-generated (flex)
+    const isConfigBlock = block.type === 'anchor' || block.type === 'fixed';
+    
+    return {
+      id: `block-${index}`,
+      startTime: block.start.substring(0, 5), // Format as HH:MM
+      endTime: block.end.substring(0, 5),
+      label: block.label,
+      timeCategory,
+      icon: IconComponent,
+      duration: `${Math.floor(duration / 60)}h ${duration % 60}m`,
+      startMinutes,
+      endMinutes,
+      isConfigBlock, // Locked config blocks vs flexible AI blocks
+      note: block.note || '',
+      rationale: block.rationale || '',
+    };
+  });
+};
+
+// Config Wizard styling functions (matching weekly-calendar.tsx)
+const getCategoryBorderColor = (category: string) => {
+  const colorMap: { [key: string]: string } = {
+    'deep_work': 'border-deep-work-active',
+    'shallow_work': 'border-shallow-work-active', 
+    'meetings': 'border-meetings-active',
+    'personal': 'border-personal-active',
+    'health': 'border-health-active',
+    'rest': 'border-rest-active',
+    'admin': 'border-admin-active',
+    'work': 'border-work-active',
+    'exercise': 'border-exercise-active',
+    'learning': 'border-learning-active',
+    'research': 'border-research-active',
+    'writing': 'border-writing-active',
+    'planning': 'border-planning-active',
+    'social': 'border-social-active',
+    'meals': 'border-meals-active'
+  };
+  return colorMap[category.toLowerCase()] || 'border-muted';
+};
+
+const getCategoryAccentColor = (category: string) => {
+  const colorMap: { [key: string]: string } = {
+    'deep_work': 'text-deep-work-active',
+    'shallow_work': 'text-shallow-work-active', 
+    'meetings': 'text-meetings-active',
+    'personal': 'text-personal-active',
+    'health': 'text-health-active',
+    'rest': 'text-rest-active',
+    'admin': 'text-admin-active',
+    'work': 'text-work-active',
+    'exercise': 'text-exercise-active',
+    'learning': 'text-learning-active',
+    'research': 'text-research-active',
+    'writing': 'text-writing-active',
+    'planning': 'text-planning-active',
+    'social': 'text-social-active',
+    'meals': 'text-meals-active'
+  };
+  return colorMap[category.toLowerCase()] || 'text-muted-foreground';
+};
+
+function PlanTimeline({ schedule }: { schedule: any[] }) {
+  if (!schedule || schedule.length === 0) return null;
+  
+  // 1. ESTABLISH CONSISTENT VERTICAL SCALE
+  const SCALE_FACTOR = 2; // 2 pixels per minute - mathematical constant for all calculations
+  const DAY_START_MINUTES = 5 * 60; // Start calendar at 5:00 AM (300 minutes)
+  const DAY_END_MINUTES = 22 * 60; // End calendar at 10:00 PM (1320 minutes)
+  const TOTAL_DAY_DURATION = DAY_END_MINUTES - DAY_START_MINUTES; // 17 hours = 1020 minutes
+  const TIMELINE_HEIGHT = TOTAL_DAY_DURATION * SCALE_FACTOR; // 1020 * 2 = 2040px
+  
+  // 2. CALCULATE VERTICAL POSITION with collision buffer
+  const getBlockTop = (startMinutes: number, blockIndex: number) => {
+    const baseTop = (startMinutes - DAY_START_MINUTES) * SCALE_FACTOR;
+    // Add 3px buffer for each block to prevent overlaps
+    const bufferOffset = blockIndex * 3;
+    return baseTop + bufferOffset;
+  };
+  
+  // 3. CALCULATE BLOCK HEIGHT (direct duration calculation)
+  const getBlockHeight = (durationMinutes: number) => {
+    return durationMinutes * SCALE_FACTOR;
+  };
+  
+  // Map our time categories to config wizard categories
+  const mapToConfigCategory = (timeCategory: string, label: string) => {
+    switch (timeCategory) {
+      case "DEEP_WORK": return "deep_work";
+      case "SHALLOW_WORK": return label.toLowerCase().includes('admin') || label.toLowerCase().includes('email') ? "admin" : "shallow_work";
+      case "MEETINGS": return "meetings";
+      case "PERSONAL": return "personal";
+      case "HEALTH": return "health";
+      case "MEALS": return "meals";
+      case "TRANSIT": return "personal";
+      case "PLANNING": return "planning";
+      case "RESEARCH": return "research";
+      default: return "work";
+    }
+  };
+  
+  // Tier system matching config wizard
+  const getTier = (duration: number) => {
+    if (duration > 60) return 'tall'; // > 60 minutes
+    if (duration >= 30) return 'medium'; // 30+ minutes (changed from > 30)
+    return 'short'; // < 30 minutes
+  };
+
+  return (
+    <TooltipProvider>
+      <div className="relative">
+        <h2 className="text-lg font-semibold text-foreground mb-6">Your Intelligent Schedule</h2>
+        
+        {/* Scrollable timeline container */}
+        <div className="relative h-[65vh] overflow-y-auto border border-border rounded-lg bg-muted/20">
+          <div className="relative" style={{ height: TIMELINE_HEIGHT }}>
+          {/* Timeline line */}
+          <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
+          
+          {/* Time markers every 30 minutes like config wizard */}
+          {Array.from({ length: 35 }, (_, i) => {
+            const totalMinutes = (5 * 60) + (i * 30); // Start at 5 AM, increment by 30 minutes
+            const hour = Math.floor(totalMinutes / 60);
+            const minute = totalMinutes % 60;
+            
+            if (hour > 22) return null; // Stop at 10 PM
+            
+            const top = getBlockTop(totalMinutes, 0); // No buffer offset for time markers
+            const isHourMark = minute === 0;
+            const timeLabel = hour >= 12 ? 
+              `${hour > 12 ? hour - 12 : hour}:${minute.toString().padStart(2, '0')} PM` : 
+              `${hour}:${minute.toString().padStart(2, '0')} AM`;
+            
+            return (
+              <div key={`${hour}-${minute}`} className="absolute left-0 right-0 flex items-center" style={{ top: `${top}px` }}>
+                <div className={`text-xs w-16 text-right pr-2 ${
+                  isHourMark ? 'text-muted-foreground font-medium' : 'text-muted-foreground/70'
+                }`}>
+                  {timeLabel}
+                </div>
+                <div className={`flex-1 h-px ml-2 ${
+                  isHourMark ? 'bg-border/30' : 'bg-border/15'
+                }`} />
+              </div>
+            );
+          }).filter(Boolean)}
+          
+          {/* Schedule blocks */}
+          {schedule.map((block, index) => {
+            const duration = block.endMinutes - block.startMinutes;
+            const tier = getTier(duration);
+            const configCategory = mapToConfigCategory(block.timeCategory, block.label);
+            const borderColor = getCategoryBorderColor(configCategory);
+            const accentColor = getCategoryAccentColor(configCategory);
+            
+            // Mathematical positioning: exact top and height based on time with collision buffer
+            const blockTop = getBlockTop(block.startMinutes, index);
+            const blockHeight = getBlockHeight(duration);
+            
+            // Use Config Wizard's clean card styling - all blocks now use solid borders
+            const blockStyle = `bg-card/90 border-2 ${borderColor} border-solid hover:bg-card shadow-sm`;
+            
+            const IconComponent = block.icon;
+            
+            return (
+              <Tooltip key={block.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`absolute left-20 right-4 rounded-md cursor-pointer transition-all hover:shadow-md z-10 ${blockStyle}`}
+                    style={{ 
+                      top: `${blockTop}px`,
+                      height: `${Math.max(blockHeight, 24)}px`, // Reduce minimum height for short blocks
+                      padding: duration >= 30 ? '8px 12px' : '4px 8px' // Less padding for short blocks
+                    }}
+                  >
+                    {/* Config wizard tiered content */}
+                    <div className="h-full flex items-center overflow-hidden">
+                      {tier === 'tall' && (
+                        <div className="flex flex-col justify-center w-full">
+                          {/* Top line: Icon + Title */}
+                          <div className="flex items-center gap-1 mb-1 text-foreground">
+                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
+                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
+                          </div>
+                          {/* Bottom line: Time range */}
+                          <div className="text-xs opacity-70 text-left text-foreground">
+                            {block.startTime} - {block.endTime}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {tier === 'medium' && (
+                        <div className="flex flex-col justify-center w-full">
+                          {/* Top line: Icon + Title */}
+                          <div className="flex items-center gap-1 mb-0.5 text-foreground">
+                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
+                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
+                          </div>
+                          {/* Bottom line: Time range */}
+                          <div className="text-xs opacity-70 text-left text-foreground">
+                            {block.startTime} - {block.endTime}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {tier === 'short' && (
+                        <div className="flex items-center gap-1 justify-start w-full text-foreground">
+                          <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
+                          <span className="font-medium text-xs truncate text-left">{block.label}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">{block.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {block.startTime} - {block.endTime}
+                    </p>
+                    {block.rationale && (
+                      <p className="text-xs text-foreground">{block.rationale}</p>
+                    )}
+                    {block.note && (
+                      <p className="text-xs italic text-muted-foreground">"{block.note}"</p>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          </div>
+        </div>
+        
+      </div>
+    </TooltipProvider>
+  );
+}
+
+interface GeneratedPlanStepProps {
+  planningData: PlanningPromptsData;
+  onRefine: (data: unknown) => void;
+  onPrevious?: () => void;
+}
+
+function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlanStepProps) {
+  const [plan, setPlan] = useState<{ blocks: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [planSaved, setPlanSaved] = useState(false);
 
   useEffect(() => {
-    const generatePlan = async () => {
+    console.log('GeneratedPlanStep received planningData:', planningData);
+    const generatePlan = async (): Promise<void> => {
       try {
         // First, load user config to get anchors and fixed events
         const configResponse = await fetch('http://localhost:8000/config/load');
         const userConfig = await configResponse.json();
         
         // Get today's day of the week
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'lowercase' });
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
         const todaySchedule = userConfig.weekly_schedule?.[today] || {};
         
         // Extract anchors and fixed events for today
@@ -707,6 +1483,7 @@ function GeneratedPlanStep({ planningData, onRefine }: { planningData: any; onRe
         });
         
         const result = await response.json();
+        console.log('Plan API response:', result);
         setPlan(result);
       } catch (error) {
         console.error('Failed to generate plan:', error);
@@ -742,89 +1519,80 @@ function GeneratedPlanStep({ planningData, onRefine }: { planningData: any; onRe
           </p>
         </div>
 
-        {/* Plan Display - Compact Timeline View */}
+        {/* Visual Timeline Display */}
         {plan?.blocks && (
           <Card className="bg-card/50 border-border/50">
             <CardContent className="p-6">
-              <div className="space-y-3">
-                {plan.blocks.map((block: any, index: number) => (
-                  <div key={index} className="flex items-center gap-4 py-2">
-                    {/* Time */}
-                    <div className="text-sm font-mono text-muted-foreground w-20 flex-shrink-0">
-                      {block.start.substring(0, 5)}
-                    </div>
-                    
-                    {/* Icon */}
-                    <div className="flex-shrink-0">
-                      {(() => {
-                        const iconResult = IconResolutionService.resolveIconByName(block.icon || 'Calendar');
-                        const IconComponent = iconResult.icon;
-                        return <IconComponent className="w-4 h-4 text-accent" />;
-                      })()}
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">
-                        {block.label}
-                      </div>
-                      {block.note && (
-                        <div className="text-xs text-muted-foreground truncate mt-0.5">
-                          {block.note}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Duration */}
-                    <div className="text-xs text-muted-foreground flex-shrink-0">
-                      {(() => {
-                        const start = new Date(`2000-01-01T${block.start}`);
-                        const end = new Date(`2000-01-01T${block.end}`);
-                        const diff = (end.getTime() - start.getTime()) / (1000 * 60);
-                        return `${Math.round(diff)}m`;
-                      })()}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PlanTimeline schedule={transformPlanToTimeline(plan)} />
             </CardContent>
           </Card>
         )}
 
-        {/* Refinement Option */}
-        <div className="text-center pt-8">
-          <Button 
-            onClick={() => onRefine(plan)}
-            variant="outline"
-            size="lg"
-            className="px-8 py-3 mr-4"
-          >
-            Offer Refinement
-          </Button>
+        {/* Success Message */}
+        {planSaved && (
+          <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
+            <CardContent className="p-6 text-center">
+              <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-medium">Plan saved successfully!</span>
+              </div>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                Your schedule is ready for tomorrow
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation and Actions */}
+        <div className="flex justify-between items-center pt-8">
+          {onPrevious && (
+            <Button 
+              onClick={onPrevious}
+              size="lg"
+              variant="outline"
+              className="px-6 py-3"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+          )}
           
-          <Button 
-            onClick={() => {
-              // Save the plan data
-              const planData = {
-                timestamp: new Date().toISOString(),
-                blocks: plan?.blocks || [],
-                metadata: {
-                  generated_at: new Date().toISOString(),
-                  wizard_completed: true
-                }
-              };
-              
-              // Store in localStorage for now (could be enhanced to save to server)
-              localStorage.setItem('echo_current_plan', JSON.stringify(planData));
-              
-              // TODO: Also save to server endpoint
-              alert('Plan saved successfully!');
-            }}
-            size="lg"
-            className="px-8 py-3"
-          >
-            Save Plan
-          </Button>
+          <div className="flex gap-4 ml-auto">
+            <Button 
+              onClick={() => onRefine(plan)}
+              variant="outline"
+              size="lg"
+              className="px-8 py-3"
+            >
+              Offer Refinement
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                // Save the plan data
+                const planData = {
+                  timestamp: new Date().toISOString(),
+                  blocks: plan?.blocks || [],
+                  metadata: {
+                    generated_at: new Date().toISOString(),
+                    wizard_completed: true
+                  }
+                };
+                
+                // Store in localStorage for now (could be enhanced to save to server)
+                localStorage.setItem('echo_current_plan', JSON.stringify(planData));
+                
+                // TODO: Also save to server endpoint
+                setPlanSaved(true);
+              }}
+              size="lg"
+              className="px-8 py-3"
+            >
+              Save Plan
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -847,19 +1615,40 @@ export default function PlanningWizard() {
     const nextStep = steps[currentIndex + 1];
     
     if (nextStep) {
+      // Convert kebab-case to camelCase for consistent data keys
+      const dataKey = wizardState.currentStep.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+      console.log(`Saving step data for ${wizardState.currentStep} with key ${dataKey}:`, stepData);
+      
       setWizardState({
         currentStep: nextStep,
         data: {
           ...wizardState.data,
-          [wizardState.currentStep.replace('-', '')]: stepData
+          [dataKey]: stepData
         }
       });
     }
   };
 
+  const previousStep = () => {
+    const steps: WizardStep[] = ['welcome', 'day-review', 'journal', 'habits', 'context-briefing', 'planning-prompts', 'generated-plan'];
+    const currentIndex = steps.indexOf(wizardState.currentStep);
+    const prevStep = steps[currentIndex - 1];
+    
+    if (prevStep) {
+      setWizardState({
+        currentStep: prevStep,
+        data: wizardState.data // Keep existing data
+      });
+    }
+  };
+
   const handleRefinement = (planData: any) => {
-    // TODO: Implement refinement interface
+    // For now, go back to planning prompts step to allow modifications
     console.log('Refinement requested for:', planData);
+    setWizardState({
+      currentStep: 'planning-prompts',
+      data: wizardState.data
+    });
   };
 
   // Render current step
@@ -868,17 +1657,18 @@ export default function PlanningWizard() {
       case 'welcome':
         return <WelcomeStep onNext={() => nextStep()} />;
       case 'day-review':
-        return <DayReviewStep onNext={nextStep} />;
+        return <DayReviewStep onNext={nextStep} onPrevious={previousStep} />;
       case 'journal':
-        return <JournalStep onNext={nextStep} />;
+        return <JournalStep onNext={nextStep} onPrevious={previousStep} />;
       case 'habits':
-        return <HabitsStep onNext={nextStep} />;
+        return <HabitsStep onNext={nextStep} onPrevious={previousStep} />;
       case 'context-briefing':
-        return <ContextBriefingStep onNext={nextStep} />;
+        return <ContextBriefingStep onNext={nextStep} onPrevious={previousStep} />;
       case 'planning-prompts':
-        return <PlanningPromptsStep onNext={nextStep} />;
+        return <PlanningPromptsStep onNext={nextStep} onPrevious={previousStep} wizardData={wizardState.data} />;
       case 'generated-plan':
-        return <GeneratedPlanStep planningData={wizardState.data.planningprompts} onRefine={handleRefinement} />;
+        console.log('Rendering GeneratedPlanStep with wizardState.data:', wizardState.data);
+        return <GeneratedPlanStep planningData={wizardState.data.planningPrompts} onRefine={handleRefinement} onPrevious={previousStep} />;
       default:
         return <WelcomeStep onNext={() => nextStep()} />;
     }

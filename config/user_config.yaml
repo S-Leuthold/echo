@@ -7,171 +7,101 @@ weekly_schedule:
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
-      description: 'I like to start the day by reading some non-fiction for about
-        30 minutes. '
+      description: 'Good to start the day off with some non-fiction. '
     - time: "07:10\u201307:40"
       category: meals
       task: Breakfast
-      description: 'I eat for about 30 minutes most morning, and also make smoothies
-        for my wife and I. '
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
     - time: "07:40\u201308:15"
       category: personal
       task: Morning Routine
-      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
-        too long. '
-    - time: "16:15\u201316:30"
-      category: personal
-      task: Commute to the Gym
-      description: Ride my bike to Midtown Fitness
+      description: 'Rub a dub dub. '
     - time: "08:15\u201308:45"
-      category: personal
-      task: Commute to Guild Row
-      description: 'Riding my bike to work. '
-    - time: "16:30\u201317:45"
       category: exercise
-      task: Strength Training
-      description: Trying to get big and strong dawg.
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
     fixed: []
-    flex:
-    - time: "12:30\u201313:00"
-      category: meals
-      task: Lunch
+    flex: []
   tuesday:
     anchors:
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
-      description: 'I like to start the day by reading some non-fiction for about
-        30 minutes. '
+      description: 'Good to start the day off with some non-fiction. '
     - time: "07:10\u201307:40"
       category: meals
       task: Breakfast
-      description: 'I eat for about 30 minutes most morning, and also make smoothies
-        for my wife and I. '
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
     - time: "07:40\u201308:15"
       category: personal
       task: Morning Routine
-      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
-        too long. '
-    - time: "16:15\u201316:30"
-      category: personal
-      task: Commute to the Gym
-      description: Ride my bike to Midtown Fitness
+      description: 'Rub a dub dub. '
     - time: "08:15\u201308:45"
-      category: personal
-      task: Commute to Guild Row
-      description: 'Riding my bike to work. '
-    - time: "16:30\u201317:45"
       category: exercise
-      task: Strength Training
-      description: Trying to get big and strong dawg.
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
     fixed: []
-    flex:
-    - time: "12:30\u201313:00"
-      category: meals
-      task: Lunch
+    flex: []
   wednesday:
     anchors:
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
-      description: 'I like to start the day by reading some non-fiction for about
-        30 minutes. '
+      description: 'Good to start the day off with some non-fiction. '
     - time: "07:10\u201307:40"
       category: meals
       task: Breakfast
-      description: 'I eat for about 30 minutes most morning, and also make smoothies
-        for my wife and I. '
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
     - time: "07:40\u201308:15"
       category: personal
       task: Morning Routine
-      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
-        too long. '
-    - time: "16:15\u201316:30"
-      category: personal
-      task: Commute to the Gym
-      description: Ride my bike to Midtown Fitness
+      description: 'Rub a dub dub. '
     - time: "08:15\u201308:45"
-      category: personal
-      task: Commute to Guild Row
-      description: 'Riding my bike to work. '
-    - time: "16:30\u201317:45"
       category: exercise
-      task: Strength Training
-      description: Trying to get big and strong dawg.
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
     fixed: []
-    flex:
-    - time: "12:30\u201313:00"
-      category: meals
-      task: Lunch
+    flex: []
   thursday:
     anchors:
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
-      description: 'I like to start the day by reading some non-fiction for about
-        30 minutes. '
+      description: 'Good to start the day off with some non-fiction. '
     - time: "07:10\u201307:40"
       category: meals
       task: Breakfast
-      description: 'I eat for about 30 minutes most morning, and also make smoothies
-        for my wife and I. '
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
     - time: "07:40\u201308:15"
       category: personal
       task: Morning Routine
-      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
-        too long. '
-    - time: "16:15\u201316:30"
-      category: personal
-      task: Commute to the Gym
-      description: Ride my bike to Midtown Fitness
+      description: 'Rub a dub dub. '
     - time: "08:15\u201308:45"
-      category: personal
-      task: Commute to Guild Row
-      description: 'Riding my bike to work. '
-    - time: "16:30\u201317:45"
       category: exercise
-      task: Strength Training
-      description: Trying to get big and strong dawg.
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
     fixed: []
-    flex:
-    - time: "12:30\u201313:00"
-      category: meals
-      task: Lunch
+    flex: []
   friday:
     anchors:
     - time: "05:30\u201306:00"
       category: personal
       task: Morning Reading
-      description: 'I like to start the day by reading some non-fiction for about
-        30 minutes. '
+      description: 'Good to start the day off with some non-fiction. '
     - time: "07:10\u201307:40"
       category: meals
       task: Breakfast
-      description: 'I eat for about 30 minutes most morning, and also make smoothies
-        for my wife and I. '
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
     - time: "07:40\u201308:15"
       category: personal
       task: Morning Routine
-      description: 'This is when I shower, get dressed, etc. Usually it doesn''t take
-        too long. '
-    - time: "16:15\u201316:30"
-      category: personal
-      task: Commute to the Gym
-      description: Ride my bike to Midtown Fitness
+      description: 'Rub a dub dub. '
     - time: "08:15\u201308:45"
-      category: personal
-      task: Commute to Guild Row
-      description: 'Riding my bike to work. '
-    - time: "16:30\u201317:45"
       category: exercise
-      task: Strength Training
-      description: Trying to get big and strong dawg.
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
     fixed: []
-    flex:
-    - time: "12:30\u201313:00"
-      category: meals
-      task: Lunch
+    flex: []
   saturday:
     anchors: []
     fixed: []
@@ -233,3 +163,9 @@ email:
   - presentation
   - expire
   - token
+reminders:
+  - title: "Chase Credit Card Bill Due"
+    description: "Monthly Chase credit card payment due tomorrow"
+    date: "2025-07-25"
+    urgency: "normal"
+    category: "bill"
