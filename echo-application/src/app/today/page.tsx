@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePlanStatus } from "@/contexts/PlanStatusContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { PlanTimeline } from "@/components/shared/PlanTimeline";
+import { IconResolutionService } from "@/lib/icon-resolution";
 import { 
   Play, 
   Pause, 
@@ -148,6 +150,7 @@ const transformTodayDataToSchedule = (todayData: any, currentTime: Date = new Da
     const endTime = parseTime(block.end_time);
     const startMinutes = startTime.hours * 60 + startTime.minutes;
     const endMinutes = endTime.hours * 60 + endTime.minutes;
+    const duration = endMinutes - startMinutes;
     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
     
     // Determine block state
@@ -164,17 +167,35 @@ const transformTodayDataToSchedule = (todayData: any, currentTime: Date = new Da
       progress = 100;
     }
     
+    // Map time category to match PlanTimeline expectations
+    const timeCategory = mapBlockTypeToCategory(block.type);
+    
+    // Resolve icon using IconResolutionService with backend icon name
+    const { icon: IconComponent } = IconResolutionService.resolveIcon(
+      block.label, 
+      timeCategory.toLowerCase(), 
+      block.icon // Use backend icon name if available
+    );
+    
+    // Check if this is a config block (anchor/fixed types)
+    const isConfigBlock = block.type === 'anchor' || block.type === 'fixed';
+    
     return {
       id: block.id,
       startTime: block.start_time,
       endTime: block.end_time,
-      emoji: block.emoji || '📅',
+      startMinutes,
+      endMinutes,
+      duration: `${Math.floor(duration / 60)}h ${duration % 60}m`,
       label: block.label,
-      timeCategory: mapBlockTypeToCategory(block.type),
+      timeCategory,
+      icon: IconComponent,
       isCurrent,
       progress,
-      startMinutes,
       strategicNote: block.note || '',
+      note: block.rationale || block.note || '', // Use rationale as note for tooltips
+      rationale: block.rationale || '',
+      isConfigBlock,
       state
     };
   });
@@ -1106,8 +1127,9 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
                     Pause Session
                   </Button>
                   <Button 
+                    variant="outline"
                     size="sm" 
-                    className="bg-destructive hover:bg-destructive/90 font-medium"
+                    className="border-accent text-accent hover:bg-accent hover:text-accent-foreground font-medium"
                     disabled={sessionLoading}
                     onClick={async () => {
                       try {
@@ -1200,218 +1222,13 @@ function CurrentFocusComponent({ focus }: { focus: typeof mockCurrentFocus }) {
   );
 }
 
-function TimelineSchedule({ schedule }: { schedule: typeof mockSchedule }) {
-  const currentTime = new Date();
-  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-  
-  // Calculate timeline bounds
-  const minTime = Math.min(...schedule.map(block => block.startMinutes)) - 30;
-  const maxTime = Math.max(...schedule.map(block => block.startMinutes)) + 120;
-  const timelineHeight = 600; // Fixed height for timeline
-  
-  const getTopPosition = (minutes: number) => {
-    return ((minutes - minTime) / (maxTime - minTime)) * timelineHeight;
-  };
-
-  const getBlockStyle = (block: typeof schedule[0]) => {
-    // TimeCategory Color System: Personal & Intuitive
-    let borderColor = "border-muted-foreground/30"; // default
-    let backgroundStyle = "bg-card/50"; // default upcoming
-    let shadowStyle = "";
-    
-    // Map TimeCategory to colors - the new visual language
-    const categoryKey = block.timeCategory?.toLowerCase().replace('_', '-') || 'default';
-    
-    switch (block.timeCategory) {
-      case "DEEP_WORK":
-        borderColor = "border-deep-work";
-        if (block.state === "active") {
-          backgroundStyle = "bg-deep-work-active/20";
-          shadowStyle = "shadow-lg shadow-deep-work-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-deep-work-completed/30";
-        }
-        break;
-        
-      case "SHALLOW_WORK":
-        borderColor = "border-shallow-work";
-        if (block.state === "active") {
-          backgroundStyle = "bg-shallow-work-active/20";
-          shadowStyle = "shadow-lg shadow-shallow-work-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-shallow-work-completed/30";
-        }
-        break;
-        
-      case "MEETINGS":
-        borderColor = "border-meetings";
-        if (block.state === "active") {
-          backgroundStyle = "bg-meetings-active/20";
-          shadowStyle = "shadow-lg shadow-meetings-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-meetings-completed/30";
-        }
-        break;
-        
-      case "PERSONAL":
-        borderColor = "border-personal";
-        if (block.state === "active") {
-          backgroundStyle = "bg-personal-active/20";
-          shadowStyle = "shadow-lg shadow-personal-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-personal-completed/30";
-        }
-        break;
-        
-      case "HEALTH":
-        borderColor = "border-health";
-        if (block.state === "active") {
-          backgroundStyle = "bg-health-active/20";
-          shadowStyle = "shadow-lg shadow-health-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-health-completed/30";
-        }
-        break;
-        
-      case "MEALS":
-        borderColor = "border-meals";
-        if (block.state === "active") {
-          backgroundStyle = "bg-meals-active/20";
-          shadowStyle = "shadow-lg shadow-meals-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-meals-completed/30";
-        }
-        break;
-        
-      case "TRANSIT":
-        borderColor = "border-transit";
-        if (block.state === "active") {
-          backgroundStyle = "bg-transit-active/20";
-          shadowStyle = "shadow-lg shadow-transit-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-transit-completed/30";
-        }
-        break;
-        
-      case "PLANNING":
-        borderColor = "border-planning";
-        if (block.state === "active") {
-          backgroundStyle = "bg-planning-active/20";
-          shadowStyle = "shadow-lg shadow-planning-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-planning-completed/30";
-        }
-        break;
-        
-      case "RESEARCH":
-        borderColor = "border-research";
-        if (block.state === "active") {
-          backgroundStyle = "bg-research-active/20";
-          shadowStyle = "shadow-lg shadow-research-active/20";
-        } else if (block.state === "completed") {
-          backgroundStyle = "bg-research-completed/30";
-        }
-        break;
-    }
-    
-    return `${borderColor} ${backgroundStyle} ${shadowStyle}`;
-  };
-
-  return (
-    <div className="relative">
-      <h2 className="text-lg font-semibold text-foreground mb-6">Today's Schedule</h2>
-      
-      <div className="relative" style={{ height: timelineHeight }}>
-        {/* Timeline line */}
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-        
-        {/* Current time indicator */}
-        {currentMinutes >= minTime && currentMinutes <= maxTime && (
-          <div 
-            className="absolute left-0 right-0 flex items-center z-10"
-            style={{ top: getTopPosition(currentMinutes) }}
-          >
-            <div className="w-2 h-2 bg-accent rounded-full" />
-            <div className="flex-1 h-0.5 bg-accent ml-2" />
-            <div className="text-xs text-accent font-mono ml-2">
-              {currentTime.toLocaleTimeString("en-US", { 
-                hour12: false, 
-                hour: "2-digit", 
-                minute: "2-digit" 
-              })}
-            </div>
-          </div>
-        )}
-        
-        {/* Schedule blocks */}
-        {schedule.map((block, index) => (
-          <div
-            key={block.id}
-            className={`absolute left-8 right-0 p-3 rounded-lg border-2 transition-all hover:bg-accent/5 ${getBlockStyle(block)}`}
-            style={{ 
-              top: getTopPosition(block.startMinutes),
-              minHeight: '60px'
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                {/* Simplified Title with Emoji - emojis do the heavy lifting */}
-                <div className={`font-medium text-sm flex items-center gap-2 ${
-                  block.state === "active" ? "text-accent font-semibold" : "text-foreground"
-                }`}>
-                  <span className="text-lg">{block.emoji}</span>
-                  {block.label}
-                  
-                  {/* Strategic Note Info Icon - only when needed */}
-                  {block.strategicNote && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-accent cursor-help flex-shrink-0 transition-colors" />
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs">
-                        <p className="text-xs italic">"{block.strategicNote}"</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {block.startTime} - {block.endTime}
-                </div>
-              </div>
-              
-              {/* Minimal state indicators - color and icons do the work */}
-              <div className="flex items-center">
-                {block.state === "completed" && (
-                  <CheckCircle2 className={`w-4 h-4 ${
-                    block.timeCategory === "DEEP_WORK" ? "text-deep-work" :
-                    block.timeCategory === "HEALTH" ? "text-health" :
-                    block.timeCategory === "PERSONAL" ? "text-personal" :
-                    block.timeCategory === "MEETINGS" ? "text-meetings" :
-                    block.timeCategory === "SHALLOW_WORK" ? "text-shallow-work" :
-                    block.timeCategory === "MEALS" ? "text-meals" :
-                    block.timeCategory === "TRANSIT" ? "text-transit" :
-                    block.timeCategory === "PLANNING" ? "text-planning" :
-                    block.timeCategory === "RESEARCH" ? "text-research" :
-                    "text-muted-foreground"
-                  }`} />
-                )}
-                {block.state === "active" && (
-                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                )}
-                {/* Removed redundant progress percentages */}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function TodayPage() {
   // Use shared plan status context instead of local state
   const { planStatus, todayData, error, isLoading } = usePlanStatus();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [calendarHeight, setCalendarHeight] = useState(800); // Better default height
+  const calendarRef = useRef<HTMLDivElement>(null);
   
   // Real-time clock update
   useEffect(() => {
@@ -1420,6 +1237,32 @@ export default function TodayPage() {
     }, 1000); // Update every second
     
     return () => clearInterval(timer);
+  }, []);
+  
+  // Simplified height calculation for full viewport usage
+  useEffect(() => {
+    const calculateHeight = () => {
+      if (calendarRef.current) {
+        const windowHeight = window.innerHeight;
+        
+        // Calendar now uses full viewport height from top
+        // Header space (80px) + padding (48px) = 128px reserved
+        const reservedSpace = 128;
+        const availableHeight = windowHeight - reservedSpace;
+        
+        // Use the actual available space - should be much larger now
+        setCalendarHeight(Math.max(availableHeight, 700)); // Minimum 700px fallback
+      }
+    };
+    
+    // Initial calculation and resize listener
+    const timer = setTimeout(calculateHeight, 100);
+    window.addEventListener('resize', calculateHeight);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateHeight);
+    };
   }, []);
   
   const currentTimeString = currentTime.toLocaleTimeString("en-US", { 
@@ -1479,10 +1322,10 @@ export default function TodayPage() {
   // Render normal today view when plan exists
   return (
     <div className="min-h-screen bg-background">
-      {/* Subtle page header */}
-      <div className="p-6 border-b border-border/50">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div>
+      {/* Page header aligned with content */}
+      <div className="border-b border-border/50">
+        <div className="grid grid-cols-[1fr_350px]">
+          <div className="p-6">
             <h1 className="text-xl font-semibold text-foreground">Today</h1>
             <p className="text-sm text-muted-foreground">
               {currentTime.toLocaleDateString("en-US", { 
@@ -1493,33 +1336,42 @@ export default function TodayPage() {
               })} • {currentTimeString}
             </p>
           </div>
+          <div className="border-l border-border/50 bg-background">
+            {/* Empty space for calendar column alignment */}
+          </div>
         </div>
       </div>
 
-      {/* New Focus Pane Layout: 70% Focus + 30% Context */}
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex gap-8 mb-8">
-          {/* Focus Area (70%) */}
-          <div className="w-[70%]">
+      {/* Two-Column Layout: Full height calendar decoupled from content */}
+      <div className="grid grid-cols-[1fr_350px]">
+        {/* Left Content Area - Independent Scrolling */}
+        <div className="min-h-[calc(100vh-80px)] overflow-y-auto">
+          <div className="max-w-none mx-auto p-6 space-y-12">
+            {/* Current Focus Component */}
             <CurrentFocusComponent 
               focus={todayData ? transformTodayDataToFocus(todayData, currentTime) : mockCurrentFocus} 
             />
-          </div>
-
-          {/* Context Area (30%) */}
-          <div className="w-[30%]">
-            <Card className="h-full">
-              <CardContent className="p-6">
-                <TimelineSchedule 
-                  schedule={todayData ? transformTodayDataToSchedule(todayData, currentTime) : mockSchedule} 
-                />
-              </CardContent>
-            </Card>
+            
+            {/* Session Notes Review - Generous spacing */}
+            <SessionNoteReview />
           </div>
         </div>
-        
-        {/* Session Notes Review - Full Width */}
-        <SessionNoteReview />
+
+        {/* Right Calendar Panel - Full Viewport Height from top */}
+        <div className="bg-background border-l border-border/50 flex flex-col h-screen fixed right-0 w-[350px] top-0">
+          <div className="px-6 pt-6 pb-2 flex-shrink-0" style={{ height: '80px' }}>
+            {/* Header space - matches main header height */}
+          </div>
+          
+          <div ref={calendarRef} className="flex-1 px-6 pb-6 overflow-hidden">
+            <PlanTimeline 
+              schedule={todayData ? transformTodayDataToSchedule(todayData, currentTime) : mockSchedule}
+              context="today"
+              availableHeight={calendarHeight}
+              currentTime={currentTime}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
