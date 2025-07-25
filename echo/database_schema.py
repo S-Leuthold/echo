@@ -149,6 +149,38 @@ class SessionDatabase:
             ON weekly_syncs (project_name, week_ending)
         """)
         
+        # Projects table (for project portfolio management)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                status TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                category TEXT NOT NULL,
+                current_focus TEXT NOT NULL,
+                progress_percentage REAL NOT NULL,
+                momentum TEXT NOT NULL,
+                total_estimated_hours INTEGER NOT NULL,
+                total_actual_hours INTEGER NOT NULL,
+                created_date DATE NOT NULL,
+                project_data TEXT NOT NULL,             -- Full project data as JSON
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL
+            )
+        """)
+        
+        # Create indexes for projects
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_project_status 
+            ON projects (status, priority)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_project_category 
+            ON projects (category)
+        """)
+        
         self.conn.commit()
     
     # ===== SESSION SCAFFOLDS =====
@@ -325,6 +357,138 @@ class SessionDatabase:
         
         return syncs
     
+    # ===== PROJECTS =====
+    
+    def create_project(self, project_data) -> bool:
+        """Create a new project record."""
+        try:
+            # Convert project data to JSON if it's a ProjectData object
+            if hasattr(project_data, 'to_dict'):
+                project_dict = project_data.to_dict()
+                project_id = project_data.id
+                name = project_data.name
+                description = project_data.description
+                status = project_data.status.value if hasattr(project_data.status, 'value') else str(project_data.status)
+                priority = project_data.priority.value if hasattr(project_data.priority, 'value') else str(project_data.priority)
+                category = project_data.category
+                current_focus = project_data.current_focus
+                progress_percentage = project_data.progress_percentage
+                momentum = project_data.momentum
+                total_estimated_hours = project_data.total_estimated_hours
+                total_actual_hours = project_data.total_actual_hours
+                created_date = project_data.created_date.isoformat() if hasattr(project_data.created_date, 'isoformat') else str(project_data.created_date)
+                created_at = project_data.created_at.isoformat() if hasattr(project_data.created_at, 'isoformat') else str(project_data.created_at)
+                updated_at = project_data.updated_at.isoformat() if hasattr(project_data.updated_at, 'isoformat') else str(project_data.updated_at)
+            else:
+                # Handle dict input
+                project_dict = project_data
+                project_id = project_data['id']
+                name = project_data['name']
+                description = project_data['description']
+                status = project_data['status']
+                priority = project_data['priority']
+                category = project_data['category']
+                current_focus = project_data['current_focus']
+                progress_percentage = project_data['progress_percentage']
+                momentum = project_data['momentum']
+                total_estimated_hours = project_data['total_estimated_hours']
+                total_actual_hours = project_data['total_actual_hours']
+                created_date = project_data['created_date']
+                created_at = project_data['created_at']
+                updated_at = project_data['updated_at']
+            
+            self.conn.execute("""
+                INSERT INTO projects 
+                (id, name, description, status, priority, category, current_focus, 
+                 progress_percentage, momentum, total_estimated_hours, total_actual_hours,
+                 created_date, project_data, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                project_id, name, description, status, priority, category, current_focus,
+                progress_percentage, momentum, total_estimated_hours, total_actual_hours,
+                created_date, json.dumps(project_dict), created_at, updated_at
+            ))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error creating project: {e}")
+            return False
+    
+    def get_all_projects(self) -> List[Dict[str, Any]]:
+        """Get all projects."""
+        cursor = self.conn.execute("""
+            SELECT project_data FROM projects 
+            ORDER BY priority DESC, status ASC, name ASC
+        """)
+        
+        projects = []
+        for row in cursor.fetchall():
+            projects.append(json.loads(row['project_data']))
+        
+        return projects
+    
+    def get_project_by_id(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific project by ID."""
+        cursor = self.conn.execute("""
+            SELECT project_data FROM projects WHERE id = ?
+        """, (project_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            return json.loads(row['project_data'])
+        return None
+    
+    def get_projects_by_status(self, status: str) -> List[Dict[str, Any]]:
+        """Get projects filtered by status."""
+        cursor = self.conn.execute("""
+            SELECT project_data FROM projects 
+            WHERE status = ?
+            ORDER BY priority DESC, name ASC
+        """, (status,))
+        
+        projects = []
+        for row in cursor.fetchall():
+            projects.append(json.loads(row['project_data']))
+        
+        return projects
+    
+    def get_projects_by_category(self, category: str) -> List[Dict[str, Any]]:
+        """Get projects filtered by category."""
+        cursor = self.conn.execute("""
+            SELECT project_data FROM projects 
+            WHERE category = ?
+            ORDER BY priority DESC, status ASC, name ASC
+        """, (category,))
+        
+        projects = []
+        for row in cursor.fetchall():
+            projects.append(json.loads(row['project_data']))
+        
+        return projects
+    
+    def update_project(self, project_id: str, project_data) -> bool:
+        """Update an existing project."""
+        try:
+            # Convert project data to JSON if it's a ProjectData object
+            if hasattr(project_data, 'to_dict'):
+                project_dict = project_data.to_dict()
+                updated_at = datetime.now().isoformat()
+            else:
+                project_dict = project_data
+                updated_at = project_data.get('updated_at', datetime.now().isoformat())
+            
+            self.conn.execute("""
+                UPDATE projects 
+                SET project_data = ?, updated_at = ?
+                WHERE id = ?
+            """, (json.dumps(project_dict), updated_at, project_id))
+            
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error updating project: {e}")
+            return False
+    
     # ===== UTILITY METHODS =====
     
     def get_database_stats(self) -> Dict[str, int]:
@@ -345,6 +509,16 @@ class SessionDatabase:
         # Count weekly syncs
         cursor = self.conn.execute("SELECT COUNT(*) as count FROM weekly_syncs")
         stats['weekly_syncs'] = cursor.fetchone()['count']
+        
+        # Count projects
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM projects")
+        stats['total_projects'] = cursor.fetchone()['count']
+        
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM projects WHERE status = 'active'")
+        stats['active_projects'] = cursor.fetchone()['count']
+        
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM projects WHERE priority IN ('high', 'critical')")
+        stats['high_priority_projects'] = cursor.fetchone()['count']
         
         return stats
     

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from echo.database_schema import SessionDatabase, SessionLog
 from echo.mock_session_service import MockSessionService
 from echo.weekly_sync_generator import WeeklySyncGenerator
+from echo.mock_project_service import MockProjectService
 import uuid
 from datetime import datetime
 
@@ -61,12 +62,30 @@ def populate_database():
         else:
             print(f"  ❌ Failed to insert sync: {sync.project_name}")
     
+    # Generate project data
+    print(f"\nGenerating project portfolio data...")
+    project_service = MockProjectService()
+    all_projects = project_service.get_all_projects()
+    
+    print(f"Inserting {len(all_projects)} projects...")
+    for project in all_projects:
+        success = db.create_project(project)
+        if success:
+            status_emoji = {"active": "🟢", "planning": "🟡", "on_hold": "🟠", "completed": "✅", "archived": "📦"}.get(project.status.value, "📋")
+            priority_emoji = {"critical": "🔥", "high": "⚡", "medium": "📋", "low": "💤"}.get(project.priority.value, "📋")
+            print(f"  ✅ {project.name} {status_emoji} {priority_emoji} ({project.progress_percentage:.0f}%)")
+        else:
+            print(f"  ❌ Failed to insert project: {project.name}")
+    
     # Display database statistics
     print(f"\n=== Database Population Complete ===")
     stats = db.get_database_stats()
     print(f"Total session logs: {stats['total_session_logs']}")
     print(f"Weekly syncs: {stats['weekly_syncs']}")
     print(f"Active scaffolds: {stats['active_scaffolds']}")
+    print(f"Total projects: {stats['total_projects']}")
+    print(f"Active projects: {stats['active_projects']}")
+    print(f"High priority projects: {stats['high_priority_projects']}")
     
     # Test query functionality
     print(f"\n=== Testing Query Functionality ===")
@@ -109,8 +128,35 @@ def populate_database():
         print(f"AI Insights keys: {list(sample_log.ai_insights.keys())}")
         print(f"Log preview: {sample_log.generated_log_markdown[:200]}...")
     
+    # Test project queries
+    print(f"\n=== Testing Project Portfolio ===")
+    
+    # Test active projects
+    active_projects = db.get_projects_by_status("active")
+    print(f"Active projects: {len(active_projects)}")
+    for project in active_projects[:3]:  # Show first 3
+        print(f"  • {project['name']}: {project['progress_percentage']}% ({project['momentum']} momentum)")
+    
+    # Test development projects
+    dev_projects = db.get_projects_by_category("development")
+    print(f"Development projects: {len(dev_projects)}")
+    for project in dev_projects[:2]:  # Show first 2
+        print(f"  • {project['name']}: {project['current_focus']}")
+    
+    # Test high priority project
+    echo_core = db.get_project_by_id("echo_core")
+    if echo_core:
+        print(f"\n=== Sample Project Data ===")
+        print(f"Project: {echo_core['name']}")
+        print(f"Progress: {echo_core['progress_percentage']}%")
+        print(f"Status: {echo_core['status']} | Priority: {echo_core['priority']}")
+        print(f"Focus: {echo_core['current_focus']}")
+        print(f"Milestones: {len(echo_core['milestones'])}")
+        print(f"Recent wins: {len(echo_core['recent_wins'])}")
+    
     db.close()
     print(f"\n✅ Database population and testing complete!")
+    print(f"✅ Projects integrated with session management system")
 
 
 if __name__ == "__main__":

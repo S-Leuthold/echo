@@ -44,6 +44,12 @@ from echo.email_intelligence import EmailCategorizer
 from echo.session_intelligence import SessionNotesAnalyzer
 from echo.structured_briefing import StructuredContextBriefing
 
+# Claude integration session management services
+from echo.scaffold_generator import ScaffoldGenerator, generate_scaffolds_for_daily_plan, get_scaffold_for_block
+from echo.session_starter import SessionStarter, start_session_with_checklist, SessionUserInput
+from echo.session_logger import SessionLogger, synthesize_session_log, SessionDebriefInput, SessionMetadata
+from echo.database_schema import SessionDatabase
+
 # Load environment variables
 load_dotenv()
 
@@ -282,6 +288,73 @@ class ConfigResponse(BaseModel):
     message: str
     success: bool
     config_path: Optional[str] = None
+
+# ===== SESSION MANAGEMENT API MODELS =====
+
+class ScaffoldGenerationRequest(BaseModel):
+    """Request model for scaffold generation after daily planning"""
+    daily_plan: List[Dict[str, Any]] = Field(description="Daily plan blocks in JSON format")
+    context_briefing: Dict[str, Any] = Field(description="Context briefing data for scaffolding")
+    force_refresh: bool = Field(default=False, description="Force regeneration of scaffolds")
+
+class ScaffoldGenerationResponse(BaseModel):
+    """Response model for scaffold generation"""
+    status: str
+    message: str
+    scaffolds_generated: int
+    success_rate: float
+    failed_blocks: List[str] = []
+    
+class SessionStartRequest(BaseModel):
+    """Request model for session start with checklist generation"""
+    block_id: str = Field(description="ID of the schedule block being started")
+    primary_outcome: str = Field(description="User's main goal for this session")
+    key_tasks: List[str] = Field(description="User's key tasks or notes")
+    session_duration_minutes: int = Field(default=90, description="Session duration in minutes")
+    energy_level: Optional[int] = Field(default=None, description="User's energy level 1-10")
+    time_constraints: Optional[str] = Field(default=None, description="Any time constraints")
+
+class SessionStartResponse(BaseModel):
+    """Response model for session start with generated checklist"""
+    status: str
+    session_title: str
+    primary_objective: str
+    checklist: List[Dict[str, Any]]
+    time_allocation: Dict[str, int]
+    success_criteria: List[str]
+    contingency_plan: str
+
+class SessionCompleteRequest(BaseModel):
+    """Request model for session completion and log synthesis"""
+    block_title: str = Field(description="Original session title")
+    project_name: str = Field(description="Project this session belonged to")
+    session_date: str = Field(description="Date in YYYY-MM-DD format")
+    duration_minutes: int = Field(description="Actual session duration")  
+    time_category: str = Field(description="Session category (deep_work, etc)")
+    start_time: str = Field(description="Session start time")
+    end_time: str = Field(description="Session end time")
+    accomplishments: str = Field(description="What the user accomplished")
+    outstanding: str = Field(description="What's outstanding for next time")
+    final_notes: str = Field(description="User's final reflections")
+    checklist_data: Optional[Dict[str, Any]] = Field(default=None, description="Original checklist and completion status")
+
+class SessionCompleteResponse(BaseModel):
+    """Response model for session completion with synthesized log"""
+    status: str
+    session_log_markdown: str
+    ai_insights: Dict[str, Any]
+    stored_successfully: bool
+
+class GetScaffoldRequest(BaseModel):
+    """Request model for retrieving a session scaffold"""
+    block_id: str = Field(description="ID of the schedule block")
+
+class GetScaffoldResponse(BaseModel):
+    """Response model for scaffold retrieval"""
+    status: str
+    scaffold_available: bool
+    scaffold_data: Optional[Dict[str, Any]] = None
+    message: str
 
 # Global state (in production, use proper state management)
 config: Optional[Config] = None
@@ -727,6 +800,26 @@ async def startup_event():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/config")
+async def get_config():
+    """Get user configuration including wake and sleep times for timeline display."""
+    try:
+        if not config:
+            raise HTTPException(status_code=500, detail="Configuration not loaded")
+        
+        # Extract wake and sleep times from defaults
+        wake_time = config.defaults.wake_time if config.defaults else '06:00'
+        sleep_time = config.defaults.sleep_time if config.defaults else '22:00'
+        
+        return {
+            "wake_time": wake_time,
+            "sleep_time": sleep_time,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/today", response_model=TodayResponse)
 async def get_today_schedule():
@@ -1618,6 +1711,194 @@ async def get_context_briefing(request: dict = {}):
             },
             "timestamp": dt.now().isoformat()
         }
+
+# ============================================================================== 
+# SESSION MANAGEMENT ENDPOINTS - Claude Integration
+# ==============================================================================
+
+@app.post("/session/generate-scaffolds", response_model=ScaffoldGenerationResponse)
+async def generate_session_scaffolds(request: ScaffoldGenerationRequest):
+    """Generate AI-powered session scaffolds for a daily plan (post-planning enrichment)."""
+    try:
+        logger.info(f"Processing scaffold generation for {len(request.daily_plan)} blocks")
+        
+        # Initialize database and generator
+        db = SessionDatabase()
+        generator = ScaffoldGenerator(db)
+        
+        # Convert daily plan from JSON format to Block objects
+        blocks = []
+        for block_data in request.daily_plan:
+            try:
+                # Parse time strings to time objects
+                start_time = datetime.strptime(block_data["start"], "%H:%M:%S").time()
+                end_time = datetime.strptime(block_data["end"], "%H:%M:%S").time()
+                
+                block = Block(
+                    start=start_time,
+                    end=end_time,
+                    label=block_data["label"],
+                    type=BlockType(block_data["type"]),
+                    meta=block_data.get("meta", {})
+                )
+                # Add unique ID if not present
+                if "id" not in block.meta:
+                    block.meta["id"] = f"block_{start_time.isoformat()}_{end_time.isoformat()}"
+                    
+                blocks.append(block)
+            except Exception as e:
+                logger.warning(f"Failed to parse block: {block_data} - {e}")
+                continue
+        
+        # Generate scaffolds for all blocks
+        results = await generator.generate_scaffolds_for_plan(blocks, request.context_briefing)
+        
+        # Calculate success metrics
+        total_blocks = len(results)
+        successful_scaffolds = sum(1 for success in results.values() if success)
+        success_rate = (successful_scaffolds / total_blocks) if total_blocks > 0 else 0.0
+        failed_blocks = [block_id for block_id, success in results.items() if not success]
+        
+        logger.info(f"Scaffold generation complete: {successful_scaffolds}/{total_blocks} successful")
+        
+        return ScaffoldGenerationResponse(
+            status="success",
+            message=f"Generated {successful_scaffolds} scaffolds for {total_blocks} blocks",
+            scaffolds_generated=successful_scaffolds,
+            success_rate=success_rate,
+            failed_blocks=failed_blocks
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in scaffold generation: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate scaffolds: {str(e)}")
+
+@app.get("/session/scaffold/{block_id}", response_model=GetScaffoldResponse)
+async def get_session_scaffold(block_id: str):
+    """Retrieve a generated scaffold for a specific block."""
+    try:
+        db = SessionDatabase()
+        scaffold_data = get_scaffold_for_block(block_id, db)
+        
+        if scaffold_data:
+            return GetScaffoldResponse(
+                status="success",
+                scaffold_available=True,
+                scaffold_data=scaffold_data.model_dump(),
+                message="Scaffold retrieved successfully"
+            )
+        else:
+            return GetScaffoldResponse(
+                status="success",
+                scaffold_available=False,
+                scaffold_data=None,
+                message="No scaffold available for this block"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error retrieving scaffold for block {block_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve scaffold: {str(e)}")
+
+@app.post("/session/start", response_model=SessionStartResponse)
+async def start_session_with_ai_checklist(request: SessionStartRequest):
+    """Generate an AI-powered checklist when starting a session."""
+    try:
+        logger.info(f"Starting session for block {request.block_id}: {request.primary_outcome}")
+        
+        # Initialize session starter service
+        db = SessionDatabase()
+        starter = SessionStarter(db)
+        
+        # Create user input object
+        user_input = SessionUserInput(
+            primary_outcome=request.primary_outcome,
+            key_tasks=request.key_tasks,
+            energy_level=request.energy_level,  
+            time_constraints=request.time_constraints
+        )
+        
+        # Generate session checklist
+        checklist_data = await starter.generate_session_checklist(
+            request.block_id, 
+            user_input, 
+            request.session_duration_minutes
+        )
+        
+        # Convert checklist items to API response format
+        checklist_items = []
+        for item in checklist_data.checklist:
+            checklist_items.append({
+                "id": item.id,
+                "task": item.task,
+                "priority": item.priority,
+                "estimated_minutes": item.estimated_minutes,
+                "category": item.category,
+                "dependencies": item.dependencies,
+                "completed": False  # Default to not completed
+            })
+        
+        logger.info(f"Generated checklist with {len(checklist_items)} items for session")
+        
+        return SessionStartResponse(
+            status="success",
+            session_title=checklist_data.session_title,
+            primary_objective=checklist_data.primary_objective,
+            checklist=checklist_items,
+            time_allocation=checklist_data.time_allocation,
+            success_criteria=checklist_data.success_criteria,
+            contingency_plan=checklist_data.contingency_plan
+        )
+        
+    except Exception as e:
+        logger.error(f"Error starting session: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start session: {str(e)}")
+
+@app.post("/session/complete", response_model=SessionCompleteResponse)
+async def complete_session_with_ai_synthesis(request: SessionCompleteRequest):
+    """Synthesize session log using AI when completing a session."""
+    try:
+        logger.info(f"Completing session: {request.block_title} ({request.duration_minutes} min)")
+        
+        # Initialize session logger service
+        db = SessionDatabase()
+        logger_service = SessionLogger(db)
+        
+        # Create debrief input and session metadata
+        debrief_input = SessionDebriefInput(
+            accomplishments=request.accomplishments,
+            outstanding=request.outstanding,
+            final_notes=request.final_notes
+        )
+        
+        session_metadata = SessionMetadata(
+            block_title=request.block_title,
+            project_name=request.project_name,
+            session_date=request.session_date,
+            duration_minutes=request.duration_minutes,
+            time_category=request.time_category,
+            start_time=request.start_time,
+            end_time=request.end_time
+        )
+        
+        # Synthesize session log with hybrid voice model
+        log_output = await logger_service.synthesize_session_log(
+            debrief_input,
+            session_metadata,
+            request.checklist_data
+        )
+        
+        logger.info(f"Session log synthesized for {request.block_title}")
+        
+        return SessionCompleteResponse(
+            status="success",
+            session_log_markdown=log_output.session_log_markdown,
+            ai_insights=log_output.ai_insights,
+            stored_successfully=True  # Database storage handled in the service
+        )
+        
+    except Exception as e:
+        logger.error(f"Error completing session: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to complete session: {str(e)}")
 
 @app.post("/plan/refine", response_model=PlanRefinementResponse)
 async def refine_plan(request: PlanRefinementRequest):
