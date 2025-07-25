@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Block } from '@/hooks/useSessionState';
 import { getMockSessionContext } from '@/services/mockSessionData';
 import { IconResolutionService } from '@/lib/icon-resolution';
-import { Rocket, CheckCircle2, Plus, Clock, Target, Users } from 'lucide-react';
+import { Rocket, CheckCircle2, Plus, Clock, Target, Users, Check } from 'lucide-react';
 
 /**
  * SpinUpState Component - Mission Briefing Experience
@@ -51,6 +51,7 @@ export function SpinUpState({
   const [primaryGoal, setPrimaryGoal] = useState("");
   const [tacticalPlan, setTacticalPlan] = useState("");
   const [isStarting, setIsStarting] = useState(false);
+  const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
   
   // Format time display for header
   const formatTime = (timeStr: string): string => {
@@ -65,6 +66,11 @@ export function SpinUpState({
     if (minutes <= 0) return "Starting now";
     if (minutes === 1) return "1 minute";
     return `${Math.ceil(minutes)} minutes`;
+  };
+  
+  // Format category for consistent capitalization
+  const formatCategory = (category: string): string => {
+    return category.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
   
   // Get AI briefing data
@@ -94,16 +100,35 @@ export function SpinUpState({
   
   const SessionIcon = getSessionIcon();
   
-  // Handle adding tasks from echo insights to tactical plan
-  const handleAddToTasks = (item: string) => {
+  // Handle adding/removing tasks from echo insights to tactical plan
+  const handleToggleTask = (item: string) => {
     const newTask = `• ${item}`;
-    setTacticalPlan(prev => {
-      if (!prev.trim()) {
-        return newTask;
-      }
-      // Add new task on a new line
-      return `${prev}\n${newTask}`;
-    });
+    
+    if (addedTasks.has(item)) {
+      // Remove task from tactical plan
+      setTacticalPlan(prev => {
+        const lines = prev.split('\n');
+        const filteredLines = lines.filter(line => line.trim() !== newTask.trim());
+        return filteredLines.join('\n');
+      });
+      // Remove from added tasks set
+      setAddedTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(item);
+        return newSet;
+      });
+    } else {
+      // Add task to tactical plan
+      setTacticalPlan(prev => {
+        if (!prev.trim()) {
+          return newTask;
+        }
+        // Add new task on a new line
+        return `${prev}\n${newTask}`;
+      });
+      // Track that this task has been added
+      setAddedTasks(prev => new Set([...prev, item]));
+    }
   };
   
   // Handle Enter key to auto-add bullet points
@@ -172,14 +197,17 @@ export function SpinUpState({
             <h1 className="text-2xl font-bold text-foreground mb-1">
               {nextWorkBlock.label}
             </h1>
-            <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="flex items-center gap-3 text-muted-foreground mb-2">
               <span className="text-lg">
                 {formatTime(nextWorkBlock.startTime)} - {formatTime(nextWorkBlock.endTime)}
               </span>
               <span>•</span>
               <Badge variant="outline" className="text-xs">
-                {nextWorkBlock.timeCategory.replace('_', ' ').toLowerCase()}
+                {formatCategory(nextWorkBlock.timeCategory)}
               </Badge>
+            </div>
+            <div className="text-sm font-medium text-muted-foreground">
+              {/* Empty line to match ActiveSessionState spacing */}
             </div>
           </div>
         </div>
@@ -220,11 +248,19 @@ export function SpinUpState({
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-6 px-2 text-xs hover:bg-accent/10 flex-shrink-0"
-                          onClick={() => handleAddToTasks(item)}
+                          className={`h-6 px-2 text-xs flex-shrink-0 ${
+                            addedTasks.has(item) 
+                              ? 'text-accent/70 hover:bg-accent/5' 
+                              : 'hover:bg-accent/10'
+                          }`}
+                          onClick={() => handleToggleTask(item)}
                         >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add to tasks
+                          {addedTasks.has(item) ? (
+                            <Check className="w-3 h-3 mr-1" />
+                          ) : (
+                            <Plus className="w-3 h-3 mr-1" />
+                          )}
+                          {addedTasks.has(item) ? 'Added' : 'Add to tasks'}
                         </Button>
                       </div>
                     ))}
@@ -245,11 +281,19 @@ export function SpinUpState({
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-6 px-2 text-xs hover:bg-accent/10 flex-shrink-0"
-                          onClick={() => handleAddToTasks(task)}
+                          className={`h-6 px-2 text-xs flex-shrink-0 ${
+                            addedTasks.has(task) 
+                              ? 'text-accent/70 hover:bg-accent/5' 
+                              : 'hover:bg-accent/10'
+                          }`}
+                          onClick={() => handleToggleTask(task)}
                         >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add to tasks
+                          {addedTasks.has(task) ? (
+                            <Check className="w-3 h-3 mr-1" />
+                          ) : (
+                            <Plus className="w-3 h-3 mr-1" />
+                          )}
+                          {addedTasks.has(task) ? 'Added' : 'Add to tasks'}
                         </Button>
                       </div>
                     ))}

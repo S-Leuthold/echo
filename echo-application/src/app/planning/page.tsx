@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { IconResolutionService } from "@/lib/icon-resolution";
+import { PlanTimeline } from "@/components/shared/PlanTimeline";
 import { ChevronRight, ChevronLeft, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail, CheckCircle2, Info, Activity, Sun, Coffee, Car, Briefcase, NotebookText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -1414,212 +1415,6 @@ const getCategoryAccentColor = (category: string) => {
   return colorMap[category.toLowerCase()] || 'text-muted-foreground';
 };
 
-function PlanTimeline({ schedule }: { schedule: any[] }) {
-  if (!schedule || schedule.length === 0) return null;
-  
-  // 1. ESTABLISH CONSISTENT VERTICAL SCALE
-  const SCALE_FACTOR = 2; // 2 pixels per minute - mathematical constant for all calculations
-  const DAY_START_MINUTES = 5 * 60; // Start calendar at 5:00 AM (300 minutes)
-  const DAY_END_MINUTES = 22 * 60; // End calendar at 10:00 PM (1320 minutes)
-  const TOTAL_DAY_DURATION = DAY_END_MINUTES - DAY_START_MINUTES; // 17 hours = 1020 minutes
-  const TIMELINE_HEIGHT = TOTAL_DAY_DURATION * SCALE_FACTOR; // 1020 * 2 = 2040px
-  
-  // 2. CALCULATE VERTICAL POSITION with collision buffer
-  const getBlockTop = (startMinutes: number, blockIndex: number) => {
-    const baseTop = (startMinutes - DAY_START_MINUTES) * SCALE_FACTOR;
-    // Add 3px buffer for each block to prevent overlaps
-    const bufferOffset = blockIndex * 3;
-    return baseTop + bufferOffset;
-  };
-  
-  // 3. CALCULATE BLOCK HEIGHT (direct duration calculation)
-  const getBlockHeight = (durationMinutes: number) => {
-    return durationMinutes * SCALE_FACTOR;
-  };
-  
-  // Map our time categories to config wizard categories
-  const mapToConfigCategory = (timeCategory: string, label: string) => {
-    switch (timeCategory) {
-      case "DEEP_WORK": return "deep_work";
-      case "SHALLOW_WORK": return label.toLowerCase().includes('admin') || label.toLowerCase().includes('email') ? "admin" : "shallow_work";
-      case "MEETINGS": return "meetings";
-      case "PERSONAL": return "personal";
-      case "HEALTH": return "health";
-      case "MEALS": return "meals";
-      case "TRANSIT": return "personal";
-      case "PLANNING": return "planning";
-      case "RESEARCH": return "research";
-      default: return "work";
-    }
-  };
-  
-  // Tier system matching config wizard
-  const getTier = (duration: number) => {
-    if (duration > 60) return 'tall'; // > 60 minutes
-    if (duration >= 30) return 'medium'; // 30+ minutes (changed from > 30)
-    return 'short'; // < 30 minutes
-  };
-
-  return (
-    <TooltipProvider>
-      <div className="relative">
-        <h2 className="text-lg font-semibold text-foreground mb-6">Your Intelligent Schedule</h2>
-        
-        {/* Scrollable timeline container */}
-        <div className="relative h-[65vh] overflow-y-auto border border-border rounded-lg bg-muted/20">
-          <div className="relative" style={{ height: TIMELINE_HEIGHT }}>
-          {/* Timeline line */}
-          <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-          
-          {/* Time markers every 30 minutes like config wizard */}
-          {Array.from({ length: 35 }, (_, i) => {
-            const totalMinutes = (5 * 60) + (i * 30); // Start at 5 AM, increment by 30 minutes
-            const hour = Math.floor(totalMinutes / 60);
-            const minute = totalMinutes % 60;
-            
-            if (hour > 22) return null; // Stop at 10 PM
-            
-            const top = getBlockTop(totalMinutes, 0); // No buffer offset for time markers
-            const isHourMark = minute === 0;
-            const timeLabel = hour >= 12 ? 
-              `${hour > 12 ? hour - 12 : hour}:${minute.toString().padStart(2, '0')} PM` : 
-              `${hour}:${minute.toString().padStart(2, '0')} AM`;
-            
-            return (
-              <div key={`${hour}-${minute}`} className="absolute left-0 right-0 flex items-center" style={{ top: `${top}px` }}>
-                <div className={`text-xs w-16 text-right pr-2 ${
-                  isHourMark ? 'text-muted-foreground font-medium' : 'text-muted-foreground/70'
-                }`}>
-                  {timeLabel}
-                </div>
-                <div className={`flex-1 h-px ml-2 ${
-                  isHourMark ? 'bg-border/30' : 'bg-border/15'
-                }`} />
-              </div>
-            );
-          }).filter(Boolean)}
-          
-          {/* Schedule blocks */}
-          {schedule.map((block, index) => {
-            const duration = block.endMinutes - block.startMinutes;
-            const tier = getTier(duration);
-            const configCategory = mapToConfigCategory(block.timeCategory, block.label);
-            const borderColor = getCategoryBorderColor(configCategory);
-            const accentColor = getCategoryAccentColor(configCategory);
-            
-            // Mathematical positioning: exact top and height based on time with collision buffer
-            const blockTop = getBlockTop(block.startMinutes, index);
-            const blockHeight = getBlockHeight(duration);
-            
-            // Use Config Wizard's clean card styling - all blocks now use solid borders
-            const blockStyle = `bg-card/90 border-2 ${borderColor} border-solid hover:bg-card shadow-sm`;
-            
-            const IconComponent = block.icon;
-            
-            return (
-              <Tooltip key={block.id}>
-                <TooltipTrigger asChild>
-                  <div
-                    className={`absolute left-20 right-4 rounded-md cursor-pointer transition-all hover:shadow-md z-10 ${blockStyle}`}
-                    style={{ 
-                      top: `${blockTop}px`,
-                      height: `${Math.max(blockHeight, 24)}px`, // Reduce minimum height for short blocks
-                      padding: duration >= 30 ? '8px 12px' : '4px 8px' // Less padding for short blocks
-                    }}
-                  >
-                    {/* Config wizard tiered content */}
-                    <div className="h-full flex items-center overflow-hidden">
-                      {tier === 'tall' && (
-                        <div className="flex flex-col justify-center w-full">
-                          {/* Top line: Icon + Title */}
-                          <div className="flex items-center gap-1 mb-1 text-foreground">
-                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
-                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
-                          </div>
-                          {/* Bottom line: Time range */}
-                          <div className="text-xs opacity-70 text-left text-foreground">
-                            {block.startTime} - {block.endTime}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {tier === 'medium' && (
-                        <div className="flex flex-col justify-center w-full">
-                          {/* Top line: Icon + Title */}
-                          <div className="flex items-center gap-1 mb-0.5 text-foreground">
-                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
-                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
-                          </div>
-                          {/* Bottom line: Time range */}
-                          <div className="text-xs opacity-70 text-left text-foreground">
-                            {block.startTime} - {block.endTime}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {tier === 'short' && (
-                        <div className="flex items-center gap-1 justify-start w-full text-foreground">
-                          <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
-                          <span className="font-medium text-xs truncate text-left">{block.label}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs">
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs font-medium">{block.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {block.startTime} - {block.endTime} ({block.duration})
-                      </p>
-                      {block.isConfigBlock && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400">📌 Config Block</p>
-                      )}
-                    </div>
-                    
-                    {/* Show Claude's reasoning for AI blocks or config description */}
-                    {block.note && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          {block.isConfigBlock ? "Description:" : "AI Reasoning:"}
-                        </p>
-                        <p className="text-xs text-foreground leading-relaxed">
-                          {block.note}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Show rationale if available */}
-                    {block.rationale && block.rationale !== block.note && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Context:</p>
-                        <p className="text-xs text-muted-foreground italic">
-                          {block.rationale}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Fallback if no meaningful description */}
-                    {!block.note && !block.rationale && (
-                      <p className="text-xs text-muted-foreground italic">
-                        {block.isConfigBlock 
-                          ? "Part of your daily routine" 
-                          : "AI-generated time block"}
-                      </p>
-                    )}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-          </div>
-        </div>
-        
-      </div>
-    </TooltipProvider>
-  );
-}
 
 interface GeneratedPlanStepProps {
   planningData: PlanningPromptsData;
@@ -1910,7 +1705,10 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
         {plan?.blocks && (
           <Card className="bg-card/50 border-border/50">
             <CardContent className="p-6">
-              <PlanTimeline schedule={transformPlanToTimeline(plan)} />
+              <PlanTimeline 
+                schedule={transformPlanToTimeline(plan)} 
+                context="planning"
+              />
             </CardContent>
           </Card>
         )}

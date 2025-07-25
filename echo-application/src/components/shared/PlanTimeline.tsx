@@ -12,6 +12,12 @@ interface PlanTimelineProps {
   currentTime?: Date; // For real-time features in today context
 }
 
+interface UserConfig {
+  wake_time: string;
+  sleep_time: string;
+  timestamp: string;
+}
+
 interface TimelineConfig {
   SCALE_FACTOR: number;
   DAY_START_MINUTES: number;
@@ -19,6 +25,35 @@ interface TimelineConfig {
   TOTAL_DAY_DURATION: number;
   TIMELINE_HEIGHT: number;
 }
+
+// Convert time string (HH:MM) to minutes since midnight
+const timeStringToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Convert 24-hour time to 12-hour format
+const formatTime12Hour = (timeStr: string): string => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
+// Calculate config-based time range with 15-minute buffers
+const calculateConfigBasedTimeRange = (userConfig: UserConfig) => {
+  const wakeMinutes = timeStringToMinutes(userConfig.wake_time);
+  const sleepMinutes = timeStringToMinutes(userConfig.sleep_time);
+  
+  // Add 15-minute buffers
+  const bufferedStart = wakeMinutes - 15;
+  const bufferedEnd = sleepMinutes + 15;
+  
+  return {
+    start: Math.max(0, bufferedStart),      // Don't go before midnight
+    end: Math.min(24 * 60, bufferedEnd)    // Don't go past midnight next day
+  };
+};
 
 // Dynamic schedule analysis function - calculates optimal time range from actual schedule
 const calculateOptimalTimeRange = (schedule: any[]) => {
@@ -78,25 +113,82 @@ export function PlanTimeline({
     TOTAL_DAY_DURATION: 17 * 60, // 17 hours = 1020 minutes
     TIMELINE_HEIGHT: 2040 // Default height
   });
+  
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+
+  // Fetch user config for 'today' context
+  useEffect(() => {
+    if (context === 'today') {
+      const fetchUserConfig = async () => {
+        try {
+          const response = await fetch('http://localhost:8000/config');
+          if (response.ok) {
+            const configData = await response.json();
+            setUserConfig(configData);
+          } else {
+            // Silently handle missing config endpoint - timeline will use defaults
+            console.debug('User config endpoint not available, using timeline defaults');
+          }
+        } catch (error) {
+          // Silently handle network errors - timeline will use defaults
+          console.debug('Could not fetch user config, using timeline defaults');
+        }
+      };
+      
+      fetchUserConfig();
+    }
+  }, [context]);
 
   // Dynamic timeline calculations based on actual schedule
   useEffect(() => {
-    if (context === 'today' && availableHeight && availableHeight > 0) {
-      // Calculate optimal time range from actual schedule data
-      const timeRange = calculateOptimalTimeRange(schedule);
+    if (context === 'today') {
+      // Use config-based time range if available, otherwise fall back to dynamic calculation
+      let timeRange;
+      if (userConfig) {
+        timeRange = calculateConfigBasedTimeRange(userConfig);
+      } else {
+        // Fallback to dynamic calculation for backward compatibility
+        timeRange = calculateOptimalTimeRange(schedule);
+      }
+      
       const DAY_START_MINUTES = timeRange.start;
       const DAY_END_MINUTES = timeRange.end;
       const TOTAL_DAY_DURATION = DAY_END_MINUTES - DAY_START_MINUTES;
       
-      // Reserve space for title and padding
-      const headerSpace = 40; // For "Today's Schedule" title + margins
-      const usableHeight = Math.max(availableHeight - headerSpace, 700);
+      // Account for all space consumption: title + container borders
+      const titleSpace = 24; // "Today's Schedule" title (mb-6 = 24px)
+      const containerBorders = 2; // border-border top + bottom (1px each)
+      const totalReservedSpace = titleSpace + containerBorders;
+      
+      // Use availableHeight if provided and reasonable, otherwise calculate from viewport
+      const finalAvailableHeight = (availableHeight && availableHeight > 200) 
+        ? availableHeight 
+        : window.innerHeight - 128; // Fallback: viewport minus header space
+        
+      const usableHeight = Math.max(finalAvailableHeight - totalReservedSpace, 700);
+      
+      
       
       // Calculate perfect-fit scale factor based on actual schedule needs
       const rawScaleFactor = usableHeight / TOTAL_DAY_DURATION;
-      // Ensure scale factor is reasonable: minimum 0.5px/min, maximum 4px/min
-      const SCALE_FACTOR = Math.max(0.5, Math.min(rawScaleFactor, 4));
+      
+      // Ensure we can show 5:00 AM to 10:30 PM (17.5 hours = 1050 minutes)
+      // Calculate scale to fit this range in available height
+      const targetRange = 17.5 * 60; // 1050 minutes from 5:00 AM to 10:30 PM
+      const targetScaleFactor = usableHeight / targetRange;
+      
+      // Use calculated scale factor, minimum 0.6px/min for tight fit
+      const SCALE_FACTOR = Math.max(0.6, Math.min(targetScaleFactor, 2.5));
       const TIMELINE_HEIGHT = TOTAL_DAY_DURATION * SCALE_FACTOR;
+      
+      console.log('Timeline sizing:', {
+        usableHeight,
+        dayDuration: TOTAL_DAY_DURATION,
+        targetRange,
+        scaleFactor: SCALE_FACTOR,
+        finalHeight: TIMELINE_HEIGHT
+      });
+      
       
       // Dynamic timeline configuration completed
       
@@ -107,22 +199,32 @@ export function PlanTimeline({
         TOTAL_DAY_DURATION,
         TIMELINE_HEIGHT
       });
+    } else if (context === 'planning') {
+      // For planning context, use simpler default configuration
+      setConfig({
+        SCALE_FACTOR: 2,
+        DAY_START_MINUTES: 6 * 60, // 6:00 AM
+        DAY_END_MINUTES: 22 * 60,  // 10:00 PM
+        TOTAL_DAY_DURATION: 16 * 60, // 16 hours
+        TIMELINE_HEIGHT: 1920 // 16 hours * 2px/min * 60min/hr
+      });
     }
-  }, [context, availableHeight, schedule]); // Added schedule dependency for dynamic updates
+  }, [context, availableHeight, userConfig, schedule]); // Re-added schedule for proper recalculation
 
   if (!schedule || schedule.length === 0) return null;
 
-  // Calculate vertical position with collision buffer
-  const getBlockTop = (startMinutes: number, blockIndex: number) => {
-    const baseTop = (startMinutes - config.DAY_START_MINUTES) * config.SCALE_FACTOR;
-    // Add small buffer for blocks to prevent overlaps
-    const bufferOffset = blockIndex * 2;
-    return baseTop + bufferOffset;
+  // Calculate vertical position for perfect alignment with time grid
+  const getBlockTop = (startMinutes: number) => {
+    return (startMinutes - config.DAY_START_MINUTES) * config.SCALE_FACTOR;
   };
 
-  // Calculate block height from duration
+  // Calculate block height from duration - more accommodating for shorter blocks
   const getBlockHeight = (durationMinutes: number) => {
-    return Math.max(durationMinutes * config.SCALE_FACTOR, 24); // Minimum 24px height
+    const calculatedHeight = durationMinutes * config.SCALE_FACTOR;
+    // More generous minimum heights for better readability
+    if (durationMinutes <= 15) return Math.max(calculatedHeight, 20); // Very short blocks
+    if (durationMinutes <= 30) return Math.max(calculatedHeight, 28); // Short blocks  
+    return Math.max(calculatedHeight, 32); // Medium and tall blocks
   };
 
   // Current time position for today context
@@ -134,7 +236,7 @@ export function PlanTimeline({
       return null;
     }
     
-    return getBlockTop(currentMinutes, 0);
+    return getBlockTop(currentMinutes);
   };
 
   // Map time categories to config categories
@@ -153,11 +255,12 @@ export function PlanTimeline({
     }
   };
 
-  // Tier system for different block heights
+  // Tier system for different block heights - optimized for consistent timeline range
   const getTier = (duration: number) => {
-    if (duration > 60) return 'tall'; // > 60 minutes
-    if (duration >= 30) return 'medium'; // 30+ minutes
-    return 'short'; // < 30 minutes
+    if (duration >= 60) return 'tall'; // >= 60 minutes - full info with times
+    if (duration > 30) return 'medium'; // 31-59 minutes - title only, no times
+    if (duration > 15) return 'short'; // 16-30 minutes - title only, no times
+    return 'tiny'; // <= 15 minutes - very compact title only
   };
 
   // Category border colors - using existing -active classes for consistency
@@ -213,6 +316,7 @@ export function PlanTimeline({
           {context === 'today' ? "Today's Schedule" : "Your Intelligent Schedule"}
         </h2>
         
+        
         {/* Timeline container - scrollable for planning, perfect-fit for today */}
         <div className={`relative ${
           context === 'planning' 
@@ -242,36 +346,57 @@ export function PlanTimeline({
             )}
             
             {/* Time markers - hourly labels only, subtle 30-min marks */}
-            {Array.from({ length: Math.ceil((config.DAY_END_MINUTES - config.DAY_START_MINUTES) / 30) + 1 }, (_, i) => {
-              const totalMinutes = config.DAY_START_MINUTES + (i * 30);
-              const hour = Math.floor(totalMinutes / 60);
-              const minute = totalMinutes % 60;
+            {(() => {
+              // Generate hour marks from 5 AM to 11 PM to ensure full visibility
+              const startHour = 5;  // Always start at 5 AM
+              const endHour = 23;   // Always end at 11 PM (to show 10:30 PM)
+              const hourMarkers = [];
               
-              if (totalMinutes > config.DAY_END_MINUTES) return null; // Stop at configured end time
               
-              const top = getBlockTop(totalMinutes, 0);
-              const isHourMark = minute === 0;
+              for (let hour = startHour; hour <= endHour; hour++) {
+                const totalMinutes = hour * 60;
+                // Show all hours from 5 AM to 11 PM for full visibility
+                if (hour >= 5 && hour <= 23) {
+                  const top = getBlockTop(totalMinutes);
+                  
+                  let timeLabel = '';
+                  if (hour === 0) {
+                    timeLabel = '12 AM';
+                  } else if (hour < 12) {
+                    timeLabel = `${hour} AM`;
+                  } else if (hour === 12) {
+                    timeLabel = '12 PM';
+                  } else {
+                    timeLabel = `${hour - 12} PM`;
+                  }
+                  
+                      
+                  hourMarkers.push(
+                    <div key={`hour-${hour}`} className="absolute left-0 right-0 flex items-center" style={{ top: `${top}px` }}>
+                      <div className="text-xs w-16 text-right pr-2 text-muted-foreground font-medium">
+                        {timeLabel}
+                      </div>
+                      <div className="flex-1 h-px bg-border/30" />
+                    </div>
+                  );
+                  
+                  // Add subtle 30-minute marks
+                  const halfHourMinutes = totalMinutes + 30;
+                  if (halfHourMinutes <= config.DAY_END_MINUTES) {
+                    const halfHourTop = getBlockTop(halfHourMinutes);
+                    hourMarkers.push(
+                      <div key={`half-${hour}`} className="absolute left-0 right-0 flex items-center" style={{ top: `${halfHourTop}px` }}>
+                        <div className="w-16" />
+                        <div className="flex-1 h-px bg-border/10" />
+                      </div>
+                    );
+                  }
+                }
+              }
               
-              // Only show time labels for hour marks
-              const timeLabel = isHourMark ? (
-                hour >= 12 ? 
-                  `${hour > 12 ? hour - 12 : hour} PM` : 
-                  `${hour} AM`
-              ) : '';
-              
-              return (
-                <div key={`${hour}-${minute}`} className="absolute left-0 right-0 flex items-center" style={{ top: `${top}px` }}>
-                  <div className={`text-xs w-16 text-right pr-2 ${
-                    isHourMark ? 'text-muted-foreground font-medium' : ''
-                  }`}>
-                    {timeLabel}
-                  </div>
-                  <div className={`flex-1 h-px ml-2 ${
-                    isHourMark ? 'bg-border/30' : 'bg-border/10'
-                  }`} />
-                </div>
-              );
-            }).filter(Boolean)}
+              return hourMarkers;
+            })()}
+            
             
             {/* Schedule blocks */}
             {schedule.map((block, index) => {
@@ -281,8 +406,8 @@ export function PlanTimeline({
               const borderColor = getCategoryBorderColor(configCategory);
               const accentColor = getCategoryAccentColor(configCategory);
               
-              // Mathematical positioning
-              const blockTop = getBlockTop(block.startMinutes, index);
+              // Mathematical positioning - perfect alignment with time grid
+              const blockTop = getBlockTop(block.startMinutes);
               const blockHeight = getBlockHeight(duration);
               
               // Outline-based styling matching WeeklyCalendar
@@ -308,11 +433,12 @@ export function PlanTimeline({
                 <Tooltip key={block.id}>
                   <TooltipTrigger asChild>
                     <div
-                      className={`absolute left-20 right-4 rounded-md cursor-pointer transition-all hover:shadow-md z-10 ${blockStyle}`}
+                      className={`absolute left-20 right-2 rounded-md cursor-pointer transition-all hover:shadow-md ${blockStyle}`}
                       style={{ 
                         top: `${blockTop}px`,
                         height: `${blockHeight}px`,
-                        padding: duration >= 30 ? '8px 12px' : '4px 8px'
+                        padding: duration > 60 ? '8px 12px' : duration > 30 ? '6px 10px' : '4px 8px',
+                        zIndex: 10 + index // Prevent overlaps with stacking instead of offset
                       }}
                     >
                       {/* Tiered content based on duration */}
@@ -324,26 +450,27 @@ export function PlanTimeline({
                               <span className="font-medium text-xs truncate text-left">{block.label}</span>
                             </div>
                             <div className="text-xs opacity-70 text-left text-foreground">
-                              {block.startTime} - {block.endTime}
+                              {formatTime12Hour(block.startTime)} - {formatTime12Hour(block.endTime)}
                             </div>
                           </div>
                         )}
                         
                         {tier === 'medium' && (
-                          <div className="flex flex-col justify-center w-full">
-                            <div className="flex items-center gap-1 mb-0.5 text-foreground">
-                              <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
-                              <span className="font-medium text-xs truncate text-left">{block.label}</span>
-                            </div>
-                            <div className="text-xs opacity-70 text-left text-foreground">
-                              {block.startTime} - {block.endTime}
-                            </div>
+                          <div className="flex items-center gap-1 justify-start w-full text-foreground">
+                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
+                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
                           </div>
                         )}
                         
                         {tier === 'short' && (
                           <div className="flex items-center gap-1 justify-start w-full text-foreground">
-                            <IconComponent size={12} className={`flex-shrink-0 ${accentColor}`} />
+                            <IconComponent size={10} className={`flex-shrink-0 ${accentColor}`} />
+                            <span className="font-medium text-xs truncate text-left">{block.label}</span>
+                          </div>
+                        )}
+                        
+                        {tier === 'tiny' && (
+                          <div className="flex items-center justify-start w-full text-foreground">
                             <span className="font-medium text-xs truncate text-left">{block.label}</span>
                           </div>
                         )}
@@ -353,25 +480,25 @@ export function PlanTimeline({
                   <TooltipContent side="right" className="max-w-xs">
                     <div className="space-y-2">
                       <div>
-                        <p className="text-xs font-medium">{block.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {block.startTime} - {block.endTime} ({block.duration})
+                        <p className="text-xs font-medium text-black">{block.label}</p>
+                        <p className="text-xs text-black">
+                          {formatTime12Hour(block.startTime)} - {formatTime12Hour(block.endTime)} ({block.duration})
                         </p>
                         {block.isConfigBlock && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400">📌 Config Block</p>
+                          <p className="text-xs text-black">📌 Config Block</p>
                         )}
                         {context === 'today' && block.state === 'active' && (
-                          <p className="text-xs text-accent font-medium">⚡ Currently Active</p>
+                          <p className="text-xs text-black font-medium">⚡ Currently Active</p>
                         )}
                       </div>
                       
                       {/* Show reasoning or description */}
                       {block.note && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                          <p className="text-xs font-medium text-black mb-1">
                             {block.isConfigBlock ? "Description:" : "AI Reasoning:"}
                           </p>
-                          <p className="text-xs text-foreground leading-relaxed">
+                          <p className="text-xs text-black leading-relaxed">
                             {block.note}
                           </p>
                         </div>
@@ -380,8 +507,8 @@ export function PlanTimeline({
                       {/* Show rationale if different from note */}
                       {block.rationale && block.rationale !== block.note && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Context:</p>
-                          <p className="text-xs text-muted-foreground italic">
+                          <p className="text-xs font-medium text-black mb-1">Context:</p>
+                          <p className="text-xs text-black italic">
                             {block.rationale}
                           </p>
                         </div>
@@ -389,7 +516,7 @@ export function PlanTimeline({
                       
                       {/* Fallback description */}
                       {!block.note && !block.rationale && (
-                        <p className="text-xs text-muted-foreground italic">
+                        <p className="text-xs text-black italic">
                           {block.isConfigBlock 
                             ? "Part of your daily routine" 
                             : context === 'today' 

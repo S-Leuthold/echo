@@ -30,7 +30,7 @@ interface SessionStartData {
 interface ActiveSessionStateProps {
   sessionData: SessionStartData;
   currentTime: Date;
-  onEndSession?: (sessionNotes: string) => void;
+  onEndSession?: (sessionNotes: string, checklist: ChecklistItem[]) => void;
 }
 
 interface ChecklistItem {
@@ -77,6 +77,11 @@ export function ActiveSessionState({
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+  
+  // Format category for consistent capitalization
+  const formatCategory = (category: string): string => {
+    return category.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
 
   // Format session time range with remaining time
@@ -143,7 +148,7 @@ export function ActiveSessionState({
     
     // Simulate brief loading state
     setTimeout(() => {
-      onEndSession?.(sessionNotes);
+      onEndSession?.(sessionNotes, checklist);
       setIsEnding(false);
     }, 500);
   };
@@ -165,20 +170,17 @@ export function ActiveSessionState({
           </span>
         </div>
         
-        {/* Stacked Header Layout for Better Hierarchy */}
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+        {/* Header Layout - Matching SpinUp/TranquilState Pattern */}
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
             <SessionIcon className="w-6 h-6 text-accent" strokeWidth={1.5} />
           </div>
-          <div className="flex-1 space-y-2">
-            {/* Line 1: The Title - Main block title, large and bold */}
-            <h1 className="text-2xl font-bold text-foreground leading-tight">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-foreground mb-1">
               {sessionData.nextWorkBlock?.label || sessionData.blockId || 'Deep Work Session'}
             </h1>
-            
-            {/* Line 2: The Metadata - Time range and category, smaller and lower contrast */}
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <span>
+            <div className="flex items-center gap-3 text-muted-foreground mb-2">
+              <span className="text-lg">
                 {sessionData.nextWorkBlock ? 
                   `${formatTime(sessionData.nextWorkBlock.startTime)} - ${formatTime(sessionData.nextWorkBlock.endTime)}` :
                   '9:30 AM - 11:30 AM'
@@ -186,11 +188,10 @@ export function ActiveSessionState({
               </span>
               <span>•</span>
               <Badge variant="outline" className="text-xs">
-                {sessionData.nextWorkBlock?.timeCategory.replace('_', ' ').toLowerCase() || 'deep work'}
+                {sessionData.nextWorkBlock?.timeCategory ? formatCategory(sessionData.nextWorkBlock.timeCategory) : 'Deep Work'}
               </Badge>
             </div>
-            
-            {/* Line 3: The Vitals - Live countdown timer with progress bar */}
+            {/* Live Session Progress - Aligned with text content */}
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium text-muted-foreground">
                 {remainingMs <= 0 ? (
@@ -226,19 +227,15 @@ export function ActiveSessionState({
         </div>
       </div>
       
-      {/* 2. PRIMARY OUTCOME - Structured Container */}
+      {/* 2. PRIMARY OUTCOME - Blockquote Style */}
       <div className="flex-shrink-0">
         <h2 className="text-lg font-semibold text-foreground mb-2">
           Primary outcome
         </h2>
         
-        <Card className="bg-muted/20 border-border/50">
-          <CardContent className="px-3 pt-0 pb-0">
-            <p className="text-base text-foreground leading-relaxed py-1">
-              {sessionData.userGoal}
-            </p>
-          </CardContent>
-        </Card>
+        <blockquote className="border-l-4 border-accent pl-4 text-base text-foreground/90 leading-relaxed">
+          {sessionData.userGoal}
+        </blockquote>
       </div>
       
       {/* 3. ACTION CHECKLIST - Structured Container */}

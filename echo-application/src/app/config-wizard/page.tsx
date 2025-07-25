@@ -375,7 +375,15 @@ export default function ConfigWizard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          known_blocks: state.knownBlocks
+          known_blocks: state.knownBlocks,
+          reminders: state.reminders.map(reminder => ({
+            id: reminder.id,
+            title: reminder.title,
+            description: reminder.description,
+            due_date: reminder.date,
+            priority: reminder.priority,
+            category: reminder.category || 'reminder'
+          }))
         })
       });
 
@@ -410,6 +418,15 @@ export default function ConfigWizard() {
         <div>
           <h1 className="text-3xl font-bold mb-2">Echo Configuration Wizard</h1>
           <p className="text-muted-foreground text-lg">Build your weekly schedule with recurring blocks and manage reminders</p>
+        </div>
+        <div className="flex gap-4">
+          <Button 
+            onClick={handleExportConfig}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+          >
+            {loading ? 'Saving...' : 'Save Configuration'}
+          </Button>
         </div>
       </div>
 

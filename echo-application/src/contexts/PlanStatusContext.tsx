@@ -28,8 +28,21 @@ export function PlanStatusProvider({ children }: PlanStatusProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // API call to check plan status
+  // API call to check plan status with caching
   const checkTodayPlan = async (): Promise<{ exists: boolean; data?: any; error?: string }> => {
+    // Simple client-side cache (5 minutes)
+    const cacheKey = 'plan_status_check';
+    const cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < cacheTimeout) {
+        console.log('[PlanStatusContext] Using cached plan status');
+        return data;
+      }
+    }
+    
     try {
       const response = await fetch('http://localhost:8000/today');
       if (response.ok) {
@@ -38,20 +51,33 @@ export function PlanStatusProvider({ children }: PlanStatusProviderProps) {
         // Check if there are actually scheduled blocks (not just empty response)
         const hasBlocks = data.blocks && data.blocks.length > 0;
         
-        if (hasBlocks) {
-          return { exists: true, data };
-        } else {
-          // API responded but no actual plan blocks exist
-          return { exists: false, data }; // Include data for email info
-        }
+        const result = hasBlocks ? 
+          { exists: true, data } : 
+          { exists: false, data }; // Include email data even without blocks
+        
+        // Cache the result
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: result,
+          timestamp: Date.now()
+        }));
+        
+        return result;
       } else if (response.status === 404) {
-        return { exists: false };
+        const result = { exists: false };
+        // Cache 404 response too
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: result,
+          timestamp: Date.now()
+        }));
+        return result;
       } else {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (error: any) {
       console.error('Error checking today\'s plan:', error);
-      return { exists: false, error: error.message };
+      const result = { exists: false, error: error.message };
+      // Don't cache errors - allow retry
+      return result;
     }
   };
 

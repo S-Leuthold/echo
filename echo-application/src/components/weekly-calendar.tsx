@@ -226,13 +226,13 @@ export function WeeklyCalendar({ blocks, onBlockClick, onBlockDelete, onTimeSlot
         </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs bg-card border-border text-foreground">
+        <TooltipContent side="top" className="max-w-xs bg-card border-border text-black">
           <div className="space-y-1">
-            <div className="font-semibold">{block.name}</div>
-            <div className="text-xs text-muted-foreground">{formattedTimeRange}</div>
-            <div className="text-xs text-muted-foreground capitalize">{block.category} • {block.duration} minutes</div>
+            <div className="font-semibold text-black">{block.name}</div>
+            <div className="text-xs text-black">{formattedTimeRange}</div>
+            <div className="text-xs text-black capitalize">{block.category} • {block.duration} minutes</div>
             {block.description && (
-              <div className="text-xs text-muted-foreground mt-1">{block.description}</div>
+              <div className="text-xs text-black mt-1">{block.description}</div>
             )}
           </div>
         </TooltipContent>
