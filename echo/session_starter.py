@@ -50,7 +50,8 @@ class SessionChecklistData(BaseModel):
     This provides the actionable plan that drives the session execution.
     """
     session_title: str = Field(description="Clear title for this session")
-    primary_objective: str = Field(description="Main goal refined from user input")
+    primary_objective: str = Field(description="Main goal refined and enhanced by Claude")
+    original_user_goal: str = Field(description="User's exact original goal for transparency")
     checklist: List[ChecklistItem] = Field(description="Prioritized list of actionable tasks")
     time_allocation: Dict[str, int] = Field(description="Suggested time allocation by category")
     success_criteria: List[str] = Field(description="How to know the session was successful")
@@ -144,6 +145,10 @@ class SessionStarter:
         
         checklist_data = response.choices[0].message.parsed
         
+        # Ensure original_user_goal is preserved (Claude may not always include it)
+        if not hasattr(checklist_data, 'original_user_goal') or not checklist_data.original_user_goal:
+            checklist_data.original_user_goal = user_input.primary_outcome
+        
         # Log token usage for monitoring
         logger.info(f"Claude checklist generation: {response.usage['total_tokens']} tokens used")
         
@@ -157,11 +162,11 @@ class SessionStarter:
     ) -> str:
         """Build the prompt for Claude checklist generation."""
         
-        prompt = f"""You are an expert productivity coach helping create an actionable session plan. Your job is to take the user's goals and create a structured, time-appropriate checklist.
+        prompt = f"""You are an expert productivity coach helping create an actionable session plan. Your job is to take the user's goals, refine them into a specific primary objective, and create a structured, time-appropriate checklist.
 
 ## Session Context
 - **Duration**: {session_duration_minutes} minutes
-- **User's Primary Outcome**: {user_input.primary_outcome}
+- **User's Original Goal**: {user_input.primary_outcome}
 - **User's Key Tasks/Notes**: {', '.join(user_input.key_tasks) if user_input.key_tasks else 'None provided'}
 """
         
@@ -191,23 +196,36 @@ class SessionStarter:
         
         prompt += f"""
 ## Your Task
-Create a structured, actionable checklist that maximizes the user's productivity in the available time. Consider:
+Create a structured, actionable session plan with two key components:
 
+### 1. PRIMARY OBJECTIVE REFINEMENT
+First, refine the user's original goal into a specific, measurable primary objective:
+- Transform vague goals into concrete, actionable outcomes
+- Ensure the objective is appropriately scoped for {session_duration_minutes} minutes
+- Consider the user's energy level, tasks, and constraints
+- Make it specific enough that success can be clearly measured
+- Keep the essence of the user's intent while adding clarity and focus
+
+### 2. STRUCTURED CHECKLIST CREATION
+Then create an actionable checklist that supports this refined objective:
+
+**Key Considerations:**
 1. **Realistic Time Management**: Tasks should fit within {session_duration_minutes} minutes
-2. **User Priorities**: Honor the user's stated primary outcome and key tasks
+2. **User Priorities**: Support the refined primary objective and incorporate user's key tasks
 3. **Logical Flow**: Order tasks to build momentum and handle dependencies
 4. **Energy Management**: Consider the user's energy level and task complexity
 5. **Flexibility**: Include core tasks and stretch goals as time permits
 
 ## Guidelines
-- Generate 4-8 actionable checklist items
+- **Primary Objective**: Provide one refined, specific objective that enhances the user's original goal
+- **Checklist**: Generate 4-8 actionable checklist items
 - Each item should be specific and measurable
 - Include time estimates that sum to approximately {session_duration_minutes} minutes
 - Categorize tasks as: core (must-do), supporting (helpful), or stretch (if time permits)
 - Provide clear success criteria for the session
 - Include a contingency plan if the primary objective proves challenging
 
-Be practical, specific, and focused on actionable outcomes.
+Be practical, specific, and focused on actionable outcomes that honor the user's intent while adding AI-enhanced clarity and structure.
 """
         
         return prompt
@@ -257,6 +275,7 @@ Be practical, specific, and focused on actionable outcomes.
         return SessionChecklistData(
             session_title=f"Focus Session: {user_input.primary_outcome}",
             primary_objective=user_input.primary_outcome,
+            original_user_goal=user_input.primary_outcome,
             checklist=checklist_items,
             time_allocation={
                 "core": int(session_duration_minutes * 0.7),

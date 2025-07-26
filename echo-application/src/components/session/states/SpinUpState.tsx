@@ -17,6 +17,152 @@ import { SessionErrorBoundary, ScaffoldErrorFallback } from '@/components/sessio
 import { Rocket, CheckCircle2, Plus, Clock, Target, Users, Check, RefreshCw, WifiOff } from 'lucide-react';
 
 /**
+ * Smart session context generator - works with any block
+ * Generates context based on block properties instead of hardcoded IDs
+ */
+const getSmartSessionContext = (block: Block) => {
+  const timeCategory = block.timeCategory?.toLowerCase();
+  const label = block.label?.toLowerCase();
+  
+  // Generate context based on time category and label patterns
+  if (timeCategory === 'deep_work' || label.includes('development') || label.includes('build')) {
+    return {
+      momentum_context: "Ready for deep focus work. This session is about making real progress on meaningful development work.",
+      email_pressure: [
+        "Check for any blocking technical dependencies",
+        "Review any team feedback that might affect the work"
+      ],
+      suggested_tasks: [
+        "Set up development environment and tools",
+        "Break down the work into manageable chunks",
+        "Focus on one core deliverable at a time",
+        "Document key decisions and insights"
+      ],
+      preparation_items: [
+        "Close distracting applications and notifications",
+        "Review any relevant documentation or previous work",
+        "Ensure development environment is ready"
+      ],
+      potential_blockers: [
+        "Technical dependencies or API issues",
+        "Unclear requirements or scope"
+      ],
+      estimated_complexity: "high",
+      confidence: 0.85,
+      isLiveData: false
+    };
+  }
+  
+  if (timeCategory === 'meetings' || label.includes('standup') || label.includes('meeting')) {
+    return {
+      momentum_context: "Preparing for team alignment and communication.",
+      email_pressure: [
+        "Review agenda and any pre-meeting materials",
+        "Check for updates that need to be shared"
+      ],
+      suggested_tasks: [
+        "Prepare status update and accomplishments",
+        "Identify any blockers or help needed",
+        "Note key questions or discussion points",
+        "Be ready to contribute meaningfully"
+      ],
+      preparation_items: [
+        "Review meeting agenda and materials",
+        "Prepare status and updates to share",
+        "Join meeting platform early"
+      ],
+      potential_blockers: [
+        "Technical issues with meeting platform",
+        "Missing context or preparation"
+      ],
+      estimated_complexity: "medium",
+      confidence: 0.90,
+      isLiveData: false
+    };
+  }
+  
+  if (timeCategory === 'admin' || label.includes('email') || label.includes('admin')) {
+    return {
+      momentum_context: "Administrative work session - maintain focus on efficiency and action.",
+      email_pressure: [
+        "Process emails using 2-minute rule",
+        "Identify and schedule follow-up actions",
+        "Clear notification backlog"
+      ],
+      suggested_tasks: [
+        "Process all emails with immediate action",
+        "Schedule follow-up tasks in calendar",
+        "Update project status where needed",
+        "Clean up workspace and organize files"
+      ],
+      preparation_items: [
+        "Set timer for focused processing",
+        "Have calendar ready for scheduling",
+        "Prepare standard response templates"
+      ],
+      potential_blockers: [
+        "High email volume",
+        "Complex issues requiring research"
+      ],
+      estimated_complexity: "medium",
+      confidence: 0.95,
+      isLiveData: false
+    };
+  }
+  
+  if (timeCategory === 'research' || label.includes('research') || label.includes('study')) {
+    return {
+      momentum_context: "Research and learning session - explore, discover, and document insights.",
+      email_pressure: [
+        "No immediate email dependencies for research work"
+      ],
+      suggested_tasks: [
+        "Define clear research questions and goals",
+        "Explore relevant resources and materials",
+        "Take detailed notes and document insights",
+        "Prepare summary of key findings"
+      ],
+      preparation_items: [
+        "Set up note-taking system",
+        "Bookmark relevant resources",
+        "Define success criteria for the session"
+      ],
+      potential_blockers: [
+        "Information overload or scope creep",
+        "Difficulty finding relevant sources"
+      ],
+      estimated_complexity: "low",
+      confidence: 0.80,
+      isLiveData: false
+    };
+  }
+  
+  // Default context for any other block type
+  return {
+    momentum_context: `Focused work session: ${block.label}. Approach with intention and clarity.`,
+    email_pressure: [],
+    suggested_tasks: [
+      "Define clear objectives for this session",
+      "Organize workspace and tools needed",
+      "Begin with the most important task",
+      "Track progress and insights"
+    ],
+    preparation_items: [
+      "Review session goals and context",
+      "Prepare necessary tools and resources",
+      "Clear mental space and focus"
+    ],
+    potential_blockers: [
+      "Unclear objectives or scope",
+      "Missing tools or dependencies"
+    ],
+    estimated_complexity: "medium",
+    confidence: 0.75,
+    isLiveData: false
+  };
+};
+
+/**
  * SpinUpState Component - Mission Briefing Experience
  * 
  * The critical transition from rest to focused work. Transforms preparation 
@@ -59,7 +205,7 @@ export function SpinUpState({
   
   // Load pre-generated scaffold from database (using mock data for now)
   // TODO: Replace with actual database call: getPreGeneratedScaffold(blockId)
-  const mockInsights = nextWorkBlock ? getMockSessionContext(nextWorkBlock.id) : null;
+  const mockInsights = nextWorkBlock ? getSmartSessionContext(nextWorkBlock) : null;
   
   // Format time display for header
   const formatTime = (timeStr: string): string => {
@@ -196,6 +342,7 @@ export function SpinUpState({
             ...aiInsights,
             sessionTitle: result.data.session_title,
             primaryObjective: result.data.primary_objective,
+            originalUserGoal: result.data.original_user_goal,
             checklist: result.data.checklist,
             successCriteria: result.data.success_criteria,
             timeAllocation: result.data.time_allocation,

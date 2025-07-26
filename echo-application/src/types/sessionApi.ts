@@ -108,6 +108,7 @@ export interface SessionStartResponse {
   success: boolean;
   session_title: string;
   primary_objective: string;
+  original_user_goal: string;
   checklist: ChecklistItem[];
   success_criteria: string[];
   time_allocation: Record<string, number>;

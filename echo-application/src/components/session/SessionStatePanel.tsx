@@ -40,8 +40,24 @@ export function SessionStatePanel({
   onSessionStateChange
 }: SessionStatePanelProps) {
   
-  // Use mock data for now - will integrate with real data later (FROZEN to prevent re-generation)
+  // Use real schedule data if provided, fallback to mock data
   const mockSchedule = useMemo(() => generateMockSchedule(), []);
+  const activeSchedule = schedule && schedule.length > 0 ? schedule : mockSchedule;
+  
+  // Transform real schedule data to match Block interface if needed
+  const normalizedSchedule = useMemo(() => {
+    return activeSchedule.map((block: any) => ({
+      id: block.id,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      label: block.label,
+      timeCategory: block.timeCategory || 'DEEP_WORK',
+      startMinutes: block.startMinutes || (parseInt(block.startTime.split(':')[0]) * 60 + parseInt(block.startTime.split(':')[1])),
+      endMinutes: block.endMinutes || (parseInt(block.endTime.split(':')[0]) * 60 + parseInt(block.endTime.split(':')[1])),
+      emoji: block.emoji,
+      strategicNote: block.strategicNote || block.note
+    }));
+  }, [activeSchedule]);
   
   // Core state management
   const {
@@ -55,7 +71,7 @@ export function SessionStatePanel({
     devOverrideState,
     manualStateOverride,
     debugInfo
-  } = useSessionState(mockSchedule);
+  } = useSessionState(normalizedSchedule);
   
   // Session data state - passed from SpinUp to Active state
   const [activeSessionData, setActiveSessionData] = useState<any>(null);

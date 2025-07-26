@@ -319,6 +319,7 @@ class SessionStartResponse(BaseModel):
     status: str
     session_title: str
     primary_objective: str
+    original_user_goal: str
     checklist: List[Dict[str, Any]]
     time_allocation: Dict[str, int]
     success_criteria: List[str]
@@ -1852,6 +1853,7 @@ async def start_session_with_ai_checklist(request: SessionStartRequest):
             status="success",
             session_title=checklist_data.session_title,
             primary_objective=checklist_data.primary_objective,
+            original_user_goal=checklist_data.original_user_goal,
             checklist=checklist_items,
             time_allocation=checklist_data.time_allocation,
             success_criteria=checklist_data.success_criteria,
@@ -1922,10 +1924,9 @@ async def complete_session_with_ai_synthesis(request: SessionCompleteRequest):
         
         # Generate fallback log to ensure user never loses their session data
         try:
-            from echo.session_logger import SessionLogger
-            
             # Create fallback using the session logger's fallback method
-            session_logger = SessionLogger()
+            db = SessionDatabase()
+            fallback_session_logger = SessionLogger(db)
             debrief_input = SessionDebriefInput(
                 accomplishments=request.accomplishments,
                 outstanding=request.outstanding,
@@ -1941,7 +1942,7 @@ async def complete_session_with_ai_synthesis(request: SessionCompleteRequest):
                 end_time=request.end_time
             )
             
-            fallback_output = session_logger._create_fallback_log(debrief_input, session_metadata)
+            fallback_output = fallback_session_logger._create_fallback_log(debrief_input, session_metadata)
             
             response_metadata = {
                 "title": request.block_title,

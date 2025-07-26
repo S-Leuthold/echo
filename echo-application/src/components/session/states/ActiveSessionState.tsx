@@ -15,7 +15,7 @@ import {
   ErrorSimulationPanel,
   ActiveSessionErrorType 
 } from '@/components/session/ActiveSessionErrorBoundaries';
-import { CheckCircle2, Circle, ListChecks, PenSquare, SquareCheckBig, Target, Users, RefreshCw, Save, Wifi, WifiOff, Clock } from 'lucide-react';
+import { CheckCircle2, Circle, ListChecks, PenSquare, SquareCheckBig, Target, Users, RefreshCw, Save, Wifi, WifiOff, Clock, Info } from 'lucide-react';
 
 /**
  * ActiveSessionState Component - Focused Execution Cockpit
@@ -68,21 +68,12 @@ export function ActiveSessionState({
   onEndSession
 }: ActiveSessionStateProps) {
   
-  // DEBUG: Log all received session data
-  console.log('🎯 ActiveSessionState: Received sessionData:', sessionData);
-  console.log('🎯 ActiveSessionState: aiInsights structure:', sessionData.aiInsights);
-  console.log('🎯 ActiveSessionState: aiInsights.checklist:', sessionData.aiInsights?.checklist);
-  console.log('🎯 ActiveSessionState: RAW CHECKLIST DATA:', JSON.stringify(sessionData.aiInsights?.checklist, null, 2));
-  console.log('🎯 ActiveSessionState: dataSource:', sessionData.aiInsights?.dataSource);
+  // Reduced logging to prevent console spam
   
   // Helper function to initialize checklist from Claude data or user tasks
   const initializeChecklist = useCallback((): ChecklistItem[] => {
-    console.log('🔄 ActiveSessionState: Initializing checklist...');
-    
     // Check if we have Claude-enhanced checklist from SpinUpState
     if (sessionData.aiInsights?.checklist && Array.isArray(sessionData.aiInsights.checklist)) {
-      console.log('✅ ActiveSessionState: Using Claude-enhanced checklist from SpinUpState:', sessionData.aiInsights.checklist);
-      
       // Transform Claude's structured checklist to our ChecklistItem format
       const claudeChecklist = sessionData.aiInsights.checklist.map((item, index) => ({
         id: `claude-${index + 1}`,
@@ -93,14 +84,11 @@ export function ActiveSessionState({
         estimated_minutes: item.estimated_minutes
       }));
       
-      console.log('🎯 ActiveSessionState: Transformed Claude checklist:', claudeChecklist);
       return claudeChecklist;
     }
     
     // Fallback to processing user's raw tasks
-    console.log('⚠️ ActiveSessionState: No Claude data available, using user tasks:', sessionData.userTasks);
     const userChecklist = processUserTasksToChecklist(sessionData.userTasks);
-    console.log('🎯 ActiveSessionState: Generated user checklist:', userChecklist);
     return userChecklist;
   }, [sessionData.aiInsights, sessionData.userTasks]);
 
@@ -132,15 +120,25 @@ export function ActiveSessionState({
   const checklistStorageKey = `checklist-${sessionData.blockId}`;
   const notesStorageKey = `notes-${sessionData.blockId}`;
   
-  // Timer calculations
+  // Timer calculations using real block data
   const sessionStartTime = sessionData.startTime.getTime();
   const currentTimeMs = currentTime.getTime();
   const elapsedMs = Math.max(0, currentTimeMs - sessionStartTime);
   
-  // Mock session duration (2 hours) - in production this would come from the block data
-  const mockSessionDurationMs = 2 * 60 * 60 * 1000; // 2 hours
-  const remainingMs = Math.max(0, mockSessionDurationMs - elapsedMs);
-  const progress = Math.max(0, Math.min(100, (elapsedMs / mockSessionDurationMs) * 100));
+  // Calculate actual session duration from block data
+  const getSessionDuration = (): number => {
+    if (sessionData.nextWorkBlock) {
+      // Use actual block duration
+      const totalMinutes = sessionData.nextWorkBlock.endMinutes - sessionData.nextWorkBlock.startMinutes;
+      return totalMinutes * 60 * 1000; // Convert to milliseconds
+    }
+    // Fallback to 2 hours if no block data
+    return 2 * 60 * 60 * 1000;
+  };
+  
+  const sessionDurationMs = getSessionDuration();
+  const remainingMs = Math.max(0, sessionDurationMs - elapsedMs);
+  const progress = Math.max(0, Math.min(100, (elapsedMs / sessionDurationMs) * 100));
   
   // Format time display matching SpinUp format
   const formatTime = (timeStr: string): string => {
@@ -234,7 +232,7 @@ export function ActiveSessionState({
         setSaveStatus('saved'); // Local save successful
         setLastSaveTime(new Date());
         lastSaveDataRef.current = currentDataHash;
-        console.log('📱 Saved locally (offline mode)');
+        // Saved locally (offline mode)
         return;
       }
       
@@ -251,7 +249,7 @@ export function ActiveSessionState({
       setSaveStatus('saved');
       setRetryCount(0); // Reset retry count on success
       lastSaveDataRef.current = currentDataHash;
-      console.log('🔄 Auto-saved session progress:', { notes: notes.length, checklist: checklistData.length });
+      // Auto-saved session progress
       
     } catch (error) {
       console.error(`Auto-save failed (attempt ${attempt + 1}):`, error);
@@ -262,7 +260,7 @@ export function ActiveSessionState({
         const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10 second delay
         setRetryCount(attempt + 1);
         
-        console.log(`⏱️ Retrying save in ${backoffDelay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        // Retrying save
         
         setTimeout(() => {
           performAutoSave(notes, checklistData, attempt + 1);
@@ -319,7 +317,7 @@ export function ActiveSessionState({
       if (savedSession) {
         const sessionInfo = JSON.parse(savedSession);
         setLastSaveTime(new Date(sessionInfo.lastSaved));
-        console.log('📖 Restored session state:', sessionInfo);
+        // Restored session state
       }
     } catch (error) {
       console.warn('Failed to restore session state:', error);
@@ -357,7 +355,7 @@ export function ActiveSessionState({
   const processSaveQueue = useCallback(async () => {
     if (saveQueue.length === 0 || !isOnline) return;
     
-    console.log(`🔄 Processing ${saveQueue.length} queued saves...`);
+    // Processing queued saves
     
     // Get the most recent save from the queue (discard older ones)
     const mostRecentSave = saveQueue[saveQueue.length - 1];
@@ -411,7 +409,7 @@ export function ActiveSessionState({
       localStorage.removeItem(checklistStorageKey);
       localStorage.removeItem(sessionStorageKey);
       
-      console.log('🎯 Session completed and state cleared');
+      // Session completed and state cleared
       
       // Simulate brief loading state
       setTimeout(() => {
@@ -454,7 +452,7 @@ export function ActiveSessionState({
       }
       setShowRecoveryModal(false);
       setCorruptedData(null);
-      console.log('✅ Session recovered successfully');
+      // Session recovered successfully
     } catch (error) {
       console.error('Session recovery failed:', error);
     }
@@ -471,7 +469,7 @@ export function ActiveSessionState({
     setShowRecoveryModal(false);
     setCorruptedData(null);
     
-    console.log('🆕 Started fresh session');
+    // Started fresh session
   };
   
   const handleRetryConnection = () => {
@@ -501,9 +499,28 @@ export function ActiveSessionState({
         // This will be handled by the SessionProgressErrorBoundary
         throw new Error('Simulated progress calculation error');
       default:
-        console.log('Unknown error type:', errorType);
+        // Unknown error type
     }
   };
+  
+  // Helper function to group checklist items by category
+  const groupChecklistByCategory = (items: ChecklistItem[]) => {
+    const groups = {
+      core: items.filter(item => item.category === 'core'),
+      supporting: items.filter(item => item.category === 'supporting'),
+      stretch: items.filter(item => item.category === 'stretch'),
+      other: items.filter(item => !item.category || !['core', 'supporting', 'stretch'].includes(item.category))
+    };
+    
+    // Combine 'other' items into supporting if they exist
+    if (groups.other.length > 0) {
+      groups.supporting = [...groups.supporting, ...groups.other];
+    }
+    
+    return groups;
+  };
+  
+  const checklistGroups = groupChecklistByCategory(checklist);
   
   return (
     <AutoSaveErrorBoundary 
@@ -587,34 +604,33 @@ export function ActiveSessionState({
                 />
               </div>
               
-              {/* Enhanced Auto-save status indicator with retry info */}
-              <EnhancedConnectionStatus
-                isOnline={isOnline}
-                saveStatus={saveStatus}
-                lastSaveTime={lastSaveTime}
-                onRetryConnection={handleRetryConnection}
-                onManualSave={handleManualSave}
-              />
-              
-              {/* Retry count indicator */}
-              {retryCount > 0 && saveStatus === 'error' && (
-                <div className="text-xs text-red-600 ml-2">
-                  {retryCount}/3 retries
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
       
-      {/* 2. PRIMARY OUTCOME - Blockquote Style */}
+      {/* 2. PRIMARY OUTCOME - Clean with Info Tooltip */}
       <div className="flex-shrink-0">
-        <h2 className="text-lg font-semibold text-foreground mb-2">
-          Primary outcome
-        </h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-lg font-semibold text-foreground">
+            Primary outcome
+          </h2>
+          {/* Info tooltip when AI enhancement is available */}
+          {sessionData.aiInsights?.primaryObjective && sessionData.aiInsights.primaryObjective !== sessionData.userGoal && (
+            <div className="group relative">
+              <Info className="w-4 h-4 text-muted-foreground/70 hover:text-muted-foreground" />
+              <div className="invisible group-hover:visible absolute left-6 bottom-6 z-50 w-80 p-3 bg-popover border border-border rounded-md shadow-lg">
+                <div className="text-xs text-muted-foreground mb-1">Your original goal was:</div>
+                <div className="text-sm text-foreground">{sessionData.userGoal}</div>
+              </div>
+            </div>
+          )}
+        </div>
         
         <blockquote className="border-l-4 border-accent pl-4 text-base text-foreground/90 leading-relaxed">
-          {sessionData.userGoal}
+          {sessionData.aiInsights?.primaryObjective && sessionData.aiInsights.primaryObjective !== sessionData.userGoal 
+            ? sessionData.aiInsights.primaryObjective 
+            : sessionData.userGoal}
         </blockquote>
       </div>
       
@@ -624,12 +640,7 @@ export function ActiveSessionState({
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-accent" />
             Action checklist
-            {/* Show data source indicator based on session data */}
-            {sessionData.aiInsights?.dataSource === 'live_claude_api' && (
-              <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
-                Enhanced
-              </Badge>
-            )}
+            {/* Show data source indicator for fallback scenarios only */}
             {sessionData.aiInsights?.dataSource === 'fallback_user_input' && (
               <Badge variant="outline" className="ml-2 text-xs bg-amber-50 text-amber-700 border-amber-200">
                 Fallback
@@ -654,67 +665,133 @@ export function ActiveSessionState({
         </div>
         
         <Card className="bg-muted/20 border-border/50">
-          <CardContent className="px-3 pt-0 pb-0">
-            <div className="space-y-1">
-              {checklist.map((item, index) => (
-                <div
-                  key={item.id}
-                  className={`group flex items-start space-x-3 px-2 rounded-md hover:bg-accent/5 transition-all duration-200 cursor-pointer ${
-                    index === 0 ? 'pt-0 pb-2' : index === checklist.length - 1 ? 'pt-2 pb-0' : 'py-2'
-                  }`}
-                  onClick={() => toggleChecklistItem(item.id)}
-                >
-                  {/* Simplified Checkbox */}
-                  <div className="flex-shrink-0 mt-0.5">
-                    {item.completed ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 transition-all duration-200" />
-                    ) : (
-                      <Circle className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-all duration-200" />
-                    )}
+          <CardContent className="px-3 py-1">
+            <div className="space-y-8">
+              {/* CORE OBJECTIVES */}
+              {checklistGroups.core.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                    CORE OBJECTIVES
                   </div>
-                  
-                  {/* Task Text with Enhanced Metadata */}
-                  <div className="flex-1">
-                    <span className={`text-sm text-muted-foreground leading-relaxed transition-all duration-200 ${
-                      item.completed 
-                        ? "line-through opacity-60" 
-                        : "group-hover:text-foreground"
-                    }`}>
-                      {item.task}
-                    </span>
-                    
-                    {/* Enhanced metadata from Claude (category, priority, time estimate) */}
-                    {(item.category || item.priority || item.estimated_minutes) && (
-                      <div className="flex items-center gap-2 mt-1">
-                        {item.category && item.category !== 'user' && (
-                          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
-                            {item.category}
-                          </Badge>
-                        )}
-                        {item.priority && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs px-1.5 py-0 h-4 ${
-                              item.priority === 'high' 
-                                ? 'border-red-200 text-red-700 bg-red-50'
-                                : item.priority === 'medium'
-                                ? 'border-amber-200 text-amber-700 bg-amber-50'
-                                : 'border-blue-200 text-blue-700 bg-blue-50'
-                            }`}
-                          >
-                            {item.priority}
-                          </Badge>
-                        )}
+                  <div className="space-y-2 pl-3">
+                    {checklistGroups.core.map((item, index) => (
+                      <div key={item.id} className="flex items-start justify-between gap-3">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex-shrink-0">
+                            {item.completed ? (
+                              <CheckCircle2 
+                                className="w-4 h-4 text-emerald-500 transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            ) : (
+                              <Circle 
+                                className="w-4 h-4 text-muted-foreground hover:text-accent transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            )}
+                          </div>
+                          <span className={`text-sm text-muted-foreground leading-relaxed transition-all duration-200 flex-1 ${
+                            item.completed 
+                              ? "line-through opacity-60" 
+                              : ""
+                          }`}>
+                            {item.task}
+                          </span>
+                        </div>
                         {item.estimated_minutes && (
-                          <span className="text-xs text-muted-foreground/70">
-                            ~{item.estimated_minutes}min
+                          <span className="text-xs text-muted-foreground/70 ml-3">
+                            {item.estimated_minutes}min
                           </span>
                         )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* SUPPORTING TASKS */}
+              {checklistGroups.supporting.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                    SUPPORTING TASKS
+                  </div>
+                  <div className="space-y-2 pl-3">
+                    {checklistGroups.supporting.map((item, index) => (
+                      <div key={item.id} className="flex items-start justify-between gap-3">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex-shrink-0">
+                            {item.completed ? (
+                              <CheckCircle2 
+                                className="w-4 h-4 text-emerald-500 transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            ) : (
+                              <Circle 
+                                className="w-4 h-4 text-muted-foreground hover:text-accent transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            )}
+                          </div>
+                          <span className={`text-sm text-muted-foreground leading-relaxed transition-all duration-200 flex-1 ${
+                            item.completed 
+                              ? "line-through opacity-60" 
+                              : ""
+                          }`}>
+                            {item.task}
+                          </span>
+                        </div>
+                        {item.estimated_minutes && (
+                          <span className="text-xs text-muted-foreground/70 ml-3">
+                            {item.estimated_minutes}min
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STRETCH GOALS */}
+              {checklistGroups.stretch.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                    STRETCH GOALS
+                  </div>
+                  <div className="space-y-2 pl-3">
+                    {checklistGroups.stretch.map((item, index) => (
+                      <div key={item.id} className="flex items-start justify-between gap-3">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="flex-shrink-0">
+                            {item.completed ? (
+                              <CheckCircle2 
+                                className="w-4 h-4 text-emerald-500 transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            ) : (
+                              <Circle 
+                                className="w-4 h-4 text-muted-foreground hover:text-accent transition-all duration-200 cursor-pointer" 
+                                onClick={() => toggleChecklistItem(item.id)}
+                              />
+                            )}
+                          </div>
+                          <span className={`text-sm text-muted-foreground leading-relaxed transition-all duration-200 flex-1 ${
+                            item.completed 
+                              ? "line-through opacity-60" 
+                              : ""
+                          }`}>
+                            {item.task}
+                          </span>
+                        </div>
+                        {item.estimated_minutes && (
+                          <span className="text-xs text-muted-foreground/70 ml-3">
+                            {item.estimated_minutes}min
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -70,6 +70,7 @@ export function SpinDownState({
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGeneratingLog, setIsGeneratingLog] = useState(false);
   
   // Timer calculations
   const sessionStartTime = sessionData.startTime.getTime();
@@ -142,7 +143,7 @@ export function SpinDownState({
     })), [incompleteTasks]
   );
   
-  // Memoize debrief data to prevent modal re-renders
+  // Memoize debrief data to prevent modal re-renders (STABLE VERSION)
   const memoizedDebriefData = useMemo(() => ({
     accomplishments,
     outstanding,
@@ -154,14 +155,32 @@ export function SpinDownState({
     }
   }), [accomplishments, outstanding, finalNotes, sessionDurationMinutes, sessionData.nextWorkBlock?.timeCategory, sessionData.userGoal]);
   
+  // Memoize session data to prevent unnecessary re-renders (STABLE VERSION)
+  const memoizedSessionData = useMemo(() => ({
+    blockId: sessionData.blockId,
+    aiInsights: sessionData.aiInsights,
+    userGoal: sessionData.userGoal,
+    userTasks: sessionData.userTasks,
+    startTime: sessionData.startTime,
+    nextWorkBlock: sessionData.nextWorkBlock
+  }), [sessionData.blockId, sessionData.aiInsights, sessionData.userGoal, sessionData.userTasks, sessionData.startTime, sessionData.nextWorkBlock]);
+  
   // Handle session log generation (stabilized)
   const handleGenerateSessionLog = useCallback(() => {
-    setIsModalOpen(true);
-  }, []);
+    if (!isGeneratingLog && !isModalOpen) {
+      console.log('📝 Starting session log generation process');
+      setIsGeneratingLog(true);
+      setIsModalOpen(true);
+    } else {
+      console.log('⚠️ Session log generation already in progress');
+    }
+  }, [isGeneratingLog, isModalOpen]);
   
   // Handle modal close (stabilized)
   const handleModalClose = useCallback(() => {
+    console.log('🚪 Closing session log modal');
     setIsModalOpen(false);
+    setIsGeneratingLog(false);
   }, []);
   
   // Handle session log save (stabilized)
@@ -272,17 +291,32 @@ export function SpinDownState({
       <div className="flex-shrink-0 flex justify-end mt-0">
         <Button
           onClick={handleGenerateSessionLog}
-          disabled={!accomplishments.trim()}
+          disabled={!accomplishments.trim() || isGeneratingLog}
           className="bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-lg"
         >
-          <BookOpen className="w-5 h-5 mr-2" />
-          Generate Session Log
+          {isGeneratingLog ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              Generating Log...
+            </>
+          ) : (
+            <>
+              <BookOpen className="w-5 h-5 mr-2" />
+              Generate Session Log
+            </>
+          )}
         </Button>
       </div>
       
-      {!accomplishments.trim() && (
+      {!accomplishments.trim() && !isGeneratingLog && (
         <p className="text-xs text-muted-foreground text-center -mt-4">
           Add some accomplishments to generate your session log
+        </p>
+      )}
+      
+      {isGeneratingLog && (
+        <p className="text-xs text-accent text-center -mt-4">
+          🤖 Claude is generating your session log...
         </p>
       )}
       
@@ -292,7 +326,7 @@ export function SpinDownState({
         onClose={handleModalClose}
         onSave={handleSessionLogSave}
         debriefData={memoizedDebriefData}
-        sessionData={sessionData}
+        sessionData={memoizedSessionData}
         completedTasks={completedTasks}
         incompleteTasks={incompleteTasks}
       />
