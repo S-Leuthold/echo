@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { NovelMarkdownEditor } from "@/components/ui/novel-markdown-editor";
-import { generateSessionLog, SessionLogResult } from "@/services/mockSessionLogData";
+import { sessionApi } from "@/services/sessionApiService";
+import { SessionCompleteRequest } from "@/types/sessionApi";
 import { BookOpen, Save, Loader2 } from 'lucide-react';
 
 /**
@@ -55,45 +56,6 @@ interface SessionLogModalProps {
 
 type ModalPhase = 'loading' | 'editing';
 
-// Generate a fallback log if the service fails
-const generateFallbackLog = (debriefData: SessionDebriefData, sessionData: SessionStartData): SessionLogResult => {
-  const today = new Date();
-  const sessionTitle = sessionData.nextWorkBlock?.label || 'Deep Work Session';
-  
-  const content = `# Session Log: ${sessionTitle}
-
-## What I Accomplished
-
-${debriefData.accomplishments || '• Made progress on session objectives'}
-
-## Outstanding Items
-
-${debriefData.outstanding || '• No outstanding items'}
-
-## Key Insights
-
-${debriefData.finalNotes || '• Productive session with good focus'}
-
-## Next Steps
-
-• Continue with planned work
-• Review progress in next session
-
----
-
-*Session completed at ${today.toLocaleTimeString()}*`;
-
-  return {
-    metadata: {
-      title: sessionTitle,
-      date: today.toLocaleDateString(),
-      duration: '2 hours',
-      category: 'Deep Work',
-      completedAt: today.toLocaleTimeString()
-    },
-    content: content.trim()
-  };
-};
 
 export function SessionLogModal({
   isOpen,
@@ -122,22 +84,73 @@ export function SessionLogModal({
       setSessionLog('');
       setSessionMetadata(null);
       
-      // Generate session log
-      generateSessionLog(debriefData, sessionData, completedTasks, incompleteTasks)
-        .then((result) => {
-          setSessionLog(result.content);
-          setSessionMetadata(result.metadata);
+      // Generate session log using live Claude API
+      const generateSessionLog = async () => {
+        try {
+          // Build session complete request
+          const sessionCompleteRequest: SessionCompleteRequest = {
+            block_id: sessionData.blockId,
+            accomplishments: debriefData.accomplishments,
+            outstanding: debriefData.outstanding,
+            final_notes: debriefData.finalNotes,
+            session_duration_minutes: debriefData.sessionMetadata.duration,
+            block_title: sessionData.nextWorkBlock?.label || sessionData.blockId || 'Work Session',
+            project_name: 'Echo', // TODO: Extract from session data when available
+            time_category: debriefData.sessionMetadata.category.toLowerCase().replace(' ', '_'),
+            start_time: sessionData.startTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            end_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            checklist_data: {
+              completed_tasks: completedTasks,
+              incomplete_tasks: incompleteTasks,
+              primary_objective: sessionData.userGoal
+            }
+          };
+
+          // Call live Claude API
+          const result = await sessionApi.completeSession(sessionCompleteRequest);
+          
+          if (result.success && result.data) {
+            setSessionLog(result.data.session_log_markdown);
+            setSessionMetadata(result.data.session_metadata);
+            setPhase('editing');
+          } else {
+            throw new Error('Session completion API returned unsuccessful result');
+          }
+        } catch (error) {
+          console.error('Failed to generate session log with Claude API:', error);
+          // The sessionApi already handles fallback, but if it completely fails, we show an error
+          setSessionLog(`# Session Log Generation Failed
+
+Unfortunately, we encountered an error while generating your session log. Please try again.
+
+**Error details:** ${error instanceof Error ? error.message : 'Unknown error'}
+
+## Manual Session Summary
+
+**Accomplishments:**
+${debriefData.accomplishments}
+
+**Outstanding Items:**
+${debriefData.outstanding}
+
+**Final Notes:**
+${debriefData.finalNotes}`);
+          
+          setSessionMetadata({
+            title: sessionData.nextWorkBlock?.label || 'Work Session',
+            date: new Date().toLocaleDateString(),
+            duration: `${debriefData.sessionMetadata.duration}m`,
+            category: debriefData.sessionMetadata.category,
+            completedAt: new Date().toLocaleTimeString()
+          });
+          
           setPhase('editing');
-        })
-        .catch((error) => {
-          console.error('Failed to generate session log:', error);
-          const fallback = generateFallbackLog(debriefData, sessionData);
-          setSessionLog(fallback.content);
-          setSessionMetadata(fallback.metadata);
-          setPhase('editing');
-        });
+        }
+      };
+
+      generateSessionLog();
     }
-  }, [isOpen]);
+  }, [isOpen, debriefData, sessionData, completedTasks, incompleteTasks]);
   
   
   // Handle save action
@@ -164,10 +177,10 @@ export function SessionLogModal({
         <Loader2 className="w-8 h-8 text-accent animate-spin" />
       </div>
       <h3 className="text-lg font-semibold text-foreground mb-2">
-        Generating your session log
+        Claude is generating your session log
       </h3>
       <p className="text-muted-foreground text-center max-w-md leading-relaxed">
-        AI is synthesizing your session data into a comprehensive log that you can review and edit.
+        Using the hybrid voice model to synthesize your session data into an intelligent, comprehensive log.
       </p>
     </div>
   );

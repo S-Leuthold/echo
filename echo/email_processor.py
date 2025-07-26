@@ -5,10 +5,41 @@ import logging
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional, Tuple
 import json
+from pydantic import BaseModel, Field
+import openai
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pydantic models for structured conversation intelligence
+class ActionableInput(BaseModel):
+    title: str = Field(description="Brief title of the actionable item")
+    details: str = Field(description="Additional context or details")
+    urgency: str = Field(description="Urgency level: high, medium, or low")
+
+class Commitment(BaseModel):
+    commitment: str = Field(description="What I promised to do")
+    to_whom: str = Field(description="Person or group the commitment was made to")
+    status: str = Field(description="Status: pending, in_progress, or completed")
+
+class Request(BaseModel):
+    request: str = Field(description="What I requested from others")
+    from_whom: str = Field(description="Person or group the request was made to")
+    status: str = Field(description="Status: pending, in_progress, or completed")
+
+class ConversationIntelligence(BaseModel):
+    high_priority_threads: List[str] = Field(description="List of high priority conversation threads")
+    stalled_conversations: List[str] = Field(description="Conversations that may need follow-up")
+    strategic_insights: List[str] = Field(description="Strategic insights about communication patterns")
+    recommended_actions: List[str] = Field(description="Recommended actions based on conversation analysis")
+
+class ConversationAwareResponse(BaseModel):
+    conversation_summary: str = Field(max_length=500, description="Brief summary of key conversation themes")
+    actionable_inputs: List[ActionableInput] = Field(description="Items requiring action from me")
+    my_commitments: List[Commitment] = Field(description="Commitments I made to others")
+    my_requests: List[Request] = Field(description="Requests I made to others")
+    conversation_intelligence: ConversationIntelligence = Field(description="Strategic conversation insights")
 
 class OutlookEmailProcessor:
     """Handles Outlook email integration and processing via Microsoft Graph API."""
@@ -28,6 +59,9 @@ class OutlookEmailProcessor:
         self.email_filters = {}
         self.scheduled_emails = {}  # Track scheduled email action items
         self.completed_emails = {}  # Track completed email action items
+        
+        # Initialize email intelligence system
+        self.email_intelligence = None  # Will be initialized when needed
 
     def _load_tokens(self) -> None:
         """Load access token and refresh token from file with error handling."""
@@ -350,8 +384,8 @@ class OutlookEmailProcessor:
 
     def _is_promotional_email(self, sender: str, subject: str) -> bool:
         """Check if email is promotional/junk."""
-        sender_lower = sender.lower()
-        subject_lower = subject.lower()
+        sender_lower = (sender or '').lower()
+        subject_lower = (subject or '').lower()
         
         # Check promotional domains
         for domain in self.email_filters.get('promotional_domains', []):
@@ -367,7 +401,7 @@ class OutlookEmailProcessor:
 
     def _is_important_email(self, sender: str, subject: str) -> bool:
         """Check if email is from important sender."""
-        sender_lower = sender.lower()
+        sender_lower = (sender or '').lower()
         
         for important_sender in self.email_filters.get('important_senders', []):
             if important_sender.lower() in sender_lower:
@@ -377,7 +411,7 @@ class OutlookEmailProcessor:
 
     def _is_urgent_email(self, subject: str) -> bool:
         """Check if email contains urgent keywords."""
-        subject_lower = subject.lower()
+        subject_lower = (subject or '').lower()
         
         for keyword in self.email_filters.get('urgent_keywords', []):
             if keyword.lower() in subject_lower:
@@ -387,7 +421,7 @@ class OutlookEmailProcessor:
 
     def _has_action_keywords(self, subject: str) -> bool:
         """Check if email contains action keywords."""
-        subject_lower = subject.lower()
+        subject_lower = (subject or '').lower()
         
         for keyword in self.email_filters.get('action_keywords', []):
             if keyword.lower() in subject_lower:
@@ -459,7 +493,7 @@ class OutlookEmailProcessor:
                 participants.update([r['emailAddress']['address'] for r in email['toRecipients']])
         
         # Determine conversation topic from first email's subject
-        conversation_topic = thread[0].get('subject', 'No Subject')
+        conversation_topic = thread[0].get('subject') or 'No Subject'
         conversation_topic = self._extract_original_subject(conversation_topic.lower())
         
         # Analyze conversation state and activity
@@ -624,20 +658,41 @@ class OutlookEmailProcessor:
         try:
             # Get conversation intelligence for the period
             intelligence = self.get_conversation_intelligence(days=days)
+            logger.info(f"Got intelligence type: {type(intelligence)}")
+            
+            # Debug: Check if intelligence is actually a dict
+            if not isinstance(intelligence, dict):
+                logger.error(f"Intelligence is not a dict! Type: {type(intelligence)}, Value: {intelligence}")
+                intelligence = {
+                    'conversation_summary': 'Invalid intelligence data type',
+                    'actionable_inputs': [],
+                    'my_commitments': [],
+                    'my_requests': [],
+                    'conversation_intelligence': {}
+                }
             
             # Extract key metrics
+            logger.info("Extracting metrics...")
             actionable_count = len(intelligence.get('actionable_inputs', []))
+            logger.info(f"Got actionable_count: {actionable_count}")
             commitment_count = len(intelligence.get('my_commitments', []))
+            logger.info(f"Got commitment_count: {commitment_count}")
             request_count = len(intelligence.get('my_requests', []))
+            logger.info(f"Got request_count: {request_count}")
             
             conv_intel = intelligence.get('conversation_intelligence', {})
+            logger.info(f"Got conv_intel type: {type(conv_intel)}")
             high_priority_threads = conv_intel.get('high_priority_threads', [])
             stalled_conversations = conv_intel.get('stalled_conversations', [])
             strategic_insights = conv_intel.get('strategic_insights', [])
             
             # Calculate estimated time requirements
+            logger.info("Calculating time requirements...")
             total_estimated_time = 0
-            for item in intelligence.get('actionable_inputs', []):
+            actionable_inputs = intelligence.get('actionable_inputs', [])
+            logger.info(f"Processing {len(actionable_inputs)} actionable inputs")
+            for i, item in enumerate(actionable_inputs):
+                logger.info(f"Processing item {i}: type={type(item)}")
                 if isinstance(item, dict):
                     time_str = item.get('estimated_time', '15 mins')
                 elif isinstance(item, str):
@@ -675,11 +730,26 @@ class OutlookEmailProcessor:
                 },
                 'priority_actions': intelligence.get('actionable_inputs', [])[:3],  # Top 3
                 'urgent_commitments': intelligence.get('my_commitments', [])[:3],  # Top 3
-                'blocking_requests': [req for req in intelligence.get('my_requests', []) if 'blocking' in req.get('context', '').lower()][:3],
+                'blocking_requests': [req for req in intelligence.get('my_requests', []) if isinstance(req, dict) and 'blocking' in req.get('context', '').lower()][:3],
                 'strategic_insights': strategic_insights[:2],  # Top 2 insights
-                'time_blocks_needed': self._suggest_email_time_blocks(intelligence),
-                'follow_up_scheduling': self._suggest_follow_ups(stalled_conversations)
             }
+            
+            # Add time blocks and follow-ups separately to isolate errors
+            try:
+                logger.info("Getting time blocks...")
+                brief['time_blocks_needed'] = self._suggest_email_time_blocks(intelligence)
+                logger.info("Time blocks completed")
+            except Exception as e:
+                logger.error(f"Error getting time blocks: {e}")
+                brief['time_blocks_needed'] = []
+                
+            try:
+                logger.info("Getting follow-ups...")
+                brief['follow_up_scheduling'] = self._suggest_follow_ups(stalled_conversations)
+                logger.info("Follow-ups completed")
+            except Exception as e:
+                logger.error(f"Error getting follow-ups: {e}")
+                brief['follow_up_scheduling'] = []
             
             logger.info(f"Generated daily email brief: {actionable_count} actions, {total_estimated_time} mins estimated")
             return brief
@@ -766,6 +836,10 @@ class OutlookEmailProcessor:
         follow_ups = []
         
         for conv in stalled_conversations[:3]:  # Top 3
+            if not isinstance(conv, dict):
+                logger.warning(f"Skipping non-dict conversation: {type(conv)} - {conv}")
+                continue
+                
             follow_ups.append({
                 'conversation_topic': conv.get('topic', 'Unknown'),
                 'last_activity': conv.get('last_activity_date', ''),
@@ -974,6 +1048,23 @@ class OutlookEmailProcessor:
     def get_conversation_intelligence(self, days: int = 7) -> Dict:
         """Get AI-powered conversation intelligence for planning integration."""
         try:
+            # Check cache first (30 minute cache for conversation intelligence)
+            import hashlib
+            import time
+            cache_key = f"conv_intel_{days}_{hashlib.md5(str(self.get_emails(days=days)).encode()).hexdigest()[:10]}"
+            
+            if hasattr(self, '_conversation_intelligence_cache'):
+                cached_result, cached_time = self._conversation_intelligence_cache.get(cache_key, (None, 0))
+                if cached_result and (time.time() - cached_time) < 1800:  # 30 minutes
+                    logger.info(f"Using cached conversation intelligence")
+                    return cached_result
+            else:
+                self._conversation_intelligence_cache = {}
+            
+        except Exception as e:
+            logger.warning(f"Cache check failed: {e}")
+            
+        try:
             # Get conversation summary
             conversation_data = self.get_conversation_summary(days=days)
             
@@ -998,9 +1089,13 @@ class OutlookEmailProcessor:
             # Filter to active/high-priority conversations only
             filtered_conversations = {}
             for conv_id, thread in conversations.items():
-                context = self.extract_conversation_context(thread)
-                if context.get('conversation_state') in ['active', 'waiting'] and context.get('conversation_priority') in ['critical', 'high', 'medium']:
-                    filtered_conversations[conv_id] = thread
+                try:
+                    context = self.extract_conversation_context(thread)
+                    if context.get('conversation_state') in ['active', 'waiting'] and context.get('conversation_priority') in ['critical', 'high', 'medium']:
+                        filtered_conversations[conv_id] = thread
+                except Exception as e:
+                    logger.error(f"Error processing conversation {conv_id}: {e}")
+                    logger.error(f"Thread data: {thread}")
             
             if not filtered_conversations:
                 return {
@@ -1024,20 +1119,28 @@ class OutlookEmailProcessor:
             prompt = build_conversation_aware_email_prompt(filtered_conversations)
             
             client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            response = client.chat.completions.create(
-                model="gpt-4",
+            response = client.beta.chat.completions.parse(
+                model="gpt-4.1-2025-04-14",
                 messages=[
                     {"role": "system", "content": "You are an expert email conversation analyst."},
                     {"role": "user", "content": prompt}
                 ],
+                response_format=ConversationAwareResponse,
                 temperature=0.1,
                 max_tokens=2000
             )
             
-            llm_response = response.choices[0].message.content
-            conversation_intelligence = parse_conversation_aware_response(llm_response)
+            conversation_intelligence = response.choices[0].message.parsed.model_dump()
             
             logger.info(f"Generated conversation intelligence for {len(filtered_conversations)} active threads")
+            
+            # Cache the result
+            try:
+                cache_key = f"conv_intel_{days}_{hashlib.md5(str(self.get_emails(days=days)).encode()).hexdigest()[:10]}"
+                self._conversation_intelligence_cache[cache_key] = (conversation_intelligence, time.time())
+            except Exception as e:
+                logger.warning(f"Failed to cache conversation intelligence: {e}")
+            
             return conversation_intelligence
             
         except Exception as e:
@@ -1102,13 +1205,13 @@ class OutlookEmailProcessor:
         # Generate LLM summary of inbox status
         try:
             from .prompt_engine import build_email_summary_prompt, parse_email_summary_response
-            from .cli import _get_openai_client, _call_llm
+            from .cli import _get_claude_client, _call_llm
             
             # Build the LLM prompt
             prompt = build_email_summary_prompt(emails)
             
             # Call LLM
-            client = _get_openai_client()
+            client = _get_claude_client()
             response = _call_llm(client, prompt)
             
             # Parse response
@@ -1266,6 +1369,37 @@ class OutlookEmailProcessor:
     def get_completed_emails(self) -> Dict:
         """Get all completed email action items."""
         return self.completed_emails
+
+    def get_categorized_email_context(self, days: int = 1) -> Dict:
+        """Get categorized email context using email intelligence system."""
+        try:
+            # Initialize email intelligence if needed
+            if not self.email_intelligence:
+                from .email_intelligence import EmailCategorizer
+                self.email_intelligence = EmailCategorizer(self._get_claude_client())
+            
+            # Get recent emails with full Graph API data
+            emails = self.get_emails(days=days, include_conversation_data=True)
+            
+            # Use email intelligence to categorize
+            return self.email_intelligence.categorize_emails(emails)
+            
+        except Exception as e:
+            logger.error(f"Failed to get categorized email context: {e}")
+            return {
+                'information': [],
+                'action_items': [],
+                'response_needed': [],
+                'metadata': {
+                    'error': str(e),
+                    'total_processed': 0
+                }
+            }
+    
+    def _get_claude_client(self):
+        """Get Claude client for email intelligence."""
+        from .claude_client import get_claude_client
+        return get_claude_client()
 
     def get_email_planning_stats(self) -> Dict:
         """Get statistics about email planning."""

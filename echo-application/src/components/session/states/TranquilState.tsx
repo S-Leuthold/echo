@@ -26,6 +26,7 @@ interface TranquilStateProps {
   timeUntilTransition: number;
   currentTime: Date;
   onReenterTheaterMode?: () => void;
+  theaterModeActive?: boolean;
 }
 
 export function TranquilState({
@@ -33,7 +34,8 @@ export function TranquilState({
   nextWorkBlock,
   timeUntilTransition,
   currentTime,
-  onReenterTheaterMode
+  onReenterTheaterMode,
+  theaterModeActive = true
 }: TranquilStateProps) {
   
   // EMERGENCY FIX: Static quote to prevent infinite loops
@@ -79,13 +81,16 @@ export function TranquilState({
     onReenterTheaterMode?.();
   }, [onReenterTheaterMode]);
   
+  // Determine if click is actually functional - only when theater mode is OFF
+  const isClickable = Boolean(onReenterTheaterMode && !theaterModeActive);
+  
   return (
     <div 
-      className="h-full flex flex-col p-12 cursor-pointer"
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      aria-label="Click to re-enter theater mode"
+      className={`h-full flex flex-col p-12 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+      onClick={isClickable ? handleClick : undefined}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-label={isClickable ? "Click to re-enter theater mode" : undefined}
     >
       {/* THE HEADER - Following Session Scaffold Pattern */}
       <div className="flex-shrink-0 mb-12">

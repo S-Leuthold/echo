@@ -1405,7 +1405,7 @@ export default function TodayPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Page header aligned with content */}
-      <div className="border-b border-border/50 pr-[30vw]">
+      <div className="border-b border-border/50 pr-[30vw] relative">
         <div className="p-6">
           <h1 className="text-xl font-semibold text-foreground">Today</h1>
           <p className="text-sm text-muted-foreground">
@@ -1417,6 +1417,14 @@ export default function TodayPage() {
             })} • {currentTimeString}
           </p>
         </div>
+        
+        {/* Header Dimmer - Theater Mode */}
+        <PanelDimmer
+          isActive={shouldShowDimmers}
+          onFirstClick={handleFirstClickOnDimmed}
+          target="header"
+          className="rounded-none"
+        />
       </div>
 
       {/* Left Content Area - Independent Scrolling, leaves space for fixed calendar */}
@@ -1471,6 +1479,7 @@ export default function TodayPage() {
       </div>
 
       {/* Session management now integrated into SessionStatePanel */}
+      
       
       {/* Theater Mode Escape Tooltip */}
       <EscapeTooltip

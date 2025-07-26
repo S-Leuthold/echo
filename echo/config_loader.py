@@ -67,12 +67,16 @@ def load_config() -> Config:
         # Load email configuration
         email_config = config_data.get("email", {})
         
+        # Load reminders
+        reminders = config_data.get("reminders", [])
+        
         return Config(
             defaults=defaults,
             weekly_schedule=weekly_schedule,
             projects=projects,
             profiles=profiles,
-            email=email_config
+            email=email_config,
+            reminders=reminders
         )
         
     except Exception as e:

@@ -16,6 +16,7 @@ import json
 import re
 from   datetime   import date, time, datetime
 from   typing import List, Dict, Any, Optional
+from   pydantic import BaseModel, Field
 from  .models import Block, BlockType, Config
 from  .plan_utils import parse_time_span
 from  .session import SessionState
@@ -827,6 +828,8 @@ def parse_conversation_aware_response(llm_response: str) -> Dict:
         return response_data
         
     except (json.JSONDecodeError, ValueError) as e:
+        import logging
+        logger = logging.getLogger(__name__)
         logger.error(f"Failed to parse conversation-aware response: {e}")
         logger.error(f"Raw response: {llm_response}")
         
@@ -2101,19 +2104,73 @@ def detect_refinement_scope(feedback: List[str]) -> str:
 # --- CONTEXT BRIEFING FUNCTIONALITY ---
 # ==============================================================================
 
+# Pydantic schemas for structured outputs
+class ScheduleItem(BaseModel):
+    time: str = Field(pattern=r'^\d{1,2}:\d{2} (AM|PM)$', description="Time in format like '10:00 AM'")
+    title: str = Field(max_length=300, description="Event title exactly as stated in source")
+    source: str = Field(description="Source of the event (e.g., 'calendar', 'email')")
+    duration_minutes: Optional[int] = Field(description="Duration if explicitly stated")
+
+class Task(BaseModel):
+    title: str = Field(max_length=150, description="Brief task title")
+    context: str = Field(max_length=240, description="Brief context or empty string")
+    source: str = Field(description="'email', 'reminders', or 'sessions'")
+    sender: Optional[str] = Field(description="Email if from email")
+    project: Optional[str] = Field(max_length=90, description="Project if mentioned")
+    urgency: Optional[str] = Field(description="Urgency if stated")
+    estimated_minutes: Optional[int] = Field(description="Minutes if provided")
+
+class Suggestion(BaseModel):
+    suggestion: str = Field(max_length=180, description="Brief suggestion")
+    reasoning: str = Field(max_length=240, description="Brief reasoning")
+    related_project: Optional[str] = Field(max_length=90, description="Project if mentioned")
+    estimated_minutes: Optional[int] = Field(description="Minutes if provided")
+
+class Insight(BaseModel):
+    insight: str = Field(max_length=180, description="Brief insight")
+    source: str = Field(description="Source")
+    impact: str = Field(max_length=180, description="Brief impact")
+
+class ContextBriefing(BaseModel):
+    conversation_summary: str = Field(
+        max_length=450, 
+        description="Concise 1-2 sentence summary"
+    )
+    confirmed_schedule: List[ScheduleItem] = Field(description="Fixed calendar events only", max_length=24)
+    high_priority_tasks: List[Task] = Field(description="Email actions requiring response", max_length=18)
+    medium_priority_tasks: List[Task] = Field(description="Optional tasks from other sources", max_length=12)
+    ai_suggestions: List[Suggestion] = Field(description="Skip unless explicitly stated", max_length=3)
+    insights: List[Insight] = Field(description="Skip unless explicitly stated", max_length=3)
+
 CONTEXT_BRIEFING_PROMPT_TEMPLATE = """\
-# PERSONA: The Context Briefer
-You are an intelligent assistant who synthesizes tomorrow's context to provide users with a comprehensive "lay of the land" briefing. Your tone is clear, organized, and forward-looking.
+# ROLE
+You are a factual data extraction and organization assistant. Your job is to extract and organize information from provided sources without adding interpretation or inference.
 
-## Your Mission
-Analyze all available context about tomorrow and create a structured briefing that helps the user understand what's on their plate, what commitments they have, and what insights from recent work sessions should inform their planning.
+# OBJECTIVE  
+Extract and organize factual information from multiple data sources into a structured briefing. Present facts clearly without synthesis, interpretation, or creative additions.
 
-## Context Sources
+# INSTRUCTIONS
+
+## Core Principles
+- EXTRACT ONLY: Only include information explicitly stated in the provided sources
+- NO INFERENCE: Do not infer, assume, or extrapolate beyond what is directly stated  
+- NO CREATIVE ADDITIONS: Do not add context, interpretations, or background information
+- SOURCE ATTRIBUTION: Always include the source of each item
+- IF UNCERTAIN: If information is unclear or ambiguous, do NOT guess - omit it
+
+## Processing Workflow
+1. **Read all provided sources completely**
+2. **Extract only explicit, factual information**
+3. **Organize by type and urgency as stated in sources**
+4. **Include sender information exactly as provided**
+5. **Create brief factual summary using only stated information**
+
+## Data Sources to Process
 
 ### Email Intelligence
 {email_context}
 
-### Fixed Calendar Events
+### Fixed Calendar Events  
 {calendar_events}
 
 ### Recent Session Insights
@@ -2122,29 +2179,26 @@ Analyze all available context about tomorrow and create a structured briefing th
 ### Upcoming Reminders & Deadlines
 {reminders}
 
-## Output Format
-Generate a clean, well-organized briefing in markdown format with these sections:
+## ANTI-HALLUCINATION RULES
+- Do NOT create tasks that are not explicitly mentioned in sources
+- Do NOT infer project status or timelines unless explicitly stated  
+- Do NOT add urgency levels beyond what is stated in sources
+- Do NOT synthesize themes or insights beyond factual summary
+- Do NOT include information from your training data
 
-### 📧 On Your Plate
-- List new action items and commitments from email
-- Include estimated time when available
-- Note any urgent items
+# OUTPUT FORMAT
+Extract and organize the factual information following the ContextBriefing schema. Only include information that is explicitly stated in the provided sources.
 
-### 📅 Confirmed Schedule  
-- List fixed meetings and appointments with times
-- Note any preparation needed
+CRITICAL: Be descriptive but focused. Provide sufficient detail for effective planning. Prioritize the most important items. 
 
-### 📝 From Recent Sessions
-- Surface insights and todos from recent work sessions
-- Highlight items that need continuation or follow-up
-- Note any blockers or dependencies identified
-
-### ⚠️ Deadlines & Reminders
-- List upcoming deadlines and their urgency
-- Include any reminders or follow-ups due
-
-Focus on being helpful and actionable. If a section has no relevant information, include it but note "Nothing scheduled" or "No new items."
-"""
+HARD LIMITS:
+- conversation_summary: Maximum 6 sentences
+- confirmed_schedule: Maximum 24 items
+- high_priority_tasks: Maximum 18 items (INCLUDE ALL EMAIL ACTIONS)
+- medium_priority_tasks: Maximum 12 items
+- ai_suggestions: Maximum 3 items
+- insights: Maximum 3 items
+- Each field can be more descriptive - provide useful detail for planning"""
 
 def build_context_briefing_prompt(
     email_context: str,
@@ -2174,24 +2228,20 @@ def build_context_briefing_prompt(
     else:
         calendar_text = "No fixed events scheduled for tomorrow."
     
-    # Format session insights
+    # Format session insights (concise summary only)
     insights_text = ""
     if session_insights:
-        for session in session_insights[-5:]:  # Last 5 sessions
+        for session in session_insights[-3:]:  # Last 3 sessions only
             date = session.get('date', 'Recent')
             project = session.get('project', 'General')
-            todos = session.get('todos', [])
-            insights = session.get('insights', [])
+            summary = session.get('summary', '')
+            next_steps = session.get('next_steps', [])
             
-            insights_text += f"\n**{date} - {project}:**\n"
+            insights_text += f"{date} {project}: {summary[:100]}...\n"  # Truncate summary
             
-            if todos:
-                for todo in todos:
-                    insights_text += f"  • TODO: {todo}\n"
-            
-            if insights:
-                for insight in insights:
-                    insights_text += f"  • INSIGHT: {insight}\n"
+            if next_steps:
+                first_step = next_steps[0] if isinstance(next_steps, list) and next_steps else str(next_steps)[:50]
+                insights_text += f"  Next: {first_step}\n"
     else:
         insights_text = "No recent session insights available."
     
@@ -2212,26 +2262,140 @@ def build_context_briefing_prompt(
         reminders=reminders_text
     )
 
-def parse_context_briefing_response(response_text: str) -> Dict[str, Any]:
+def generate_context_briefing_structured(
+    email_context: str,
+    calendar_events: List[Dict[str, Any]], 
+    session_insights: List[str],
+    reminders: List[Dict[str, Any]],
+    openai_client
+) -> Dict[str, Any]:
     """
-    Parse the context briefing response into structured data.
+    Generate context briefing using OpenAI's structured outputs.
     
     Args:
-        response_text: Raw markdown response from LLM
+        email_context: Email intelligence context
+        calendar_events: List of calendar events  
+        session_insights: Recent session insights
+        reminders: Upcoming reminders
+        openai_client: OpenAI client instance
         
     Returns:
-        Dictionary with briefing sections
+        Dictionary with structured briefing data
     """
+    import logging
     
-    return {
-        "briefing_text": response_text.strip(),
-        "sections": {
-            "email": _extract_section(response_text, "📧 On Your Plate"),
-            "calendar": _extract_section(response_text, "📅 Confirmed Schedule"),
-            "sessions": _extract_section(response_text, "📝 From Recent Sessions"),
-            "reminders": _extract_section(response_text, "⚠️ Deadlines & Reminders")
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Build the prompt using existing function
+        prompt = build_context_briefing_prompt(
+            email_context=email_context,
+            calendar_events=calendar_events,
+            session_insights=session_insights,
+            reminders=reminders
+        )
+        
+        logger.info("Generating context briefing with structured outputs")
+        
+        # Call OpenAI with structured outputs using gpt-4.1
+        response = openai_client.beta.chat.completions.parse(
+            model="gpt-4.1-2025-04-14",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": prompt
+                }
+            ],
+            response_format=ContextBriefing,
+            temperature=0.1,
+            max_tokens=8000
+        )
+        
+        # Extract the structured data
+        briefing_data = response.choices[0].message.parsed
+        
+        if briefing_data is None:
+            logger.error("Failed to parse structured output")
+            raise ValueError("OpenAI structured output parsing failed")
+            
+        logger.info(f"Successfully generated context briefing with {len(briefing_data.high_priority_tasks)} high priority tasks")
+        
+        # Convert Pydantic model to dict for API compatibility
+        return briefing_data.model_dump()
+        
+    except Exception as e:
+        logger.error(f"Error generating structured context briefing: {str(e)}")
+        
+        # Fallback structure
+        return {
+            "conversation_summary": f"Error generating context briefing: {str(e)[:100]}",
+            "confirmed_schedule": [],
+            "high_priority_tasks": [],
+            "medium_priority_tasks": [],
+            "ai_suggestions": [],
+            "insights": []
         }
-    }
+
+def parse_context_briefing_response(response_text: str) -> Dict[str, Any]:
+    """
+    Parse context briefing response for backward compatibility with tests.
+    
+    This function handles both structured output responses and raw JSON responses
+    from the LLM for testing purposes.
+    
+    Args:
+        response_text: Raw response text from LLM
+        
+    Returns:
+        Dictionary with parsed briefing data
+    """
+    import json
+    import re
+    
+    try:
+        # Try to extract JSON from the response
+        # Look for JSON object or array
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_match:
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+        
+        if not json_match:
+            raise ValueError("No JSON found in response")
+        
+        json_text = json_match.group(0)
+        
+        # Clean up markdown code blocks if present
+        if json_text.startswith("```json"):
+            json_text = json_text[7:]
+        if json_text.endswith("```"):
+            json_text = json_text[:-3]
+        json_text = json_text.strip()
+        
+        # Parse the JSON
+        parsed_data = json.loads(json_text)
+        
+        # Ensure required fields exist with defaults
+        result = {
+            "conversation_summary": parsed_data.get("conversation_summary", ""),
+            "confirmed_schedule": parsed_data.get("confirmed_schedule", []),
+            "high_priority_tasks": parsed_data.get("high_priority_tasks", []),
+            "medium_priority_tasks": parsed_data.get("medium_priority_tasks", []),
+            "ai_suggestions": parsed_data.get("ai_suggestions", []),
+            "insights": parsed_data.get("insights", [])
+        }
+        
+        return result
+        
+    except (json.JSONDecodeError, ValueError) as e:
+        # Return error structure for failed parsing
+        return {
+            "conversation_summary": f"Failed to parse response: {str(e)[:100]}",
+            "confirmed_schedule": [],
+            "high_priority_tasks": [],
+            "medium_priority_tasks": [],
+            "ai_suggestions": [],
+            "insights": []
+        }
 
 def _extract_section(text: str, section_header: str) -> str:
     """Extract a specific section from the briefing text."""

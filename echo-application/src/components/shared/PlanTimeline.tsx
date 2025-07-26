@@ -127,11 +127,11 @@ export function PlanTimeline({
             setUserConfig(configData);
           } else {
             // Silently handle missing config endpoint - timeline will use defaults
-            console.debug('User config endpoint not available, using timeline defaults');
+            // console.debug('User config endpoint not available, using timeline defaults');
           }
         } catch (error) {
           // Silently handle network errors - timeline will use defaults
-          console.debug('Could not fetch user config, using timeline defaults');
+          // console.debug('Could not fetch user config, using timeline defaults');
         }
       };
       
@@ -181,13 +181,13 @@ export function PlanTimeline({
       const SCALE_FACTOR = Math.max(0.6, Math.min(targetScaleFactor, 2.5));
       const TIMELINE_HEIGHT = TOTAL_DAY_DURATION * SCALE_FACTOR;
       
-      console.log('Timeline sizing:', {
-        usableHeight,
-        dayDuration: TOTAL_DAY_DURATION,
-        targetRange,
-        scaleFactor: SCALE_FACTOR,
-        finalHeight: TIMELINE_HEIGHT
-      });
+      // console.log('Timeline sizing:', {
+      //   usableHeight,
+      //   dayDuration: TOTAL_DAY_DURATION,
+      //   targetRange,
+      //   scaleFactor: SCALE_FACTOR,
+      //   finalHeight: TIMELINE_HEIGHT
+      // });
       
       
       // Dynamic timeline configuration completed

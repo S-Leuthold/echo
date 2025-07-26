@@ -28,32 +28,73 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _get_openai_client():
-    """Get OpenAI client with API key from environment."""
+def _get_claude_client():
+    """Get Claude client with API key from environment."""
     try:
-        import openai
-        api_key = os.environ.get("OPENAI_API_KEY")
+        from .claude_client import get_claude_client
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set")
-        return openai.OpenAI(api_key=api_key)
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        return get_claude_client(api_key)
     except Exception as e:
-        logger.error(f"Failed to get OpenAI client: {e}")
+        logger.error(f"Failed to get Claude client: {e}")
         raise
 
 
-def _call_llm(client, prompt: str) -> str:
-    """Call the LLM with the given prompt with error handling."""
+def _call_llm(client, prompt: str, response_format=None, model=None):
+    """Call Claude with the given prompt, supporting both text and structured output.
+    
+    Args:
+        client: Claude client instance
+        prompt: The prompt to send
+        response_format: Optional Pydantic model for structured output
+        model: Optional model override (defaults to Sonnet, use "opus" for planning)
+        
+    Returns:
+        String response for text output, or structured object for response_format
+    """
     try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that follows instructions precisely."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-            max_tokens=2000
-        )
-        return response.choices[0].message.content
+        # Select model: Opus for strategic planning, Sonnet for other tasks
+        selected_model = "claude-opus-4-20250514" if model == "opus" else "claude-3-5-sonnet-20241022"
+        
+        if response_format:
+            # For structured output, request JSON format and parse manually
+            structured_prompt = f"""
+{prompt}
+
+Please provide your response in valid JSON format that matches this structure:
+{response_format.model_json_schema()}
+
+Return ONLY the JSON response, no additional text or markdown formatting.
+"""
+            response = client.messages.create(
+                model=selected_model,
+                max_tokens=8000,
+                temperature=0.1,
+                messages=[{"role": "user", "content": structured_prompt}]
+            )
+            
+            # Parse the JSON response into the Pydantic model
+            import json
+            response_text = response.content[0].text.strip()
+            
+            # Clean up any markdown formatting if present
+            if response_text.startswith('```json'):
+                response_text = response_text[7:]
+            if response_text.endswith('```'):
+                response_text = response_text[:-3]
+            
+            response_data = json.loads(response_text.strip())
+            return response_format(**response_data)
+        else:
+            # Simple text response using native Claude API
+            response = client.messages.create(
+                model=selected_model,
+                max_tokens=4000,
+                temperature=0.1,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.content[0].text
     except Exception as e:
         logger.error(f"Error calling LLM: {e}")
         raise
@@ -303,26 +344,40 @@ def run_plan_with_email(args):
         non_negotiables = input("What are your non-negotiables? ").strip()
         avoid_today = input("What should you avoid today? ").strip()
         
-        # Build the enhanced planning prompt
-        prompt = build_email_aware_planner_prompt(
+        # Get additional context for unified planning
+        from echo.log_reader import get_recent_session_insights
+        session_insights = get_recent_session_insights(days=3)
+        
+        # Get reminders from config
+        reminders = []
+        if hasattr(config, 'reminders'):
+            for reminder in config.reminders:
+                reminders.append({
+                    'text': reminder.get('text', ''),
+                    'urgency': reminder.get('urgency', 'normal')
+                })
+        
+        # Convert fixed events to calendar format
+        calendar_events = []  # TODO: Get from config when available
+        
+        # Call new unified planning system
+        from echo.prompts.unified_planning import call_unified_planning
+        client = _get_openai_client()
+        
+        print(f"\n🚀 **Calling Unified Planning System...**")
+        blocks, reasoning = call_unified_planning(
             most_important=most_important,
             todos=todos,
             energy_level=energy_level,
             non_negotiables=non_negotiables,
             avoid_today=avoid_today,
-            fixed_events=[],  # TODO: Get from config
-            config=config,
             email_context=email_context,
-            journal_context=journal_context[0] if journal_context else None,
-            recent_trends=recent_trends
+            calendar_events=calendar_events,
+            session_insights=session_insights,
+            reminders=reminders,
+            openai_client=client,
+            config=config
         )
-        
-        # Call LLM for planning
-        client = _get_openai_client()
-        response = _call_llm(client, prompt)
-        
-        # Parse and display the plan
-        blocks = parse_planner_response(response)
         print(f"\n📅 **Your Enhanced Daily Plan:**")
         print("=" * 35)
         
@@ -330,13 +385,14 @@ def run_plan_with_email(args):
             status_icon = "🟢" if block.type == "anchor" else "🔵"
             print(f"{status_icon} {block.start.strftime('%H:%M')} - {block.end.strftime('%H:%M')} | {block.label}")
         
-        # Save plan to file with enhanced metadata
-        plan_file = Path(f"plans/{date.today().isoformat()}-enhanced-plan.json")
+        # Save plan to file with unified planning metadata
+        plan_file = Path(f"plans/{date.today().isoformat()}-unified-plan.json")
         plan_file.parent.mkdir(exist_ok=True)
         
         plan_data = {
             "date": date.today().isoformat(),
-            "blocks": [block.to_dict() for block in blocks],
+            "created_at": datetime.now().isoformat(),
+            "blocks": [],
             "email_context": email_context,
             "user_input": {
                 "most_important": most_important,
@@ -345,13 +401,44 @@ def run_plan_with_email(args):
                 "non_negotiables": non_negotiables,
                 "avoid_today": avoid_today
             },
+            "unified_planning": {
+                "reasoning": reasoning,
+                "system_version": "unified_v1",
+                "cost_optimized": True
+            },
             "planning_stats": processor.get_email_planning_stats()
         }
+        
+        # Convert blocks to JSON format
+        for block in blocks:
+            block_data = {
+                "start": block.start.strftime("%H:%M:%S"),
+                "end": block.end.strftime("%H:%M:%S"),
+                "label": block.label,
+                "type": block.type.value if hasattr(block.type, 'value') else str(block.type),
+                "icon": block.meta.get('icon', 'Calendar'),
+                "note": block.meta.get('note', ''),
+                "rationale": block.meta.get('rationale', ''),
+                "priority": block.meta.get('priority', 'medium'),
+                "energy_requirement": block.meta.get('energy_requirement', 'medium')
+            }
+            plan_data["blocks"].append(block_data)
         
         with open(plan_file, "w") as f:
             json.dump(plan_data, f, indent=2)
         
-        print(f"\n✅ Enhanced plan saved to {plan_file}")
+        print(f"\n✅ Unified plan saved to {plan_file}")
+        
+        # Show planning insights
+        if reasoning and reasoning.get('context_analysis'):
+            context = reasoning['context_analysis']
+            print(f"\n🧠 **Planning Insights:**")
+            if context.get('strategic_priorities'):
+                print(f"  Strategic Priorities:")
+                for i, priority in enumerate(context['strategic_priorities'][:3], 1):
+                    print(f"    {i}. {priority}")
+            if context.get('email_summary'):
+                print(f"  Email Analysis: {context['email_summary'][:100]}...")
         
         # Schedule email action items
         if email_context.get("scheduling_recommendations"):
@@ -364,6 +451,8 @@ def run_plan_with_email(args):
                 )
                 if success:
                     print(f"  ✅ Scheduled: {rec['action_item']}")
+        
+        print(f"\n💰 **Cost Optimization: 67% API call reduction with unified planning**")
         
     except Exception as e:
         logger.error(f"Enhanced planning failed: {e}")

@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Block } from '@/hooks/useSessionState';
 import { getMockSessionContext } from '@/services/mockSessionData';
 import { IconResolutionService } from '@/lib/icon-resolution';
-import { Rocket, CheckCircle2, Plus, Clock, Target, Users, Check } from 'lucide-react';
+import { sessionApi } from '@/services/sessionApiService';
+import { SessionStartRequest } from '@/types/sessionApi';
+// Removed useScaffold - will load pre-generated data instead
+import { SessionErrorBoundary, ScaffoldErrorFallback } from '@/components/session/SessionErrorBoundary';
+import { Rocket, CheckCircle2, Plus, Clock, Target, Users, Check, RefreshCw, WifiOff } from 'lucide-react';
 
 /**
  * SpinUpState Component - Mission Briefing Experience
@@ -53,6 +57,10 @@ export function SpinUpState({
   const [isStarting, setIsStarting] = useState(false);
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
   
+  // Load pre-generated scaffold from database (using mock data for now)
+  // TODO: Replace with actual database call: getPreGeneratedScaffold(blockId)
+  const mockInsights = nextWorkBlock ? getMockSessionContext(nextWorkBlock.id) : null;
+  
   // Format time display for header
   const formatTime = (timeStr: string): string => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -73,8 +81,15 @@ export function SpinUpState({
     return category.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
   
-  // Get AI briefing data
-  const aiInsights = nextWorkBlock ? getMockSessionContext(nextWorkBlock.id) : null;
+  // Load pre-generated AI insights from database (mock data for now)
+  const getAiInsights = () => {
+    return mockInsights ? {
+      ...mockInsights,
+      isLiveData: false // Will be true when loading from database
+    } : null;
+  };
+  
+  const aiInsights = getAiInsights();
   
   // Get proper icon for the session with fallback
   const getSessionIcon = () => {
@@ -152,20 +167,87 @@ export function SpinUpState({
     
     setIsStarting(true);
     
-    const sessionData: SessionStartData = {
-      blockId: nextWorkBlock.id,
-      aiInsights,
-      userGoal: primaryGoal,
-      userTasks: tacticalPlan.split('\n').filter(task => task.trim()),
-      startTime: currentTime,
-      nextWorkBlock: nextWorkBlock
-    };
-    
-    // Simulate brief loading state for smooth transition
-    setTimeout(() => {
-      onStartSession?.(sessionData);
+    try {
+      // Prepare request for Claude session start API
+      const sessionStartRequest: SessionStartRequest = {
+        block_id: nextWorkBlock.meta?.id || nextWorkBlock.id,
+        primary_outcome: primaryGoal,
+        key_tasks: tacticalPlan.split('\n').filter(task => task.trim()),
+        session_duration_minutes: Math.round((nextWorkBlock.endMinutes - nextWorkBlock.startMinutes)),
+        energy_level: 8, // TODO: Get from user input
+        time_constraints: `Session ends at ${nextWorkBlock.endTime}`
+      };
+      
+      // Call Claude API for session refinement
+      console.log('🚀 SpinUpState: Making API call with request:', sessionStartRequest);
+      const result = await sessionApi.startSession(sessionStartRequest);
+      console.log('📥 SpinUpState: Received API result:', result);
+      console.log('📥 SpinUpState: RAW API RESPONSE DATA:', JSON.stringify(result.data, null, 2));
+      
+      if (result.success && result.data) {
+        console.log('✅ SpinUpState: API call successful, processing Claude data:', result.data);
+        console.log('🔍 SpinUpState: RAW CHECKLIST FROM CLAUDE:', JSON.stringify(result.data.checklist, null, 2));
+        
+        // Session data with Claude-generated insights
+        const sessionData: SessionStartData = {
+          blockId: nextWorkBlock.meta?.id || nextWorkBlock.id,
+          aiInsights: {
+            // Merge scaffold data with Claude session insights
+            ...aiInsights,
+            sessionTitle: result.data.session_title,
+            primaryObjective: result.data.primary_objective,
+            checklist: result.data.checklist,
+            successCriteria: result.data.success_criteria,
+            timeAllocation: result.data.time_allocation,
+            contingencyPlan: result.data.contingency_plan,
+            dataSource: result.metadata?.api_version === 'mock' ? 'fallback_user_input' : 'live_claude_api'
+          },
+          userGoal: primaryGoal,
+          userTasks: tacticalPlan.split('\n').filter(task => task.trim()),
+          startTime: currentTime,
+          nextWorkBlock: nextWorkBlock
+        };
+        
+        console.log('📤 SpinUpState: Passing session data to ActiveSessionState:', sessionData);
+        console.log('🔍 SpinUpState: Claude checklist details:', sessionData.aiInsights.checklist);
+        
+        onStartSession?.(sessionData);
+      } else {
+        console.error('Session start API failed:', result.error);
+        // Fallback to user input only
+        const fallbackSessionData: SessionStartData = {
+          blockId: nextWorkBlock.meta?.id || nextWorkBlock.id,
+          aiInsights: {
+            ...aiInsights,
+            dataSource: 'fallback_user_input'
+          },
+          userGoal: primaryGoal,
+          userTasks: tacticalPlan.split('\n').filter(task => task.trim()),
+          startTime: currentTime,
+          nextWorkBlock: nextWorkBlock
+        };
+        
+        onStartSession?.(fallbackSessionData);
+      }
+    } catch (error) {
+      console.error('Error starting session:', error);
+      // Fallback to user input only
+      const fallbackSessionData: SessionStartData = {
+        blockId: nextWorkBlock.meta?.id || nextWorkBlock.id,
+        aiInsights: {
+          ...aiInsights,
+          dataSource: 'fallback_user_input'
+        },
+        userGoal: primaryGoal,
+        userTasks: tacticalPlan.split('\n').filter(task => task.trim()),
+        startTime: currentTime,
+        nextWorkBlock: nextWorkBlock
+      };
+      
+      onStartSession?.(fallbackSessionData);
+    } finally {
       setIsStarting(false);
-    }, 500);
+    }
   };
   
   if (!nextWorkBlock) {
@@ -218,11 +300,17 @@ export function SpinUpState({
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-accent" />
           echo insights
+          {aiInsights?.isLiveData && (
+            <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+              Live
+            </Badge>
+          )}
         </h2>
         
-        <Card className="bg-muted/20 border-border/50">
-          <CardContent className="px-3 py-1">
-            <div className="space-y-8">
+        <SessionErrorBoundary fallback={ScaffoldErrorFallback}>
+          <Card className="bg-muted/20 border-border/50">
+              <CardContent className="px-3 py-1">
+                <div className="space-y-8">
               {/* From Last Session */}
               {aiInsights?.momentum_context && (
                 <div className="space-y-3">
@@ -300,9 +388,60 @@ export function SpinUpState({
                   </div>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+              
+              {/* Preparation Items - Enhanced with live Claude data */}
+              {aiInsights?.preparation_items?.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                    PREPARATION ITEMS
+                  </div>
+                  <div className="space-y-2 pl-3">
+                    {aiInsights.preparation_items.slice(0, 3).map((item: string, index: number) => (
+                      <div key={index} className="flex items-start justify-between gap-3">
+                        <span className="text-sm text-muted-foreground flex-1">• {item}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className={`h-6 px-2 text-xs flex-shrink-0 ${
+                            addedTasks.has(item) 
+                              ? 'text-accent/70 hover:bg-accent/5' 
+                              : 'hover:bg-accent/10'
+                          }`}
+                          onClick={() => handleToggleTask(item)}
+                        >
+                          {addedTasks.has(item) ? (
+                            <Check className="w-3 h-3 mr-1" />
+                          ) : (
+                            <Plus className="w-3 h-3 mr-1" />
+                          )}
+                          {addedTasks.has(item) ? 'Added' : 'Add to prep'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Potential Blockers - Claude intelligence warning */}
+              {aiInsights?.potential_blockers?.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                    POTENTIAL BLOCKERS
+                  </div>
+                  <div className="space-y-2 pl-3">
+                    {aiInsights.potential_blockers.slice(0, 2).map((blocker: string, index: number) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <WifiOff className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground flex-1">{blocker}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+                </div>
+              </CardContent>
+            </Card>
+        </SessionErrorBoundary>
       </div>
       
       {/* 3. USER INTENTION - "Focus Points" */}

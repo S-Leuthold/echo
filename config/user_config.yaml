@@ -1,5 +1,5 @@
 defaults:
-  wake_time: 07:00
+  wake_time: 05:25
   sleep_time: '22:00'
 weekly_schedule:
   monday:

@@ -67,7 +67,10 @@ class ClaudeClient:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable must be set")
             
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.client = anthropic.Anthropic(
+            api_key=api_key,
+            timeout=120.0  # 2 minutes timeout for Claude API calls
+        )
         self.beta = ClaudeBeta(self.client)
     
     def __getattr__(self, name):

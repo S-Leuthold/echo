@@ -52,6 +52,9 @@ export function SessionStatePanel({
     transitionToActive,
     transitionToSpinDown,
     transitionToTranquil,
+    devOverrideState,
+    manualStateOverride,
+    debugInfo
   } = useSessionState(mockSchedule);
   
   // Session data state - passed from SpinUp to Active state
@@ -82,6 +85,7 @@ export function SessionStatePanel({
             timeUntilTransition={stateInfo.timeUntilTransition}
             currentTime={currentTime}
             onReenterTheaterMode={handleReenterTheaterMode}
+            theaterModeActive={theaterModeActive}
           />
         );
         
@@ -93,7 +97,7 @@ export function SessionStatePanel({
             currentTime={currentTime}
             onStartSession={(sessionData) => {
               setActiveSessionData(sessionData);
-              // Will transition to ACTIVE automatically via useSessionState logic
+              transitionToActive(sessionData);
             }}
           />
         );
@@ -123,7 +127,7 @@ export function SessionStatePanel({
             onEndSession={(sessionNotes, checklist) => {
               // Store checklist for SpinDownState
               setSessionChecklist(checklist);
-              // Will transition to SPIN_DOWN automatically via useSessionState logic
+              transitionToSpinDown();
             }}
           />
         );
@@ -195,6 +199,94 @@ export function SessionStatePanel({
           >
             <span className="text-sm">🎭</span>
           </button>
+        )}
+        
+        {/* Dev Mode State Override Panel */}
+        {process.env.NODE_ENV === 'development' && devOverrideState && (
+          <div className="fixed bottom-4 right-4 z-50 bg-yellow-100 border border-yellow-300 rounded-lg p-3 shadow-lg">
+            <div className="text-sm font-medium text-yellow-800 mb-2">
+              🔧 Dev State Override
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-yellow-700">
+                Current: <strong>{manualStateOverride || stateInfo.state}</strong>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => devOverrideState('TRANQUIL')}
+                  className={`px-2 py-1 text-xs rounded ${
+                    currentState === 'TRANQUIL' ? 'bg-yellow-300' : 'bg-yellow-200 hover:bg-yellow-250'
+                  }`}
+                >
+                  Tranquil
+                </button>
+                <button
+                  onClick={() => {
+                    devOverrideState('SPIN_UP');
+                  }}
+                  className={`px-2 py-1 text-xs rounded ${
+                    currentState === 'SPIN_UP' ? 'bg-yellow-300' : 'bg-yellow-200 hover:bg-yellow-250'
+                  }`}
+                >
+                  Spin Up
+                </button>
+                <button
+                  onClick={() => {
+                    // Create mock session data for Active state
+                    const mockSessionData = {
+                      blockId: 'dev-session-' + Date.now(),
+                      aiInsights: {
+                        momentum_context: 'Dev mode test session',
+                        suggested_tasks: ['Test error boundaries', 'Verify auto-save', 'Check dev tools'],
+                        estimated_complexity: 'medium',
+                        confidence: 0.8,
+                        preparation_items: ['Open dev tools', 'Check console'],
+                        success_criteria: ['All features working']
+                      },
+                      userGoal: 'Test the enhanced ActiveSessionState error boundaries',
+                      userTasks: ['• Test auto-save retry mechanisms', '• Verify session recovery', '• Check error simulation panel'],
+                      startTime: new Date(),
+                      nextWorkBlock: stateInfo.nextWorkBlock || {
+                        id: 'dev-work-block',
+                        startTime: '14:00',
+                        endTime: '16:00',
+                        label: 'Dev Testing Session',
+                        timeCategory: 'DEEP_WORK',
+                        startMinutes: 840,
+                        endMinutes: 960
+                      }
+                    };
+                    setActiveSessionData(mockSessionData);
+                    devOverrideState('ACTIVE');
+                  }}
+                  className={`px-2 py-1 text-xs rounded ${
+                    currentState === 'ACTIVE' ? 'bg-yellow-300' : 'bg-yellow-200 hover:bg-yellow-250'
+                  }`}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => devOverrideState('SPIN_DOWN')}
+                  className={`px-2 py-1 text-xs rounded ${
+                    currentState === 'SPIN_DOWN' ? 'bg-yellow-300' : 'bg-yellow-200 hover:bg-yellow-250'
+                  }`}
+                >
+                  Spin Down
+                </button>
+              </div>
+              <button
+                onClick={() => devOverrideState(null)}
+                className="px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+              >
+                Reset Auto
+              </button>
+            </div>
+            {debugInfo && (
+              <div className="mt-2 text-xs text-yellow-600">
+                {debugInfo.reason} | {debugInfo.currentMinutes}min
+              </div>
+            )}
+          </div>
         )}
         
       </div>

@@ -326,24 +326,33 @@ class SessionStartResponse(BaseModel):
 
 class SessionCompleteRequest(BaseModel):
     """Request model for session completion and log synthesis"""
-    block_title: str = Field(description="Original session title")
+    # Session identification
+    block_id: str = Field(description="ID of the schedule block that was completed")
+    
+    # User debrief data  
+    accomplishments: str = Field(description="What the user accomplished during the session")
+    outstanding: str = Field(description="What's still outstanding or for next time")
+    final_notes: str = Field(description="User's final thoughts and reflections")
+    
+    # Session metadata
+    session_duration_minutes: int = Field(description="Actual session duration in minutes")
+    block_title: str = Field(description="Title of the session block")
     project_name: str = Field(description="Project this session belonged to")
-    session_date: str = Field(description="Date in YYYY-MM-DD format")
-    duration_minutes: int = Field(description="Actual session duration")  
-    time_category: str = Field(description="Session category (deep_work, etc)")
-    start_time: str = Field(description="Session start time")
-    end_time: str = Field(description="Session end time")
-    accomplishments: str = Field(description="What the user accomplished")
-    outstanding: str = Field(description="What's outstanding for next time")
-    final_notes: str = Field(description="User's final reflections")
+    time_category: str = Field(description="Session category (deep_work, meetings, etc)")
+    start_time: str = Field(description="Session start time (HH:MM format)")
+    end_time: str = Field(description="Session end time (HH:MM format)")
+    
+    # Optional checklist data for enhanced synthesis
     checklist_data: Optional[Dict[str, Any]] = Field(default=None, description="Original checklist and completion status")
 
 class SessionCompleteResponse(BaseModel):
     """Response model for session completion with synthesized log"""
     status: str
-    session_log_markdown: str
-    ai_insights: Dict[str, Any]
-    stored_successfully: bool
+    session_log_markdown: str = Field(description="Complete session log in markdown format")
+    session_metadata: Dict[str, Any] = Field(description="Metadata about the session")
+    ai_insights: Dict[str, Any] = Field(description="AI-generated insights for future planning")
+    data_source: str = Field(description="Source of the log (claude_synthesis or fallback)")
+    stored_successfully: bool = Field(description="Whether the log was successfully stored in database")
 
 class GetScaffoldRequest(BaseModel):
     """Request model for retrieving a session scaffold"""
@@ -1855,50 +1864,111 @@ async def start_session_with_ai_checklist(request: SessionStartRequest):
 
 @app.post("/session/complete", response_model=SessionCompleteResponse)
 async def complete_session_with_ai_synthesis(request: SessionCompleteRequest):
-    """Synthesize session log using AI when completing a session."""
+    """Generate an AI-powered session log with hybrid voice model synthesis."""
     try:
-        logger.info(f"Completing session: {request.block_title} ({request.duration_minutes} min)")
+        logger.info(f"Completing session for block {request.block_id}: {request.block_title}")
         
         # Initialize session logger service
         db = SessionDatabase()
-        logger_service = SessionLogger(db)
         
-        # Create debrief input and session metadata
+        # Create debrief input object
         debrief_input = SessionDebriefInput(
             accomplishments=request.accomplishments,
             outstanding=request.outstanding,
             final_notes=request.final_notes
         )
         
+        # Create session metadata object
         session_metadata = SessionMetadata(
             block_title=request.block_title,
             project_name=request.project_name,
-            session_date=request.session_date,
-            duration_minutes=request.duration_minutes,
+            session_date=date.today().isoformat(),
+            duration_minutes=request.session_duration_minutes,
             time_category=request.time_category,
             start_time=request.start_time,
             end_time=request.end_time
         )
         
-        # Synthesize session log with hybrid voice model
-        log_output = await logger_service.synthesize_session_log(
+        # Synthesize session log using Claude with hybrid voice model
+        session_logger = SessionLogger(db)
+        log_output = await session_logger.synthesize_session_log(
             debrief_input,
             session_metadata,
             request.checklist_data
         )
         
-        logger.info(f"Session log synthesized for {request.block_title}")
+        # Prepare session metadata for response
+        response_metadata = {
+            "title": request.block_title,
+            "date": date.today().strftime('%A, %B %d, %Y'),
+            "duration": f"{request.session_duration_minutes // 60}h {request.session_duration_minutes % 60}m" if request.session_duration_minutes >= 60 else f"{request.session_duration_minutes}m",
+            "category": request.time_category.replace('_', ' ').title(),
+            "completedAt": datetime.now().strftime('%I:%M %p')
+        }
+        
+        logger.info(f"Generated session log with hybrid voice model for {request.block_title}")
         
         return SessionCompleteResponse(
             status="success",
             session_log_markdown=log_output.session_log_markdown,
+            session_metadata=response_metadata,
             ai_insights=log_output.ai_insights,
-            stored_successfully=True  # Database storage handled in the service
+            data_source="claude_synthesis",
+            stored_successfully=True  # SessionLogger handles database storage automatically
         )
         
     except Exception as e:
         logger.error(f"Error completing session: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to complete session: {str(e)}")
+        
+        # Generate fallback log to ensure user never loses their session data
+        try:
+            from echo.session_logger import SessionLogger
+            
+            # Create fallback using the session logger's fallback method
+            session_logger = SessionLogger()
+            debrief_input = SessionDebriefInput(
+                accomplishments=request.accomplishments,
+                outstanding=request.outstanding,
+                final_notes=request.final_notes
+            )
+            session_metadata = SessionMetadata(
+                block_title=request.block_title,
+                project_name=request.project_name,
+                session_date=date.today().isoformat(),
+                duration_minutes=request.session_duration_minutes,
+                time_category=request.time_category,
+                start_time=request.start_time,
+                end_time=request.end_time
+            )
+            
+            fallback_output = session_logger._create_fallback_log(debrief_input, session_metadata)
+            
+            response_metadata = {
+                "title": request.block_title,
+                "date": date.today().strftime('%A, %B %d, %Y'),
+                "duration": f"{request.session_duration_minutes}m",
+                "category": request.time_category.replace('_', ' ').title(),
+                "completedAt": datetime.now().strftime('%I:%M %p')
+            }
+            
+            logger.warning(f"Using fallback session log for {request.block_title} due to Claude API error")
+            
+            return SessionCompleteResponse(
+                status="success",
+                session_log_markdown=fallback_output.session_log_markdown,
+                session_metadata=response_metadata,
+                ai_insights=fallback_output.ai_insights,
+                data_source="fallback",
+                stored_successfully=False
+            )
+            
+        except Exception as fallback_error:
+            logger.error(f"Fallback session log generation also failed: {fallback_error}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to generate session log: {str(e)}. Fallback also failed: {str(fallback_error)}"
+            )
+
 
 @app.post("/plan/refine", response_model=PlanRefinementResponse)
 async def refine_plan(request: PlanRefinementRequest):
@@ -2407,4 +2477,13 @@ async def load_existing_config():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    # Configure timeouts for Claude API calls which can take 15-30+ seconds
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        timeout_keep_alive=120,  # Keep connections alive for 2 minutes
+        timeout_graceful_shutdown=30,  # Graceful shutdown timeout
+        access_log=True,
+        log_level="info"
+    ) 

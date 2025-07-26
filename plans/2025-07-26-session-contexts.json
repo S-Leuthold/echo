@@ -1,0 +1,125 @@
+{
+  "date": "2025-07-25",
+  "generated_at": "2025-07-25T08:00:00Z",
+  "contexts": {
+    "echo-email-triage": {
+      "block_id": "08:15:00-09:00:00",
+      "block_label": "Echo | Email Triage & Priority Setting",
+      "momentum_context": "No recent session logs for email triage work. Starting fresh with inbox management and priority assessment.",
+      "email_pressure": [
+        "AI-LEAF meeting invites pending response",
+        "ResearchGate follow-up requiring attention",
+        "Chase credit card payment due tomorrow"
+      ],
+      "suggested_tasks": [
+        "Process AI-LEAF meeting invites and send responses",
+        "Follow up on ResearchGate communications",
+        "Review and prioritize remaining inbox items",
+        "Set up any necessary calendar blocks for follow-ups"
+      ],
+      "project_state": "maintenance",
+      "confidence": 0.75,
+      "estimated_complexity": "medium"
+    },
+    "echo-standup-prep": {
+      "block_id": "09:00:00-10:30:00", 
+      "block_label": "Echo | Daily Standup & Team Meeting Prep",
+      "momentum_context": "Previous Echo development sessions focused on frontend calendar improvements. Last session (2025-07-22) successfully resolved timeline positioning issues and implemented color scheme integration.",
+      "email_pressure": [
+        "No direct email pressures for standup prep"
+      ],
+      "suggested_tasks": [
+        "Review progress on calendar timeline fixes (completed)",
+        "Prepare update on tooltip system development",
+        "Identify any blockers or help needed",
+        "Plan discussion points for session management integration"
+      ],
+      "project_state": "active-development",
+      "confidence": 0.90,
+      "estimated_complexity": "low"
+    },
+    "echo-backend-session": {
+      "block_id": "10:30:00-12:00:00",
+      "block_label": "Echo | Today Page Implementation - Backend Session Management", 
+      "momentum_context": "Last frontend session (2025-07-22) completed timeline positioning and visual improvements. Next steps identified: tooltip enhancements, collision detection, and color scheme overhaul. This backend session should focus on session management API integration.",
+      "email_pressure": [
+        "No immediate email dependencies for backend work"
+      ],
+      "suggested_tasks": [
+        "Implement session tracking API endpoints",
+        "Connect frontend session state to backend storage",
+        "Test session start/pause/end workflow",
+        "Set up session persistence and retrieval"
+      ],
+      "project_state": "active-development", 
+      "confidence": 0.85,
+      "estimated_complexity": "high"
+    },
+    "echo-ui-components": {
+      "block_id": "12:30:00-14:00:00",
+      "block_label": "Echo | Today Page UI Components & State Management",
+      "momentum_context": "Frontend timeline work completed successfully (2025-07-22) with positioning fixes and color integration. Tooltip enhancement and collision detection identified as next priorities. This session should focus on UI component refinements.",
+      "email_pressure": [
+        "No direct email dependencies for UI work"
+      ],
+      "suggested_tasks": [
+        "Implement enhanced tooltip rationale system",
+        "Add collision detection improvements for timeline blocks", 
+        "Refine session focus component state management",
+        "Test UI responsiveness across different screen sizes"
+      ],
+      "project_state": "active-development",
+      "confidence": 0.80,
+      "estimated_complexity": "medium"
+    },
+    "echo-ux-testing": {
+      "block_id": "15:45:00-17:00:00",
+      "block_label": "Echo | Today Page UX Testing & Refinements",
+      "momentum_context": "Building on frontend improvements from recent sessions. Timeline positioning and visual hierarchy now solid foundation. Focus should be on user experience testing and refinement based on today's development work.",
+      "email_pressure": [
+        "No immediate email dependencies for UX testing"
+      ],
+      "suggested_tasks": [
+        "Test complete session workflow end-to-end",
+        "Validate timeline block interactions and feedback",
+        "Review session management integration from user perspective",
+        "Document any UX issues or improvement opportunities"
+      ],
+      "project_state": "testing-refinement",
+      "confidence": 0.75,
+      "estimated_complexity": "medium"
+    },
+    "echo-evening-review": {
+      "block_id": "20:00:00-21:00:00",
+      "block_label": "Echo | Evening Review & Tomorrow Planning",
+      "momentum_context": "Wrap-up session for today's Echo development work across backend session management, UI components, and UX testing. Time to consolidate progress and plan tomorrow's priorities.",
+      "email_pressure": [
+        "No email dependencies for review session"
+      ],
+      "suggested_tasks": [
+        "Review all completed Echo development tasks from today",
+        "Document any outstanding issues or blockers",
+        "Update project status and next priorities", 
+        "Plan tomorrow's development focus areas"
+      ],
+      "project_state": "review-planning",
+      "confidence": 0.90,
+      "estimated_complexity": "low"
+    }
+  },
+  "metadata": {
+    "generation_method": "mock_data_v1",
+    "sources": {
+      "session_logs": [
+        "2025-07-22-session-0845-echo-frontend.json",
+        "2025-07-22-session-1030-admin-email.json"
+      ],
+      "email_summary": "2025-07-25-email-brief", 
+      "project_data": "echo",
+      "plan_file": "2025-07-25-enhanced-plan.json"
+    },
+    "total_contexts_generated": 6,
+    "contexts_with_momentum": 5,
+    "contexts_with_email_pressure": 3
+  }
+}

@@ -157,18 +157,18 @@ export const useSessionState = (schedule: Block[] = []) => {
   }, []);
   
   const transitionToActive = useCallback((sessionData: any) => {
-    // TODO: Implement session start transition
-    console.log('Manual transition to active state', sessionData);
+    console.log('Transitioning to active state', sessionData);
+    setManualStateOverride('ACTIVE');
   }, []);
   
   const transitionToSpinDown = useCallback(() => {
-    // TODO: Implement session end transition
-    console.log('Manual transition to spin-down state');
+    console.log('Transitioning to spin-down state');
+    setManualStateOverride('SPIN_DOWN');
   }, []);
   
   const transitionToTranquil = useCallback(() => {
-    // TODO: Implement manual return to tranquil
-    console.log('Manual transition to tranquil state');
+    console.log('Transitioning to tranquil state');
+    setManualStateOverride('TRANQUIL');
   }, []);
   
   return {

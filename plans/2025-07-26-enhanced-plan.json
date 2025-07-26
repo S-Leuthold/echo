@@ -1,0 +1,376 @@
+{
+  "date": "2025-07-24",
+  "created_at": "2025-07-24T13:37:29.784292",
+  "blocks": [
+    {
+      "start": "06:00:00",
+      "end": "06:30:00",
+      "label": "Personal | Morning Reading",
+      "type": "anchor",
+      "icon": "BookOpen",
+      "note": "",
+      "rationale": "Fixed morning anchor block - time for mental preparation and learning before the day begins."
+    },
+    {
+      "start": "06:30:00",
+      "end": "07:10:00",
+      "label": "Personal | Breakfast",
+      "type": "anchor",
+      "icon": "Coffee",
+      "note": "",
+      "rationale": "Fixed morning routine - nourishment and mental reset before work activities."
+    },
+    {
+      "start": "07:10:00",
+      "end": "07:45:00",
+      "label": "Personal | Morning Routine",
+      "type": "anchor",
+      "icon": "Sun",
+      "note": "",
+      "rationale": "Fixed personal preparation time for optimal day start."
+    },
+    {
+      "start": "07:45:00",
+      "end": "08:15:00",
+      "label": "Personal | Commute to Guild Row",
+      "type": "anchor",
+      "icon": "Car",
+      "note": "",
+      "rationale": "Fixed travel time to primary work location."
+    },
+    {
+      "start": "08:15:00",
+      "end": "09:00:00",
+      "label": "Echo | Email Triage & Priority Setting",
+      "type": "flex",
+      "icon": "Mail",
+      "note": "",
+      "rationale": "Process AI-LEAF meeting invites and ResearchGate follow-up. High cognitive capacity time optimal for communication decisions."
+    },
+    {
+      "start": "09:00:00",
+      "end": "10:30:00",
+      "label": "Echo | Daily Standup & Team Meeting Prep",
+      "type": "fixed",
+      "icon": "Users",
+      "note": "",
+      "rationale": "Non-negotiable daily standup with 30min prep time - fixed commitment requiring dedicated focus."
+    },
+    {
+      "start": "10:30:00",
+      "end": "12:00:00",
+      "label": "Echo | Today Page Implementation - Backend Session Management",
+      "type": "flex",
+      "icon": "Code",
+      "note": "",
+      "rationale": "High-energy morning time perfect for complex backend development. Core system work requiring deep focus."
+    },
+    {
+      "start": "12:00:00",
+      "end": "12:30:00",
+      "label": "Personal | Lunch Break",
+      "type": "flex",
+      "icon": "Utensils",
+      "note": "",
+      "rationale": "Midday energy reset and nourishment break."
+    },
+    {
+      "start": "12:30:00",
+      "end": "14:00:00",
+      "label": "Echo | Today Page UI Components & State Management",
+      "type": "flex",
+      "icon": "Smartphone",
+      "note": "",
+      "rationale": "Post-lunch energy suitable for frontend development. Visual components require sustained but moderate focus."
+    },
+    {
+      "start": "14:00:00",
+      "end": "15:00:00",
+      "label": "Professional | Client Call",
+      "type": "fixed",
+      "icon": "Phone",
+      "note": "",
+      "rationale": "Non-negotiable client commitment - fixed external meeting requiring preparation and focus."
+    },
+    {
+      "start": "15:00:00",
+      "end": "15:45:00",
+      "label": "Professional | Email & Communications",
+      "type": "flex",
+      "icon": "Mail",
+      "note": "",
+      "rationale": "Dedicated afternoon admin block for action items. Exactly 45 minutes for processing responses and follow-ups."
+    },
+    {
+      "start": "15:45:00",
+      "end": "17:00:00",
+      "label": "Echo | Today Page UX Testing & Integration",
+      "type": "flex",
+      "icon": "TestTube",
+      "note": "",
+      "rationale": "Afternoon energy suitable for testing and integration work. Requires attention to detail but less creative thinking."
+    },
+    {
+      "start": "17:00:00",
+      "end": "17:15:00",
+      "label": "Personal | Commute to Gym",
+      "type": "anchor",
+      "icon": "Activity",
+      "note": "",
+      "rationale": "Fixed transition time to gym for strength training session."
+    },
+    {
+      "start": "17:15:00",
+      "end": "18:30:00",
+      "label": "Personal | Strength Training",
+      "type": "anchor",
+      "icon": "Dumbbell",
+      "note": "",
+      "rationale": "Fixed workout session - important for physical health and mental clarity."
+    },
+    {
+      "start": "18:30:00",
+      "end": "19:00:00",
+      "label": "Personal | Commute Home & Decompress",
+      "type": "flex",
+      "icon": "Car",
+      "note": "",
+      "rationale": "Travel home and mental transition from gym to evening activities."
+    },
+    {
+      "start": "19:00:00",
+      "end": "19:45:00",
+      "label": "Personal | Dinner",
+      "type": "flex",
+      "icon": "Utensils",
+      "note": "",
+      "rationale": "Evening meal and relaxation time."
+    },
+    {
+      "start": "19:45:00",
+      "end": "20:30:00",
+      "label": "Echo | Evening Review & Tomorrow Planning",
+      "type": "flex",
+      "icon": "Calendar",
+      "note": "",
+      "rationale": "Reflect on Today page development progress and plan next implementation steps."
+    },
+    {
+      "start": "20:30:00",
+      "end": "21:30:00",
+      "label": "Personal | Unwind & Personal Time",
+      "type": "flex",
+      "icon": "Heart",
+      "note": "",
+      "rationale": "Open time for relaxation and personal interests."
+    },
+    {
+      "start": "21:30:00",
+      "end": "22:00:00",
+      "label": "Personal | Prepare for Tomorrow",
+      "type": "flex",
+      "icon": "Clock",
+      "note": "",
+      "rationale": "Review commitments and ensure readiness for tomorrow's priorities."
+    }
+  ],
+  "metadata": {
+    "email_context": {
+      "summary": "Moderate inbox day: 1 high-priority email and 2 standard messages to handle.",
+      "action_items": [
+        {
+          "action": "Confirm attendance for AI-LEAF All-Hands Meeting",
+          "specific_description": "Respond to synced calendar invitation for monthly meeting on last Monday",
+          "sender": "aileafinstitute@umn.edu",
+          "subject": "Synced invitation: AI-LEAF All-Hands Meeting",
+          "deadline": null,
+          "priority": "medium"
+        },
+        {
+          "action": "Follow up on ResearchGate discussion",
+          "specific_description": "Continue conversation about research collaboration",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "subject": "Re: Following up from ResearchGate",
+          "deadline": null,
+          "priority": "high"
+        }
+      ],
+      "total_unresponded": 3,
+      "urgent_count": 0,
+      "high_priority_count": 1,
+      "emails": [
+        {
+          "subject": "Synced invitation: AI-LEAF All-Hands Meeting @ Monthly from 10am to 11am on the last Monday (CDT)",
+          "sender": "aileafinstitute@umn.edu",
+          "received": "2025-07-24T17:55:04Z",
+          "importance": "medium",
+          "urgency": "medium",
+          "has_action": true
+        },
+        {
+          "subject": "Re: Following up from ResearchGate",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "received": "2025-07-24T17:24:58Z",
+          "importance": "high",
+          "urgency": "medium",
+          "has_action": false
+        }
+      ],
+      "scheduling_recommendations": [
+        {
+          "email_id": "msg001",
+          "subject": "AI-LEAF All-Hands Meeting",
+          "sender": "aileafinstitute@umn.edu",
+          "priority": "medium",
+          "time_allocation": 15,
+          "recommended_time": "afternoon",
+          "action_item": "Confirm meeting attendance"
+        },
+        {
+          "email_id": "msg002",
+          "subject": "ResearchGate Follow-up",
+          "sender": "Sam.Leuthold@colostate.edu",
+          "priority": "high",
+          "time_allocation": 20,
+          "recommended_time": "morning",
+          "action_item": "Continue research discussion"
+        }
+      ],
+      "response_time_estimates": {
+        "total_estimated_time": 35,
+        "time_estimates": {
+          "critical": 30,
+          "high": 20,
+          "medium": 15,
+          "low": 10
+        },
+        "email_count": 2
+      }
+    },
+    "context_briefing": {
+      "executive_summary": "Focused development day for Echo Today page implementation with moderate email load and balanced work schedule. Key priorities: backend session management, UI components, and testing integration.",
+      "email_summary": {
+        "information": [
+          {
+            "content": "AI-LEAF All-Hands Meeting calendar sync notification",
+            "person": "AI LEAF Institute",
+            "category": "information",
+            "timestamp_context": "afternoon"
+          }
+        ],
+        "action_items": [
+          {
+            "content": "Review and respond to ResearchGate collaboration discussion",
+            "person": "Sam Leuthold",
+            "category": "action_items",
+            "due_date": "2025-07-25",
+            "type": "response",
+            "timeline": "Next day follow-up"
+          }
+        ],
+        "response_needed": [
+          {
+            "content": "Confirm AI-LEAF meeting attendance",
+            "person": "AI LEAF Institute",
+            "category": "response_needed",
+            "urgency": "medium",
+            "days_old": 0
+          }
+        ],
+        "metadata": {
+          "total_emails_processed": 3,
+          "timeframe_hours": 24,
+          "is_sunday_lookback": false,
+          "categories_generated_at": "2025-07-24T13:37:23.933676",
+          "has_urgent_items": false
+        }
+      },
+      "commitments": {
+        "urgent_deadlines": [],
+        "upcoming_deadlines": [],
+        "reminders": [
+          {
+            "title": "Chase Credit Card Bill Due",
+            "description": "Monthly Chase credit card payment due tomorrow",
+            "urgency": "normal",
+            "category": "bill",
+            "date": "2025-07-25",
+            "days_until": 1
+          }
+        ],
+        "upcoming_birthdays": [],
+        "fixed_meetings": [
+          {
+            "time": "09:00 AM",
+            "title": "Daily standup",
+            "duration_minutes": 90
+          },
+          {
+            "time": "14:00 PM",
+            "title": "Client call",
+            "duration_minutes": 60
+          }
+        ],
+        "metadata": {
+          "days_ahead": 7,
+          "extracted_at": "2025-07-24T13:37:23.935054",
+          "total_deadlines": 0,
+          "urgent_count": 0,
+          "reminders_count": 1,
+          "upcoming_birthdays_count": 0
+        }
+      },
+      "session_notes": {
+        "pending_commitments": [],
+        "stale_items": [],
+        "recent_sessions": [
+          {
+            "project": "Echo Development",
+            "summary": "Enhanced planning system with natural language overrides and validation fixes",
+            "next_steps": ["Implement Today page session management", "Test mock data integration"]
+          }
+        ],
+        "metadata": {
+          "sessions_analyzed": 1,
+          "days_back": 3,
+          "total_next_items": 2,
+          "completion_rate": 85,
+          "oldest_pending_days": 0,
+          "has_stale_items": false,
+          "analysis_date": "2025-07-24T13:37:23.934638"
+        }
+      }
+    },
+    "user_input": {
+      "most_important": "Implement Today page for Echo with strategic planning for backend, UI, and UX",
+      "todos": [
+        "Generate mock data for Today page testing",
+        "Implement session management backend",
+        "Create Today page UI components",
+        "Test Today page functionality"
+      ],
+      "energy_level": "7",
+      "non_negotiables": "09:00 - 10:30: Daily standup, 14:00 - 15:00: Client call",
+      "avoid_today": ""
+    },
+    "unified_planning": {
+      "reasoning": {
+        "context_analysis": {
+          "email_summary": "Moderate email load with AI-LEAF meeting confirmation and ResearchGate follow-up requiring attention",
+          "strategic_priorities": [
+            "Today page backend implementation",
+            "UI component development", 
+            "Testing and integration",
+            "Email action items processing"
+          ]
+        },
+        "scheduling_strategy": "Energy-optimized development schedule with complex backend work during peak morning hours, UI development post-lunch, and testing in afternoon. Fixed commitments respected with adequate transition time.",
+        "energy_optimization": "High-energy morning blocks for complex backend development, moderate afternoon energy for UI work and testing, low-energy evening for review and planning.",
+        "priority_sequencing": "Backend session management first (requires deep focus), followed by UI components (visual work), then testing (detail-oriented), with communications scheduled during natural energy dips.",
+        "recovery_planning": "Strategic breaks at lunch and between major work blocks, gym session for physical reset, evening wind-down for mental recovery."
+      },
+      "system_version": "unified_v1",
+      "cost_optimized": true
+    }
+  }
+}

@@ -18,9 +18,13 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import asyncio
+from dotenv import load_dotenv
 from echo.mock_project_service import MockProjectService
 from echo.database_schema import SessionDatabase
 from echo.populate_mock_database import populate_database
+
+# Load environment variables
+load_dotenv()
 
 def test_complete_integration():
     """Test the complete integration of all components."""

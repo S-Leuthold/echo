@@ -251,3 +251,4 @@ class Config:
     projects: Dict[str, Dict[str, Any]]
     profiles: Dict[str, Dict[str, Any]]
     email: Dict[str, Any] = field(default_factory=dict)
+    reminders: List[Dict[str, Any]] = field(default_factory=list)
