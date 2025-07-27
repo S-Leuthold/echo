@@ -800,8 +800,8 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
           {/* Executive Summary - Most Prominent */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <Brain className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+              <Brain className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                 EXECUTIVE • SUMMARY
               </h3>
             </div>
@@ -821,8 +821,8 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
           {/* Email Summary */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <Mail className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+              <Mail className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                 EMAIL • SUMMARY
               </h3>
             </div>
@@ -920,8 +920,8 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
           {/* Commitments & Deadlines */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <Calendar className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+              <Calendar className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                 COMMITMENTS • DEADLINES
               </h3>
             </div>
@@ -1030,8 +1030,8 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
           {/* Session Notes */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <NotebookText className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+              <NotebookText className="w-5 h-5 text-accent" />
+              <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                 SESSION • NOTES
               </h3>
             </div>
@@ -1766,14 +1766,10 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
       <div className="bg-card border-b border-border px-8 py-6">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl font-serif font-light text-foreground">
-            <DynamicText todayText="Your Same-Day Plan">
-              Tomorrow's Plan
-            </DynamicText>
+            Your plan for the day
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            <DynamicText todayText="Review your intelligent schedule for the remaining day">
-              Review your intelligent schedule and make any adjustments
-            </DynamicText>
+            Review and confirm your optimized schedule
           </p>
         </div>
       </div>
@@ -1788,8 +1784,8 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
             {/* Part A: AI Narrative Summary */}
             <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
               <div className="flex items-center gap-3 mb-4">
-                <Brain className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                <Brain className="w-5 h-5 text-accent" />
+                <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                   SUMMARY
                 </h3>
               </div>
@@ -1836,8 +1832,8 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
             {/* Part C: User Refinement Input */}
             <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '400ms' }}>
               <div className="flex items-center gap-3 mb-4">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
                   MAKE • ADJUSTMENTS
                 </h3>
               </div>
