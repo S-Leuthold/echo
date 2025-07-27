@@ -141,17 +141,26 @@ Echo integrates with Microsoft Outlook via Graph API using structured intelligen
 ### Claude Model Usage Strategy
 Echo uses a strategic two-model approach to optimize both intelligence and costs:
 
-- **Claude Opus** (`claude-3-opus-20240229`): Used exclusively for strategic daily planning
+- **Claude Opus 4** (`claude-opus-4-20250514`): Used for strategic and analytical tasks
+  - Strategic daily planning via `/plan-v2` endpoint
+  - Executive summary generation in context briefings
   - Superior reasoning for complex scheduling decisions
   - Better context synthesis from multiple data sources
   - Enhanced energy-based task optimization
-  - Called via `/plan-v2` endpoint with `model="opus"` parameter
 
-- **Claude Sonnet** (`claude-3-5-sonnet-20241022`): Used for all other LLM tasks
+- **Claude Sonnet 4** (`claude-sonnet-4-20250514`): Used for structured data processing tasks
   - Email intelligence and categorization
-  - Session insights extraction
-  - Context briefing generation
-  - Faster and more cost-effective for simpler tasks
+  - Session insights extraction  
+  - Session start checklist generation
+  - Session log synthesis
+  - Scaffold generation
+  - Faster and more cost-effective for routine processing
+
+**IMPORTANT: Correct Claude Model IDs**
+- **Opus Model**: `claude-opus-4-20250514` (NOT claude-3-opus-20240229)
+- **Sonnet Model**: `claude-sonnet-4-20250514` (NOT claude-3-5-sonnet-20241022)
+
+These model IDs are used consistently throughout the codebase as of January 2025.
 
 ### Key Dependencies
 **Backend:**

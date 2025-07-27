@@ -185,6 +185,58 @@ export interface ApiResponse<T> {
 }
 
 // ============================================================================
+// Session History Types
+// ============================================================================
+
+export interface SessionHistoryItem {
+  id: string;
+  date: string;
+  timeRange: string;
+  title: string;
+  emoji?: string;
+  snippet: string;
+  noteCount: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  timeCategory: string;
+  blockId?: string;
+  duration?: number;
+  project?: string; // e.g., "echo | Platform Development"
+  attendees?: string[]; // For meeting sessions
+  hasNotes?: boolean; // False for personal blocks
+  
+  // Additional fields from SessionLog structure for knowledge hub
+  executiveSummary?: string; // For hover tooltips
+  aiKeywords?: string[]; // For interactive keyword pills
+  sessionLogMarkdown?: string; // Full session log
+}
+
+export interface GetRecentSessionsResponse {
+  sessions: SessionHistoryItem[];
+  metadata: {
+    total_sessions: number;
+    date_range: string;
+    last_updated: string;
+  };
+}
+
+export interface GetRelatedSessionsRequest {
+  blockId?: string;
+  timeCategory?: string;
+  projectContext?: string; // e.g., "echo | Platform Development"
+  limit?: number;
+}
+
+export interface GetRelatedSessionsResponse {
+  sessions: SessionHistoryItem[];
+  metadata: {
+    total_found: number;
+    relevance_score: number;
+    search_criteria: string;
+  };
+}
+
+// ============================================================================
 // Configuration Types
 // ============================================================================
 
@@ -242,7 +294,10 @@ export type SessionApiEndpoint =
   | '/session/generate-scaffolds'
   | '/session/start'
   | '/session/complete'
-  | '/session/scaffold/{block_id}';
+  | '/session/scaffold/{block_id}'
+  | '/sessions/recent'
+  | '/sessions/related'
+  | '/session/notes';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 

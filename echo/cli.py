@@ -55,7 +55,7 @@ def _call_llm(client, prompt: str, response_format=None, model=None):
     """
     try:
         # Select model: Opus for strategic planning, Sonnet for other tasks
-        selected_model = "claude-opus-4-20250514" if model == "opus" else "claude-3-5-sonnet-20241022"
+        selected_model = "claude-opus-4-20250514" if model == "opus" else "claude-sonnet-4-20250514"
         
         if response_format:
             # For structured output, request JSON format and parse manually

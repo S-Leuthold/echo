@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { usePlanStatus } from "@/contexts/PlanStatusContext";
+import { usePlanning } from "@/contexts/PlanningContext";
+import { DynamicText, TimeAwareText, PlanningModeBadge, TimeContextDisplay, PlanningModeToggle } from "@/components/ui/dynamic-text";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +14,9 @@ import { SessionStatePanel } from "@/components/session/SessionStatePanel";
 import { PanelDimmer } from "@/components/session/PanelDimmer";
 import { EscapeTooltip } from "@/components/session/EscapeTooltip";
 import { IconResolutionService } from "@/lib/icon-resolution";
+import { sessionApi } from "@/services/sessionApiService";
+import { SessionHistoryItem } from "@/types/sessionApi";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Play, 
   Pause, 
@@ -27,7 +32,8 @@ import {
   ExternalLink,
   Square,
   AlertCircle,
-  Plus
+  Plus,
+  BookOpen
 } from "lucide-react";
 
 // Plan status detection and management
@@ -63,7 +69,8 @@ const getPlanStatusInfo = (): PlanStatusInfo => {
 // API integration functions
 const checkTodayPlan = async (): Promise<{ exists: boolean; data?: any; error?: string }> => {
   try {
-    const response = await fetch('http://localhost:8000/today');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiUrl}/today`);
     if (response.ok) {
       const data = await response.json();
       
@@ -89,15 +96,10 @@ const checkTodayPlan = async (): Promise<{ exists: boolean; data?: any; error?: 
 
 const logUserAction = async (action: string, data: any = {}) => {
   try {
-    console.log(`[User Action] ${action}:`, {
-      timestamp: new Date().toISOString(),
-      page: 'today',
-      action,
-      data
-    });
     // Future: Send to analytics endpoint
+    // Silently track user actions for now
   } catch (error) {
-    console.error('Error logging user action:', error);
+    // Silently handle logging errors
   }
 };
 
@@ -233,11 +235,9 @@ const sessionAPI = {
   async startSession(blockId: string, sessionData: any) {
     try {
       await logUserAction('session_start', { blockId, sessionData });
-      // TODO: Implement actual API call to POST /sessions/start
-      console.log('Starting session for block:', blockId, sessionData);
+      // Session API not yet implemented - return mock success
       return { success: true, sessionId: `session_${Date.now()}` };
     } catch (error) {
-      console.error('Error starting session:', error);
       throw error;
     }
   },
@@ -245,11 +245,9 @@ const sessionAPI = {
   async pauseSession(sessionId: string) {
     try {
       await logUserAction('session_pause', { sessionId });
-      // TODO: Implement actual API call to POST /sessions/{id}/pause
-      console.log('Pausing session:', sessionId);
+      // Session API not yet implemented - return mock success
       return { success: true };
     } catch (error) {
-      console.error('Error pausing session:', error);
       throw error;
     }
   },
@@ -257,11 +255,9 @@ const sessionAPI = {
   async endSession(sessionId: string, sessionNotes?: string) {
     try {
       await logUserAction('session_end', { sessionId, hasNotes: !!sessionNotes });
-      // TODO: Implement actual API call to POST /sessions/{id}/end
-      console.log('Ending session:', sessionId, { notes: sessionNotes });
+      // Session API not yet implemented - return mock success
       return { success: true };
     } catch (error) {
-      console.error('Error ending session:', error);
       throw error;
     }
   },
@@ -269,11 +265,9 @@ const sessionAPI = {
   async updateSessionNotes(sessionId: string, notes: string) {
     try {
       await logUserAction('session_notes_update', { sessionId, notesLength: notes.length });
-      // TODO: Implement actual API call to PUT /sessions/{id}/notes
-      console.log('Updating session notes:', sessionId, notes.length, 'characters');
+      // Session API not yet implemented - return mock success
       return { success: true };
     } catch (error) {
-      console.error('Error updating session notes:', error);
       throw error;
     }
   }
@@ -459,135 +453,33 @@ const getSmartCurrentFocus = () => {
 
 const mockCurrentFocus = getSmartCurrentFocus();
 
-// Mock data for session notes review
-const mockRelatedSessions = [
-  {
-    id: "session-1",
-    date: "2025-01-18",
-    timeRange: "09:00 - 11:30",
-    title: "API Foundation",
-    emoji: "🚀",
-    snippet: "Set up the core API structure with FastAPI. The authentication flow is working smoothly, but need to refactor the session management...",
-    noteCount: 3,
-    tasksCompleted: 2,
-    totalTasks: 4,
-    timeCategory: "DEEP_WORK"
-  },
-  {
-    id: "session-2", 
-    date: "2025-01-17",
-    timeRange: "14:00 - 16:00",
-    title: "UI Component Library",
-    emoji: "🎨",
-    snippet: "Built the foundation components with shadcn/ui. The color system needs more thought - purple feels too generic for what we're building...",
-    noteCount: 5,
-    tasksCompleted: 4,
-    totalTasks: 5,
-    timeCategory: "DEEP_WORK"
-  },
-  {
-    id: "session-3",
-    date: "2025-01-16",
-    timeRange: "10:00 - 12:00", 
-    title: "Planning & Architecture",
-    emoji: "📋",
-    snippet: "Sketched out the session-aware dashboard concept. The key insight: move from surface-level representation to true thinking tool...",
-    noteCount: 8,
-    tasksCompleted: 3,
-    totalTasks: 3,
-    timeCategory: "PLANNING"
-  },
-  {
-    id: "session-4",
-    date: "2025-01-15",
-    timeRange: "16:00 - 17:30",
-    title: "Research & Discovery",
-    emoji: "🔍",
-    snippet: "Analyzed competitor design patterns and user interface paradigms. Key insight: users need both capture and review modes for session notes...",
-    noteCount: 6,
-    tasksCompleted: 1,
-    totalTasks: 2,
-    timeCategory: "RESEARCH"
-  }
-];
-
-const mockRecentSessions = [
-  {
-    id: "recent-1",
-    date: "2025-01-18",
-    timeRange: "15:30 - 16:00",
-    title: "Team Standup",
-    emoji: "🤝",
-    snippet: "Sprint review went well. Need to follow up on the deployment pipeline discussion...",
-    noteCount: 2,
-    tasksCompleted: 1,
-    totalTasks: 2,
-    timeCategory: "MEETINGS"
-  },
-  {
-    id: "recent-2",
-    date: "2025-01-18",
-    timeRange: "12:00 - 13:00",
-    title: "Lunch & Walk",
-    emoji: "🚶‍♂️",
-    snippet: "Beautiful day. The walk helped clarify the session notes architecture - we need both capture and review modes...",
-    noteCount: 1,
-    tasksCompleted: 0,
-    totalTasks: 0,
-    timeCategory: "PERSONAL"
-  },
-  {
-    id: "recent-3",
-    date: "2025-01-17",
-    timeRange: "18:00 - 19:00",
-    title: "User Interface Patterns",
-    emoji: "🔍",
-    snippet: "Studied Fantastical's design language. Their use of color and typography creates such a warm, professional feel...",
-    noteCount: 4,
-    tasksCompleted: 2,
-    totalTasks: 3,
-    timeCategory: "RESEARCH"
-  },
-  {
-    id: "recent-4",
-    date: "2025-01-17",
-    timeRange: "07:00 - 07:30",
-    title: "Morning Workout",
-    emoji: "💪",
-    snippet: "Good energy session. The consistency is paying off - feeling more focused during deep work blocks...",
-    noteCount: 1,
-    tasksCompleted: 1,
-    totalTasks: 1,
-    timeCategory: "HEALTH"
-  },
-  {
-    id: "recent-5",
-    date: "2025-01-16", 
-    timeRange: "20:00 - 21:00",
-    title: "Evening Reflection",
-    emoji: "🌅",
-    snippet: "Productive day overall. The new planning approach is working. Tomorrow: focus on the session review interface...",
-    noteCount: 2,
-    tasksCompleted: 0,
-    totalTasks: 0,
-    timeCategory: "PERSONAL"
-  }
-];
+// Session data now loaded from API via sessionApi service
 
 // No Plan Available Component  
 function NoPlanAvailable({ planStatusInfo, todayData }: { planStatusInfo: PlanStatusInfo; todayData?: any }) {
   const [isNavigating, setIsNavigating] = useState(false);
+  const { setPlanningMode, timeContext, canPlanToday, shouldSuggestSameDay } = usePlanning();
   
-  const handlePlanNavigation = async () => {
+  const handlePlanNavigation = async (mode: 'today' | 'tomorrow') => {
     setIsNavigating(true);
+    
+    // Set planning mode in context
+    setPlanningMode(mode, 'no_plan_modal');
+    
     await logUserAction('navigate_to_planning', { 
       reason: 'no_plan_available',
-      recommendation: planStatusInfo.actionText
+      planning_mode: mode,
+      time_context: timeContext?.time_period,
+      source: 'no_plan_modal'
     });
     
-    // Navigate to planning page
-    window.location.href = '/planning';
+    // Navigate to planning page with mode parameter
+    window.location.href = `/planning?mode=${mode}`;
   };
+
+  // Determine primary recommendation based on time context
+  const primaryMode = shouldSuggestSameDay && canPlanToday ? 'today' : 'tomorrow';
+  const secondaryMode = primaryMode === 'today' ? 'tomorrow' : 'today';
   
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -596,42 +488,76 @@ function NoPlanAvailable({ planStatusInfo, todayData }: { planStatusInfo: PlanSt
           <div className="mb-6">
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              No Plan for Today
+              <DynamicText>No Plan for Today</DynamicText>
             </h2>
+            
+            {/* Time context display */}
+            <div className="mb-4">
+              <TimeContextDisplay 
+                className="text-center"
+                showGreeting={true}
+                showRemainingTime={canPlanToday}
+              />
+            </div>
+            
             <p className="text-muted-foreground leading-relaxed">
-              {planStatusInfo.message}
+              <TimeAwareText
+                morning="Start your day with intention by creating a focused plan."
+                afternoon="You can still plan the remainder of your day for maximum productivity."
+                evening="Since it's evening, let's plan tomorrow for a great start."
+                night="Perfect time to plan tomorrow while reflecting on today."
+                default="Create a thoughtful plan to guide your time and energy."
+              />
             </p>
           </div>
           
           <div className="space-y-3">
+            {/* Primary recommendation button */}
             <Button 
-              onClick={handlePlanNavigation}
+              onClick={() => handlePlanNavigation(primaryMode)}
               disabled={isNavigating}
               className="w-full"
             >
               {isNavigating ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Redirecting...
+                  Starting planning...
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {planStatusInfo.actionText}
+                  {primaryMode === 'today' ? (
+                    <>
+                      <Target className="w-4 h-4 mr-2" />
+                      <DynamicText todayText="Plan Remaining Day">Plan Tomorrow</DynamicText>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Plan Tomorrow
+                    </>
+                  )}
                 </>
               )}
             </Button>
             
-            {planStatusInfo.canPlanToday && (
+            {/* Secondary option if available */}
+            {canPlanToday && primaryMode === 'tomorrow' && (
               <Button 
                 variant="outline" 
-                onClick={() => {
-                  logUserAction('navigate_to_planning', { 
-                    reason: 'no_plan_available',
-                    recommendation: 'Plan Tomorrow'
-                  });
-                  window.location.href = '/planning';
-                }}
+                onClick={() => handlePlanNavigation('today')}
+                disabled={isNavigating}
+                className="w-full"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Plan Today Instead
+              </Button>
+            )}
+            
+            {primaryMode === 'today' && (
+              <Button 
+                variant="outline" 
+                onClick={() => handlePlanNavigation('tomorrow')}
+                disabled={isNavigating}
                 className="w-full"
               >
                 <Calendar className="w-4 h-4 mr-2" />
@@ -641,7 +567,11 @@ function NoPlanAvailable({ planStatusInfo, todayData }: { planStatusInfo: PlanSt
             
             <div className="pt-4 border-t border-border/50">
               <p className="text-xs text-muted-foreground">
-                Planning helps you stay focused and productive throughout your day.
+                <DynamicText 
+                  todayText="Same-day planning focuses on your remaining time and energy."
+                >
+                  Strategic planning helps you stay focused and productive.
+                </DynamicText>
               </p>
               
               {/* Show email context if available */}
@@ -685,139 +615,200 @@ const getCategoryColor = (category: string) => {
   }
 };
 
-function SessionNoteReview() {
+function SessionNoteReview({ 
+  recentSessions, 
+  relatedSessions, 
+  loading, 
+  error,
+  onSessionClick
+}: { 
+  recentSessions: SessionHistoryItem[]; 
+  relatedSessions: SessionHistoryItem[]; 
+  loading: boolean; 
+  error: string | null; 
+  onSessionClick: (session: SessionHistoryItem) => void;
+}) {
   return (
     <div className="space-y-8">
-      {/* Related Sessions - Database View */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <FileText className="w-5 h-5 text-deep-work" />
-              Related Sessions
-            </h3>
-            <Button variant="outline" size="sm" className="text-xs">
-              <ExternalLink className="w-3 h-3 mr-1" />
-              Full Project Log
-            </Button>
-          </div>
-          
-          {/* Database Table Header */}
-          <div className="mb-3">
-            <div className="grid grid-cols-12 gap-4 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/30">
-              <div className="col-span-2">Date</div>
-              <div className="col-span-3">Session</div>
-              <div className="col-span-5">Note Preview</div>
-              <div className="col-span-1">Category</div>
-              <div className="col-span-1">Tasks</div>
-            </div>
-          </div>
-          
-          {/* Database Table Rows */}
-          <div className="space-y-1">
-            {mockRelatedSessions.map((session) => (
-              <div 
-                key={session.id}
-                className="grid grid-cols-12 gap-4 px-3 py-3 rounded-md hover:bg-card/50 transition-all cursor-pointer group text-sm"
-              >
-                {/* Date Column */}
-                <div className="col-span-2 text-muted-foreground">
-                  {new Date(session.date).toLocaleDateString("en-US", { 
-                    month: "short", 
-                    day: "numeric" 
-                  })}
+      {/* Related Sessions - Database View - Only show if we have related sessions */}
+      {relatedSessions.length > 0 && (
+        <Card className="bg-muted/20 border-border/50">
+          <CardContent className="px-3 py-1">
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="space-y-3">
+                <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                  RELATED SESSIONS
                 </div>
                 
-                {/* Session Title Column (with emoji) */}
-                <div className="col-span-3 flex items-center gap-2">
-                  <span className="text-base">{session.emoji}</span>
-                  <span className="text-foreground font-medium group-hover:text-deep-work transition-colors truncate">
-                    {session.title}
-                  </span>
-                </div>
-                
-                {/* Note Preview Column */}
-                <div className="col-span-5 text-muted-foreground leading-relaxed truncate">
-                  {session.snippet}
-                </div>
-                
-                {/* Category Column */}
-                <div className="col-span-1 flex items-center">
-                  <Badge className={`text-xs px-2 py-0.5 border ${getCategoryColor(session.timeCategory)}`}>
-                    {session.timeCategory.replace('_', ' ').toLowerCase()}
-                  </Badge>
-                </div>
-                
-                {/* Tasks Column */}
-                <div className="col-span-1 text-muted-foreground text-center">
-                  {session.totalTasks > 0 ? `${session.tasksCompleted}/${session.totalTasks}` : "—"}
-                </div>
+                {loading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground pl-3">
+                    <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading related sessions...</span>
+                  </div>
+                ) : error ? (
+                  <div className="flex items-center gap-2 text-destructive pl-3">
+                    <AlertCircle className="w-3 h-3" />
+                    <span className="text-sm">{error}</span>
+                  </div>
+                ) : relatedSessions.length === 0 ? (
+                  <div className="text-sm text-muted-foreground pl-3">
+                    No related sessions found
+                  </div>
+                ) : (
+                  <div className="space-y-2 pl-3">
+                    {relatedSessions.map((session) => (
+                      <div key={session.id} className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 flex-1">
+                          <span className="text-base mt-0.5">{session.emoji}</span>
+                          <div className="flex-1">
+                            <div className="text-sm text-foreground font-medium leading-relaxed">
+                              {session.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground/80 mt-1">
+                              {new Date(session.date).toLocaleDateString("en-US", { 
+                                month: "short", 
+                                day: "numeric" 
+                              })} • {session.timeRange}
+                              {session.attendees && (
+                                <span> • {session.attendees.length} attendees</span>
+                              )}
+                            </div>
+                            {session.snippet && (
+                              <div className="text-sm text-muted-foreground leading-relaxed mt-2 line-clamp-2">
+                                {session.snippet}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={`text-xs px-2 py-0.5 border ${getCategoryColor(session.timeCategory)}`}>
+                            {session.timeCategory.replace('_', ' ').toLowerCase()}
+                          </Badge>
+                          {session.totalTasks > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {session.tasksCompleted}/{session.totalTasks}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
-      {/* Recent Sessions - Database View */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-accent" />
-            Recent Sessions
-          </h3>
-          
-          {/* Database Table Header */}
-          <div className="mb-3">
-            <div className="grid grid-cols-12 gap-4 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/30">
-              <div className="col-span-2">Date</div>
-              <div className="col-span-3">Session</div>
-              <div className="col-span-5">Note Preview</div>
-              <div className="col-span-1">Category</div>
-              <div className="col-span-1">Tasks</div>
-            </div>
-          </div>
-          
-          {/* Database Table Rows */}
-          <div className="space-y-1">
-            {mockRecentSessions.map((session) => (
-              <div 
-                key={session.id}
-                className="grid grid-cols-12 gap-4 px-3 py-2 rounded-md hover:bg-card/30 transition-all cursor-pointer group text-sm"
-              >
-                {/* Date Column */}
-                <div className="col-span-2 text-muted-foreground">
-                  {new Date(session.date).toLocaleDateString("en-US", { 
-                    month: "short", 
-                    day: "numeric" 
+      {/* Recent Sessions - Echo Insights Style */}
+      <Card className="bg-muted/20 border-border/50">
+        <CardContent className="px-3 py-1">
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="space-y-3">
+              <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                RECENT SESSIONS
+              </div>
+              
+              {loading ? (
+                <div className="flex items-center gap-2 text-muted-foreground pl-3">
+                  <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm">Loading recent sessions...</span>
+                </div>
+              ) : error ? (
+                <div className="flex items-center gap-2 text-destructive pl-3">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              ) : recentSessions.length === 0 ? (
+                <div className="text-sm text-muted-foreground pl-3">
+                  No recent sessions found
+                </div>
+              ) : (
+                <div className="space-y-2 pl-3">
+                  {recentSessions.map((session) => {
+                    // Get Lucide icon for session (remove emojis)
+                    const { icon: SessionIcon } = IconResolutionService.resolveIcon(
+                      session.title, 
+                      session.timeCategory.toLowerCase()
+                    );
+                    
+                    // Format relative date
+                    const sessionDate = new Date(session.date);
+                    const today = new Date();
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    let relativeDate;
+                    if (sessionDate.toDateString() === today.toDateString()) {
+                      relativeDate = "Today";
+                    } else if (sessionDate.toDateString() === yesterday.toDateString()) {
+                      relativeDate = "Yesterday";
+                    } else {
+                      relativeDate = sessionDate.toLocaleDateString("en-US", { 
+                        month: "short", 
+                        day: "numeric" 
+                      });
+                    }
+                    
+                    return (
+                      <div key={session.id} className="flex items-start justify-between gap-4 hover:bg-muted/10 p-2 -m-2 rounded transition-colors">
+                        {/* Left: Session Identity with Date/Time Below */}
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {/* Icon with tooltip matching ActiveSessionState exactly */}
+                          <div className="group relative">
+                            <SessionIcon className="w-4 h-4 text-muted-foreground/70 hover:text-muted-foreground flex-shrink-0 mt-0.5" />
+                            {(session.executiveSummary || session.snippet) && (
+                              <div className="invisible group-hover:visible absolute left-6 bottom-6 z-50 w-80 p-3 bg-popover border border-border rounded-md shadow-lg">
+                                <div className="text-xs text-muted-foreground mb-1">Executive Summary:</div>
+                                <div className="text-sm text-foreground leading-relaxed">
+                                  {session.executiveSummary || session.snippet || "No executive summary available."}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div 
+                              className="text-sm text-foreground font-medium truncate cursor-pointer hover:text-accent transition-colors"
+                              onClick={() => onSessionClick(session)}
+                            >
+                              {session.title}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <span>{relativeDate}</span>
+                              <span>•</span>  
+                              <span>{session.timeRange}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Right: AI Keywords (Fully Right-Justified) */}
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                          {session.aiKeywords && session.aiKeywords.length > 0 ? (
+                            session.aiKeywords.map((keyword, index) => (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  // Future: Navigate to Journal view with keyword filter
+                                }}
+                                className="px-2 py-1 text-xs bg-muted/40 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded border font-mono transition-colors"
+                              >
+                                {keyword}
+                              </button>
+                            ))
+                          ) : !session.hasNotes ? (
+                            <span className="text-xs text-muted-foreground/50 italic">
+                              Personal
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
-                
-                {/* Session Title Column (with emoji) */}
-                <div className="col-span-3 flex items-center gap-2">
-                  <span className="text-base">{session.emoji}</span>
-                  <span className="text-foreground font-medium group-hover:text-accent transition-colors truncate">
-                    {session.title}
-                  </span>
-                </div>
-                
-                {/* Note Preview Column */}
-                <div className="col-span-5 text-muted-foreground leading-relaxed truncate">
-                  {session.snippet}
-                </div>
-                
-                {/* Category Column */}
-                <div className="col-span-1 flex items-center">
-                  <Badge className={`text-xs px-2 py-0.5 border ${getCategoryColor(session.timeCategory)}`}>
-                    {session.timeCategory.replace('_', ' ').toLowerCase()}
-                  </Badge>
-                </div>
-                
-                {/* Tasks Column */}
-                <div className="col-span-1 text-muted-foreground text-center">
-                  {session.totalTasks > 0 ? `${session.tasksCompleted}/${session.totalTasks}` : "—"}
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1239,6 +1230,28 @@ export default function TodayPage() {
   const [hasSeenTooltip, setHasSeenTooltip] = useState(false);
   const [currentSessionState, setCurrentSessionState] = useState<string>('TRANQUIL');
   
+  // Session data state management
+  const [recentSessions, setRecentSessions] = useState<SessionHistoryItem[]>([]);
+  const [relatedSessions, setRelatedSessions] = useState<SessionHistoryItem[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  
+  // Session modal state
+  const [selectedSession, setSelectedSession] = useState<SessionHistoryItem | null>(null);
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+  
+  // Handle opening session modal
+  const handleOpenSessionModal = (session: SessionHistoryItem) => {
+    setSelectedSession(session);
+    setIsSessionModalOpen(true);
+  };
+  
+  // Handle closing session modal
+  const handleCloseSessionModal = () => {
+    setIsSessionModalOpen(false);
+    setSelectedSession(null);
+  };
+  
   // Real-time clock update
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1333,6 +1346,75 @@ export default function TodayPage() {
       clearTimeout(sequenceTimer);
     };
   }, []);
+  
+  // Load session data from API with context awareness
+  const loadSessionData = useCallback(async () => {
+    if (sessionsLoading) return;
+    
+    // Ensure sessionApi is available
+    if (!sessionApi) {
+      return;
+    }
+    
+    setSessionsLoading(true);
+    setSessionsError(null);
+    
+    try {
+      // Always load recent sessions
+      const recentResponse = await sessionApi.getRecentSessions(6);
+      
+      if (recentResponse.success) {
+        setRecentSessions(recentResponse.data.sessions);
+      }
+      
+      // Load related sessions only for work blocks (not personal blocks)
+      const currentBlock = todayData?.current_block;
+      const isPersonalBlock = currentBlock?.type === 'PERSONAL' || currentBlock?.type === 'HEALTH' || currentBlock?.type === 'MEALS';
+      
+      if (!isPersonalBlock && currentBlock?.label) {
+        // Extract project from block label (format: "project | task")
+        // We need to match the full project format used in mock data
+        let projectContext = 'Admin | Operations'; // default fallback
+        
+        const pipeIndex = currentBlock.label.indexOf('|');
+        if (pipeIndex > 0) {
+          const projectPrefix = currentBlock.label.substring(0, pipeIndex).trim();
+          // Map common prefixes to full project names
+          const projectMap = {
+            'echo': 'echo | Platform Development',
+            'MAOM-N': 'MAOM-N | Manuscript Revision', 
+            'PersonalSite': 'PersonalSite | Portfolio Redesign',
+            'Admin': 'Admin | Operations',
+            'Research': 'Research | AI Integration'
+          };
+          projectContext = projectMap[projectPrefix] || `${projectPrefix} | Development`;
+        }
+        
+        const relatedResponse = await sessionApi.getRelatedSessions({
+          projectContext: projectContext,
+          timeCategory: currentBlock.type,
+          limit: 4
+        });
+        
+        if (relatedResponse.success) {
+          setRelatedSessions(relatedResponse.data.sessions);
+        }
+      } else {
+        // Clear related sessions for personal blocks
+        setRelatedSessions([]);
+      }
+      
+    } catch (error) {
+      setSessionsError('Failed to load session history');
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [todayData]);
+  
+  // Load session data on component mount
+  useEffect(() => {
+    loadSessionData();
+  }, [loadSessionData]);
   
   // Memoize schedule transformations to prevent unnecessary re-renders
   const transformedSchedule = useMemo(() => {
@@ -1441,7 +1523,13 @@ export default function TodayPage() {
             
             {/* Session Notes Review - Generous spacing */}
             <div className="relative">
-              <SessionNoteReview />
+              <SessionNoteReview 
+                recentSessions={recentSessions}
+                relatedSessions={relatedSessions}
+                loading={sessionsLoading}
+                error={sessionsError}
+                onSessionClick={handleOpenSessionModal}
+              />
               
               {/* Session Notes Dimmer - Theater Mode */}
               <PanelDimmer
@@ -1486,6 +1574,72 @@ export default function TodayPage() {
         isVisible={showEscapeTooltip}
         onDismiss={handleDismissTooltip}
       />
+      
+      {/* Session Log Modal */}
+      <Dialog open={isSessionModalOpen} onOpenChange={handleCloseSessionModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-accent" />
+              {selectedSession?.title || 'Session Log'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {selectedSession && (
+              <>
+                {/* Session Metadata */}
+                <div className="bg-muted/20 border border-border/30 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span><strong>Date:</strong> {selectedSession.date}</span>
+                    <span><strong>Time:</strong> {selectedSession.timeRange}</span>
+                    <span><strong>Duration:</strong> {selectedSession.duration}m</span>
+                  </div>
+                  {selectedSession.project && (
+                    <div className="text-sm text-muted-foreground">
+                      <strong>Project:</strong> {selectedSession.project}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Session Content */}
+                <div className="border border-border/30 rounded-lg p-6 bg-card/30 min-h-[400px]">
+                  {selectedSession.sessionLogMarkdown ? (
+                    <div className="prose prose-invert max-w-none">
+                      <pre className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {selectedSession.sessionLogMarkdown}
+                      </pre>
+                    </div>
+                  ) : selectedSession.executiveSummary ? (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Executive Summary</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {selectedSession.executiveSummary}
+                      </p>
+                      {selectedSession.snippet && (
+                        <>
+                          <h3 className="text-lg font-semibold">Session Notes</h3>
+                          <div className="text-sm text-muted-foreground leading-relaxed">
+                            {selectedSession.snippet}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-12">
+                      <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No detailed session log available.</p>
+                      {selectedSession.hasNotes === false && (
+                        <p className="text-xs mt-2">This was a personal session without notes.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

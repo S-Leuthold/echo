@@ -1,0 +1,263 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails to process",
+      "calendar_conflicts": [],
+      "energy_patterns": "Energy level 7/10 indicates good capacity for focused work. Weekend context suggests more flexibility and lower stress environment.",
+      "strategic_priorities": [
+        "Complete echo dev MVP",
+        "Clean house before Hunter returns at 10pm",
+        "Golf with Jacob at 11:10am",
+        "Meal planning for the week"
+      ],
+      "time_constraints": [
+        "Must leave for golf by 10:00am",
+        "Golf at 11:10am (30min away)",
+        "Hunter returns at 10pm",
+        "Need 1h for cleaning",
+        "Need 45min for meal planning"
+      ]
+    },
+    "scheduling_strategy": "Front-load echo development work in the morning before golf (6am-9:30am) to capitalize on fresh energy. After golf, use afternoon for household tasks and meal planning. Evening available for additional echo work if energy permits. Build in buffer time for golf prep and travel.",
+    "energy_optimization": "Start with high-focus echo development when energy is fresh. Golf provides active recovery mid-day. Schedule cleaning and shopping for post-golf when physical activity is beneficial. Reserve evening for lighter echo tasks or relaxation.",
+    "priority_sequencing": "1) Echo dev (morning focus), 2) Golf commitment (fixed), 3) House cleaning (must complete before 10pm), 4) Meal planning and shopping (afternoon), 5) Additional echo work if time/energy allows",
+    "recovery_planning": "Golf serves as active recovery and social break. Post-golf activities (cleaning, shopping) maintain movement without high cognitive load. Evening allows flexibility - can continue echo work or rest based on energy levels."
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "09:30",
+      "title": "echo | MVP Development Sprint",
+      "type": "flex",
+      "note": "Prime morning hours for completing echo project setup and MVP progress. 3.5 hours of focused development.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "personal | Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Get ready, gather golf gear, and drive to course (30 min away)",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "title": "personal | Warm-up at Golf Course",
+      "type": "fixed",
+      "note": "Arrive early for proper warm-up before tee time",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:10",
+      "end": "14:30",
+      "title": "personal | Golf with Jacob Smyle",
+      "type": "fixed",
+      "note": "18 holes with Jacob, including social time",
+      "icon": "Flag",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "14:30",
+      "end": "15:00",
+      "title": "personal | Travel Home & Quick Lunch",
+      "type": "flex",
+      "note": "Drive home and grab a quick bite",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "15:00",
+      "end": "15:45",
+      "title": "personal | Meal Planning",
+      "type": "flex",
+      "note": "Plan meals for the week and create shopping list",
+      "icon": "ClipboardList",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:45",
+      "end": "16:45",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly groceries based on meal plan",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "16:45",
+      "end": "17:45",
+      "title": "personal | House Cleaning",
+      "type": "flex",
+      "note": "Focus on office tidying and bathroom cleaning for Hunter's return",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:45",
+      "end": "18:30",
+      "title": "personal | Dinner & Unwind",
+      "type": "flex",
+      "note": "Prepare and enjoy dinner, decompress from the day",
+      "icon": "UtensilsCrossed",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "21:00",
+      "title": "echo | Evening Development Session",
+      "type": "flex",
+      "note": "Continue echo work if energy permits, or relax if needed. Flexible based on how you feel.",
+      "icon": "Code",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "personal | Welcome Hunter Home",
+      "type": "flex",
+      "note": "Be ready to greet Hunter, catch up on her trip",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "3.5 hours of morning focus time allocated for echo MVP before golf commitment",
+    "All household tasks scheduled for completion well before Hunter's 10pm arrival",
+    "Golf provides natural break and energy reset mid-day",
+    "Evening echo session is optional based on energy levels after active day",
+    "Schedule allows flexibility while ensuring all commitments are met"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "09:30",
+      "title": "echo | MVP Development Sprint",
+      "type": "flex",
+      "note": "Prime morning hours for completing echo project setup and MVP progress. 3.5 hours of focused development.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "personal | Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Get ready, gather golf gear, and drive to course (30 min away)",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "title": "personal | Warm-up at Golf Course",
+      "type": "fixed",
+      "note": "Arrive early for proper warm-up before tee time",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:10",
+      "end": "14:30",
+      "title": "personal | Golf with Jacob Smyle",
+      "type": "fixed",
+      "note": "18 holes with Jacob, including social time",
+      "icon": "Flag",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "14:30",
+      "end": "15:00",
+      "title": "personal | Travel Home & Quick Lunch",
+      "type": "flex",
+      "note": "Drive home and grab a quick bite",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "15:00",
+      "end": "15:45",
+      "title": "personal | Meal Planning",
+      "type": "flex",
+      "note": "Plan meals for the week and create shopping list",
+      "icon": "ClipboardList",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:45",
+      "end": "16:45",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly groceries based on meal plan",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "16:45",
+      "end": "17:45",
+      "title": "personal | House Cleaning",
+      "type": "flex",
+      "note": "Focus on office tidying and bathroom cleaning for Hunter's return",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:45",
+      "end": "18:30",
+      "title": "personal | Dinner & Unwind",
+      "type": "flex",
+      "note": "Prepare and enjoy dinner, decompress from the day",
+      "icon": "UtensilsCrossed",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "21:00",
+      "title": "echo | Evening Development Session",
+      "type": "flex",
+      "note": "Continue echo work if energy permits, or relax if needed. Flexible based on how you feel.",
+      "icon": "Code",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "personal | Welcome Hunter Home",
+      "type": "flex",
+      "note": "Be ready to greet Hunter, catch up on her trip",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T08:24:48.260413",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753622688"
+  }
+}

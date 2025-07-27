@@ -1,0 +1,324 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails to process",
+      "calendar_conflicts": [
+        "Golf with Jacob at 11:10 (30 min away)",
+        "Need to leave by 10:00 for warmup",
+        "Hunter arrives at 22:00"
+      ],
+      "energy_patterns": "Energy level 7/10 indicates good capacity for focused work. Weekend context suggests more relaxed pacing with breaks between tasks.",
+      "strategic_priorities": [
+        "Complete echo project MVP setup",
+        "Prepare home for Hunter's arrival",
+        "Maintain weekend balance with golf social activity"
+      ],
+      "time_constraints": [
+        "Must leave by 10:00 for golf",
+        "Golf duration ~2.5-3 hours total",
+        "Home prep before 22:00"
+      ]
+    },
+    "scheduling_strategy": "Front-load echo development work in the morning (6:00-9:30) to leverage fresh energy before golf. Post-golf afternoon for home tasks and grocery shopping. Evening buffer for final tidying before Hunter arrives.",
+    "energy_optimization": "Start with high-focus echo work during peak morning hours. Use post-golf lower energy for physical tasks (tidying, shopping). Build in transition time between activities to maintain weekend pace.",
+    "priority_sequencing": "1) Echo project work (highest priority, best energy), 2) Golf commitment (fixed time), 3) Home preparation (office, bathroom), 4) Grocery shopping (if time allows)",
+    "recovery_planning": "30-min breaks after intense coding session and after returning from golf. Light evening activities after shopping. Full wind-down starting 21:00 before Hunter's arrival."
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine | Coffee & Planning",
+      "type": "anchor",
+      "note": "Gentle weekend start, review echo project goals",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "09:00",
+      "title": "echo | MVP Project Setup",
+      "type": "flex",
+      "note": "Core development time - focus on completing project setup for MVP milestone",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:00",
+      "end": "09:30",
+      "title": "Break | Prep for Golf",
+      "type": "flex",
+      "note": "Transition time, light snack, gather golf gear",
+      "icon": "Pause",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "Travel | Drive to Golf Course",
+      "type": "fixed",
+      "note": "30 min drive to course",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "13:30",
+      "title": "Golf | 9 Holes with Jacob",
+      "type": "fixed",
+      "note": "Includes warmup, 9 holes, and social time",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:00",
+      "title": "Travel | Return Home & Lunch",
+      "type": "flex",
+      "note": "Drive back and quick lunch",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "14:30",
+      "title": "Recovery | Post-Golf Break",
+      "type": "flex",
+      "note": "Recharge before afternoon tasks",
+      "icon": "Battery",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:30",
+      "end": "15:30",
+      "title": "Home | Tidy Office & Bathroom",
+      "type": "flex",
+      "note": "Priority cleaning for Hunter's arrival",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:30",
+      "end": "16:15",
+      "title": "personal | Weekly Meal Planning",
+      "type": "flex",
+      "note": "Plan meals and create shopping list",
+      "icon": "ChefHat",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "17:45",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly groceries based on meal plan",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:45",
+      "end": "18:30",
+      "title": "Home | Unpack & Final Tidying",
+      "type": "flex",
+      "note": "Put away groceries, final home prep",
+      "icon": "Package",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "19:30",
+      "title": "Dinner | Relaxed Weekend Meal",
+      "type": "flex",
+      "note": "Enjoy a calm dinner",
+      "icon": "UtensilsCrossed",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "19:30",
+      "end": "21:00",
+      "title": "echo | Code Review & Documentation",
+      "type": "flex",
+      "note": "Light development work - review progress, document MVP",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "Evening | Wind Down & Hunter Arrival",
+      "type": "flex",
+      "note": "Relax and prepare for Hunter's arrival at 22:00",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "Front-loaded echo development in peak morning hours maximizes progress on MVP",
+    "Golf commitment creates natural break and social balance in weekend schedule",
+    "Afternoon allocated for all home prep tasks ensuring ready for Hunter's arrival",
+    "Built-in flexibility for grocery shopping based on time availability",
+    "Evening includes light echo work option if energy permits after physical tasks"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine | Coffee & Planning",
+      "type": "anchor",
+      "note": "Gentle weekend start, review echo project goals",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "09:00",
+      "title": "echo | MVP Project Setup",
+      "type": "flex",
+      "note": "Core development time - focus on completing project setup for MVP milestone",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:00",
+      "end": "09:30",
+      "title": "Break | Prep for Golf",
+      "type": "flex",
+      "note": "Transition time, light snack, gather golf gear",
+      "icon": "Pause",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "Travel | Drive to Golf Course",
+      "type": "fixed",
+      "note": "30 min drive to course",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "13:30",
+      "title": "Golf | 9 Holes with Jacob",
+      "type": "fixed",
+      "note": "Includes warmup, 9 holes, and social time",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:00",
+      "title": "Travel | Return Home & Lunch",
+      "type": "flex",
+      "note": "Drive back and quick lunch",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "14:30",
+      "title": "Recovery | Post-Golf Break",
+      "type": "flex",
+      "note": "Recharge before afternoon tasks",
+      "icon": "Battery",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:30",
+      "end": "15:30",
+      "title": "Home | Tidy Office & Bathroom",
+      "type": "flex",
+      "note": "Priority cleaning for Hunter's arrival",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:30",
+      "end": "16:15",
+      "title": "personal | Weekly Meal Planning",
+      "type": "flex",
+      "note": "Plan meals and create shopping list",
+      "icon": "ChefHat",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "17:45",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly groceries based on meal plan",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:45",
+      "end": "18:30",
+      "title": "Home | Unpack & Final Tidying",
+      "type": "flex",
+      "note": "Put away groceries, final home prep",
+      "icon": "Package",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "19:30",
+      "title": "Dinner | Relaxed Weekend Meal",
+      "type": "flex",
+      "note": "Enjoy a calm dinner",
+      "icon": "UtensilsCrossed",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "19:30",
+      "end": "21:00",
+      "title": "echo | Code Review & Documentation",
+      "type": "flex",
+      "note": "Light development work - review progress, document MVP",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "Evening | Wind Down & Hunter Arrival",
+      "type": "flex",
+      "note": "Relax and prepare for Hunter's arrival at 22:00",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T08:28:53.312709",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753622933"
+  }
+}

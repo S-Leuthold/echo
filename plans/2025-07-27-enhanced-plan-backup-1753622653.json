@@ -1,0 +1,242 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails to review",
+      "calendar_conflicts": [],
+      "energy_patterns": "Energy level 7/10 indicates good capacity for both focused work and physical activity. Weekend schedule allows for flexibility.",
+      "strategic_priorities": [
+        "Complete echo dev work",
+        "Healthcare enrollment clarification",
+        "Golf with Jacob at 11:10",
+        "House preparation for Hunter's return",
+        "Meal planning and grocery shopping"
+      ],
+      "time_constraints": [
+        "Must leave for golf by 10:00",
+        "Golf at 11:10",
+        "Hunter arrives at 22:00"
+      ]
+    },
+    "scheduling_strategy": "Front-load echo dev work in early morning when energy is fresh (06:00-09:30). Use 09:30-10:00 for quick house tidying before golf. Golf 10:00-13:00 block. Afternoon for healthcare tasks, meal planning, and grocery shopping. Evening for final house preparation.",
+    "energy_optimization": "Leverage morning energy (7/10) for focused development work. Golf provides active recovery mid-day. Afternoon tasks are lower cognitive load, suitable for post-golf energy dip. Evening tidying is light physical activity.",
+    "priority_sequencing": "1) Echo dev (most important objective), 2) Golf commitment (fixed time), 3) Healthcare task (administrative), 4) House prep and meal planning (relationship priority), 5) Grocery shopping (if time permits)",
+    "recovery_planning": "Golf serves as active recovery from morning coding. Post-golf lunch break allows physical recovery. Evening wind-down after house prep ensures readiness for Hunter's arrival."
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "09:30",
+      "title": "echo | Deep development work",
+      "type": "flex",
+      "note": "Prime morning energy for most important objective. 3.5 hours of focused coding before golf.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "personal | Quick house tidy & golf prep",
+      "type": "flex",
+      "note": "Light tidying before leaving, gather golf gear",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "13:00",
+      "title": "personal | Golf with Jacob",
+      "type": "fixed",
+      "note": "Leave at 10:00, arrive 10:40 for warmup, tee off 11:10",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "title": "personal | Lunch & recovery",
+      "type": "flex",
+      "note": "Post-golf meal and rest",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "title": "personal | Healthcare enrollment tasks",
+      "type": "flex",
+      "note": "Clarification and opt-out request - administrative focus",
+      "icon": "FileText",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "16:00",
+      "title": "personal | Meal planning for the week",
+      "type": "flex",
+      "note": "Plan meals, create shopping list",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:00",
+      "end": "17:30",
+      "title": "personal | Grocery shopping",
+      "type": "flex",
+      "note": "Execute shopping list if time permits",
+      "icon": "ShoppingCart",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:30",
+      "end": "19:00",
+      "title": "personal | Deep house cleaning",
+      "type": "flex",
+      "note": "Thorough cleaning for Hunter's return",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "personal | Dinner & relax",
+      "type": "flex",
+      "note": "Personal time before Hunter arrives",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "22:00",
+      "title": "personal | Final prep & Hunter's arrival",
+      "type": "flex",
+      "note": "Last touches, relax, welcome Hunter home at 22:00",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "3.5 hours of morning focus time maximizes echo dev progress before golf",
+    "Golf commitment creates natural break and active recovery mid-day",
+    "Afternoon tasks strategically ordered: healthcare (requires focus) before shopping (flexible)",
+    "House cleaning split into two sessions to ensure completion before Hunter's arrival",
+    "Schedule allows flexibility to skip grocery shopping if other tasks run long"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "09:30",
+      "title": "echo | Deep development work",
+      "type": "flex",
+      "note": "Prime morning energy for most important objective. 3.5 hours of focused coding before golf.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "personal | Quick house tidy & golf prep",
+      "type": "flex",
+      "note": "Light tidying before leaving, gather golf gear",
+      "icon": "Home",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "13:00",
+      "title": "personal | Golf with Jacob",
+      "type": "fixed",
+      "note": "Leave at 10:00, arrive 10:40 for warmup, tee off 11:10",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "title": "personal | Lunch & recovery",
+      "type": "flex",
+      "note": "Post-golf meal and rest",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "title": "personal | Healthcare enrollment tasks",
+      "type": "flex",
+      "note": "Clarification and opt-out request - administrative focus",
+      "icon": "FileText",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "16:00",
+      "title": "personal | Meal planning for the week",
+      "type": "flex",
+      "note": "Plan meals, create shopping list",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:00",
+      "end": "17:30",
+      "title": "personal | Grocery shopping",
+      "type": "flex",
+      "note": "Execute shopping list if time permits",
+      "icon": "ShoppingCart",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:30",
+      "end": "19:00",
+      "title": "personal | Deep house cleaning",
+      "type": "flex",
+      "note": "Thorough cleaning for Hunter's return",
+      "icon": "Sparkles",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "personal | Dinner & relax",
+      "type": "flex",
+      "note": "Personal time before Hunter arrives",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "22:00",
+      "title": "personal | Final prep & Hunter's arrival",
+      "type": "flex",
+      "note": "Last touches, relax, welcome Hunter home at 22:00",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T08:16:09.838636",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753622169"
+  }
+}

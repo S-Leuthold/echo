@@ -136,7 +136,7 @@ class SessionStarter:
         
         # Call Claude with structured output
         response = self.claude_client.beta.chat.completions.parse(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-4-20250514",
             messages=messages,
             response_format=SessionChecklistData,
             temperature=0.1,  # Very low temperature for consistent, structured output

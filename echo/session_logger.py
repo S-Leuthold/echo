@@ -58,6 +58,7 @@ class SessionLogOutput(BaseModel):
     """
     session_log_markdown: str = Field(description="Complete session log in markdown format following hybrid voice model")
     ai_insights: Dict[str, Any] = Field(description="Structured insights for future scaffolding")
+    ai_keywords: List[str] = Field(description="1-3 most salient and specific keywords from the session content")
 
 
 # ===== SESSION LOGGER SERVICE =====
@@ -114,6 +115,7 @@ class SessionLogger:
                 category=session_metadata.time_category,
                 generated_log_markdown=log_output.session_log_markdown,
                 ai_insights=log_output.ai_insights,
+                ai_keywords=log_output.ai_keywords,
                 created_at=datetime.now()
             )
             
@@ -153,7 +155,7 @@ class SessionLogger:
         
         # Call Claude with structured output
         response = self.claude_client.beta.chat.completions.parse(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-4-20250514",
             messages=messages,
             response_format=SessionLogOutput,
             temperature=0.2,  # Low temperature for consistent, professional output
@@ -279,6 +281,15 @@ Along with the markdown log, provide structured AI insights for future scaffoldi
 - recommended_followup: Most important next steps (limit 2-3)
 - productivity_patterns: Observations about timing, energy, or approach
 - project_momentum: "accelerating", "steady", or "needs_attention"
+
+### AI Keywords Requirements:
+After generating the session log and insights, analyze the full session content and extract the 1-3 most salient and specific keywords that would help with future session discovery and filtering. These should be:
+- **Specific** (not generic terms like "work" or "meeting")
+- **Technical** when applicable (e.g., "FastAPI", "React", "TypeScript")
+- **Actionable** (e.g., "Integration", "Testing", "Documentation")
+- **Project-relevant** (e.g., "Manuscript", "API", "Frontend")
+
+Return these as a simple JSON array of strings (e.g., ["FastAPI", "JWT", "Integration"]).
 
 Make this log feel like working with an intelligent, supportive cognitive partner who truly understands the work and provides valuable insights.
 """

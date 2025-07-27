@@ -409,9 +409,9 @@ class StructuredContextBriefing:
                 email_metrics, session_metrics, commitments_metrics, reminders_details
             )
             
-            # Call LLM for structured synthesis
+            # Call LLM for structured synthesis using Claude Opus for superior reasoning
             response = self.client.beta.chat.completions.parse(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-opus-4-20250514",
                 messages=[{"role": "user", "content": prompt}],
                 response_format=ExecutiveSummary,
                 temperature=0.1,

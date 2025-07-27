@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { IconResolutionService } from "@/lib/icon-resolution";
 import { PlanTimeline } from "@/components/shared/PlanTimeline";
+import { PlanningModeDemo } from "@/components/shared/PlanningModeDemo";
+import { DynamicText, TimeAwareText, PlanningModeBadge, TimeContextDisplay, ConditionalPlanningContent, PlanningModeToggle } from "@/components/ui/dynamic-text";
+import { usePlanning } from "@/contexts/PlanningContext";
 import { ChevronRight, ChevronLeft, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail, CheckCircle2, Info, Activity, Sun, Coffee, Car, Briefcase, NotebookText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -210,26 +213,49 @@ const getSessionData = <T>(key: string): T | null => {
 
 function WelcomeStep({ onNext }: Pick<WizardStepProps, 'onNext'>) {
   const [isLoading, setIsLoading] = useState(false);
+  const { planningMode, timeContext, canPlanToday, setPlanningMode } = usePlanning();
+  
+  // Determine if we should skip reflection based on planning mode
+  const skipReflection = planningMode === 'today';
 
   const handleStart = async (): Promise<void> => {
     setIsLoading(true);
     
     try {
-      // Just start analytics in background (low cost, safe to preload)
-      fetchWithTimeout(
-        `${API_CONFIG.BASE_URL}/analytics`,
-        {},
-        API_CONFIG.TIMEOUTS.ANALYTICS
-      )
-        .then(response => response.json())
-        .then(data => setSessionData('echo_analytics', data))
-        .catch(error => console.error('Failed to fetch analytics:', error));
+      if (planningMode === 'tomorrow' && !skipReflection) {
+        // Traditional flow: start analytics for day review
+        fetchWithTimeout(
+          `${API_CONFIG.BASE_URL}/analytics`,
+          {},
+          API_CONFIG.TIMEOUTS.ANALYTICS
+        )
+          .then(response => response.json())
+          .then(data => setSessionData('echo_analytics', data))
+          .catch(error => console.error('Failed to fetch analytics:', error));
+      } else {
+        // Same-day flow: start context briefing preload instead
+        fetchWithTimeout(
+          `${API_CONFIG.BASE_URL}/context-briefing`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              mode: planningMode,
+              current_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+             })
+          },
+          API_CONFIG.TIMEOUTS.CONTEXT_BRIEFING
+        )
+          .then(response => response.json())
+          .then(data => setSessionData('echo_context_briefing', data))
+          .catch(error => console.error('Failed to preload context briefing:', error));
+      }
         
     } catch (error) {
       console.error('Failed to start background tasks:', error);
     } finally {
-      // Always proceed to next step, even if background tasks fail
-      onNext();
+      // Pass planning mode info to next step
+      onNext({ planningMode, skipReflection });
     }
   };
 
@@ -244,17 +270,27 @@ function WelcomeStep({ onNext }: Pick<WizardStepProps, 'onNext'>) {
           
           <div className="space-y-4">
             <h1 className="text-4xl font-serif font-light text-foreground">
-              Hey Sam, ready to wrap up today<br />and plan tomorrow?
+              <TimeAwareText
+                morning="Good morning Sam! Ready to plan your day?"
+                afternoon="Hey Sam, want to plan the rest of your day?"
+                evening="Hey Sam, ready to wrap up today and plan tomorrow?"
+                night="Working late? Let's plan tomorrow while you reflect on today"
+                default="Hey Sam, ready to wrap up today and plan tomorrow?"
+              />
             </h1>
             
             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto">
-              It's been a productive day. Let's take a moment to reflect and set you up for an even better tomorrow.
+              <DynamicText 
+                todayText="Let's make the most of your remaining time and create a focused plan for the rest of your day."
+              >
+                It's been a productive day. Let's take a moment to reflect and set you up for an even better tomorrow.
+              </DynamicText>
             </p>
           </div>
         </div>
 
         {/* Call to action */}
-        <div className="pt-4">
+        <div className="pt-6">
           <Button 
             onClick={handleStart}
             disabled={isLoading}
@@ -264,15 +300,40 @@ function WelcomeStep({ onNext }: Pick<WizardStepProps, 'onNext'>) {
             {isLoading ? (
               <>
                 <Clock className="w-5 h-5 mr-2 animate-spin" />
-                Starting...
+                <DynamicText>Starting...</DynamicText>
               </>
             ) : (
               <>
-                Let's do this
+                <DynamicText 
+                  todayText="Let's plan your day"
+                >
+                  Let's do this
+                </DynamicText>
                 <ChevronRight className="w-5 h-5 ml-2" />
               </>
             )}
           </Button>
+          
+          {/* Subtle planning mode switch */}
+          <div className="flex justify-center pt-4">
+            {planningMode === 'today' && canPlanToday ? (
+              <button
+                onClick={() => setPlanningMode('tomorrow', 'user_choice')}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
+              >
+                Plan tomorrow instead
+              </button>
+            ) : (
+              canPlanToday && (
+                <button
+                  onClick={() => setPlanningMode('today', 'user_choice')}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
+                >
+                  Plan today instead
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -623,6 +684,7 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
   const [loading, setLoading] = useState(true);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [selectedAppointments, setSelectedAppointments] = useState<string[]>([]);
+  const { planningMode, timeContext } = usePlanning();
 
   useEffect(() => {
     const fetchBriefing = async () => {
@@ -633,13 +695,20 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
         localStorage.removeItem('echo_reminders');
         console.log('🧹 Cleared stale localStorage reminder data');
         
-        console.log('🚀 Fetching context briefing from API...');
+        console.log(`🚀 Fetching context briefing from API (${planningMode} mode)...`);
+        
+        // Prepare request with planning mode and time context
+        const requestBody = {
+          mode: planningMode,
+          current_time: timeContext?.schedulable_start_time || new Date().toTimeString().slice(0,5)
+        };
+        
         const response = await fetchWithTimeout('http://localhost:8000/context-briefing', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({})
+          body: JSON.stringify(requestBody)
         }, API_CONFIG.TIMEOUTS.CONTEXT_BRIEFING);
         
         if (!response.ok) {
@@ -692,8 +761,16 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <Brain className="w-8 h-8 mx-auto animate-pulse text-accent" />
-          <p className="text-muted-foreground">Analyzing tomorrow's context...</p>
-          <p className="text-sm text-muted-foreground/70">This was started when you clicked "Let's do this"</p>
+          <p className="text-muted-foreground">
+            <DynamicText todayText="Analyzing your current context...">
+              Analyzing tomorrow's context...
+            </DynamicText>
+          </p>
+          <p className="text-sm text-muted-foreground/70">
+            <DynamicText todayText="Gathering real-time intelligence for your planning">
+              This was started when you clicked "Let's do this"
+            </DynamicText>
+          </p>
         </div>
       </div>
     );
@@ -705,10 +782,14 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-serif font-light text-foreground">
-            Here's the Lay of the Land
+            <DynamicText todayText="Here's Your Current Situation">
+              Here's the Lay of the Land
+            </DynamicText>
           </h1>
           <p className="text-muted-foreground">
-            Your intelligent briefing for tomorrow
+            <DynamicText todayText="Your intelligent briefing for today's remaining time">
+              Your intelligent briefing for tomorrow
+            </DynamicText>
           </p>
         </div>
 
@@ -1028,6 +1109,7 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
   // Pre-populate with selected items from context briefing
   const selectedTasks = wizardData.contextBriefing?.selectedTasks || [];
   const selectedAppointments = wizardData.contextBriefing?.selectedAppointments || [];
+  const { planningMode } = usePlanning();
   
   const [oneThing, setOneThing] = useState("");
   const [tasks, setTasks] = useState<TaskWithTime[]>(
@@ -1094,7 +1176,9 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-serif font-light text-foreground">
-            Your Intentions for Tomorrow
+            <DynamicText todayText="Focus Your Remaining Time">
+              Your Intentions for Tomorrow
+            </DynamicText>
           </h1>
         </div>
 
@@ -1102,12 +1186,14 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
           {/* One Thing */}
           <div className="space-y-3">
             <label className="text-lg font-medium text-foreground">
-              What's the ONE thing that must get done tomorrow?
+              <DynamicText todayText="What's the ONE thing that must get done in your remaining time?">
+                What's the ONE thing that must get done tomorrow?
+              </DynamicText>
             </label>
             <Input
               value={oneThing}
               onChange={(e) => setOneThing(e.target.value)}
-              placeholder="The most important thing..."
+              placeholder={planningMode === 'today' ? "Focus on what matters most today..." : "The most important thing..."}
               className="text-lg p-4 border-border/50 focus:border-accent"
             />
           </div>
@@ -1115,7 +1201,9 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
           {/* Tasks with Time Estimates */}
           <div className="space-y-4">
             <label className="text-lg font-medium text-foreground">
-              What other tasks are on your radar?
+              <DynamicText todayText="What other tasks can fit in your remaining time?">
+                What other tasks are on your radar?
+              </DynamicText>
             </label>
             <div className="space-y-3">
               {tasks.map((task, index) => (
@@ -1291,7 +1379,9 @@ function PlanningPromptsStep({ onNext, onPrevious, wizardData }: PlanningPrompts
             className="px-12 py-4 text-lg bg-accent hover:bg-accent/90 ml-auto"
           >
             <Sparkles className="w-5 h-5 mr-2" />
-            Generate Tomorrow's Plan
+            <DynamicText todayText="Generate Today's Plan">
+              Generate Tomorrow's Plan
+            </DynamicText>
           </Button>
         </div>
       </div>
@@ -1311,23 +1401,25 @@ const parseTime = (timeStr: string) => {
 
 const mapBlockTypeToCategory = (blockType: string, label: string = '') => {
   // Enhanced mapping based on block type and label content
+  const safeLabel = (label || '').toLowerCase();
+  
   if (blockType === 'anchor') {
-    if (label.toLowerCase().includes('gym') || label.toLowerCase().includes('workout')) return 'HEALTH';
-    if (label.toLowerCase().includes('breakfast') || label.toLowerCase().includes('lunch') || label.toLowerCase().includes('dinner')) return 'MEALS';
-    if (label.toLowerCase().includes('commute') || label.toLowerCase().includes('drive')) return 'TRANSIT';
+    if (safeLabel.includes('gym') || safeLabel.includes('workout')) return 'HEALTH';
+    if (safeLabel.includes('breakfast') || safeLabel.includes('lunch') || safeLabel.includes('dinner')) return 'MEALS';
+    if (safeLabel.includes('commute') || safeLabel.includes('drive')) return 'TRANSIT';
     return 'PERSONAL';
   }
   
-  if (label.toLowerCase().includes('email') || label.toLowerCase().includes('admin')) return 'SHALLOW_WORK';
-  if (label.toLowerCase().includes('meeting') || label.toLowerCase().includes('call')) return 'MEETINGS';
-  if (label.toLowerCase().includes('personal') || label.toLowerCase().includes('break')) return 'PERSONAL';
+  if (safeLabel.includes('email') || safeLabel.includes('admin')) return 'SHALLOW_WORK';
+  if (safeLabel.includes('meeting') || safeLabel.includes('call')) return 'MEETINGS';
+  if (safeLabel.includes('personal') || safeLabel.includes('break')) return 'PERSONAL';
   
   return 'DEEP_WORK'; // Default for flex blocks
 };
 
 const getBlockIcon = (label: string, timeCategory: string) => {
   // Use IconResolutionService logic but simplified for this context
-  const lowerLabel = label.toLowerCase();
+  const lowerLabel = (label || '').toLowerCase();
   
   if (lowerLabel.includes('email') || lowerLabel.includes('admin')) return Mail;
   if (lowerLabel.includes('gym') || lowerLabel.includes('workout')) return Activity;
@@ -1420,6 +1512,7 @@ interface GeneratedPlanStepProps {
   planningData: PlanningPromptsData;
   onRefine: (data: unknown) => void;
   onPrevious?: () => void;
+  wizardData?: WizardState['data'];
 }
 
 // Save Plan Success Modal Component
@@ -1506,7 +1599,9 @@ function PlanRefinementModal({
           energy_level: "7",
           non_negotiables: `User refinement request: ${refinementRequest}`,
           avoid_today: "",
-          fixed_events: []
+          fixed_events: [],
+          planning_mode: planningMode,
+          current_time: timeContext?.schedulable_start_time || new Date().toTimeString().slice(0,5)
         })
       });
 
@@ -1598,17 +1693,60 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
   const [loading, setLoading] = useState(true);
   const [planSaved, setPlanSaved] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentComplete, setEnrichmentComplete] = useState(false);
+  const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
+  const { planningMode } = usePlanning();
 
   const handleRefinementComplete = (refinedPlan: any) => {
     console.log('Plan refinement completed:', refinedPlan);
     setPlan(refinedPlan);
     // Reset save status since plan has changed
     setPlanSaved(false);
+    setEnrichmentComplete(false);
     
     // Show refinement success feedback if changes were made
     if (refinedPlan.changes_made && refinedPlan.changes_made.length > 0) {
       console.log('Plan refinement changes:', refinedPlan.changes_made);
       // TODO: Show toast notification with changes made
+    }
+  };
+
+  const generateScaffolds = async (planData: any, contextBriefing: any) => {
+    try {
+      setIsEnriching(true);
+      console.log('🚀 Starting post-planning enrichment (scaffold generation)...');
+      
+      const response = await fetch('http://localhost:8000/scaffolds/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          daily_plan: planData.blocks || [],
+          context_briefing: contextBriefing || {},
+          force_refresh: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const results = await response.json();
+      console.log('✅ Scaffold generation completed:', results);
+      
+      setEnrichmentResults(results);
+      setEnrichmentComplete(true);
+      
+      return results;
+    } catch (error) {
+      console.error('❌ Scaffold generation failed:', error);
+      // Don't block the user flow if enrichment fails
+      setEnrichmentComplete(true); // Mark as complete even if failed
+      return null;
+    } finally {
+      setIsEnriching(false);
     }
   };
 
@@ -1660,7 +1798,9 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
             non_negotiables: appointmentStrings.join(', '),
             avoid_today: "",
             fixed_events: scheduledItems,
-            routine_overrides: planningData.routineOverrides || ""
+            routine_overrides: planningData.routineOverrides || "",
+            planning_mode: planningMode,
+            current_time: timeContext?.schedulable_start_time || new Date().toTimeString().slice(0,5)
           })
         });
         
@@ -1694,10 +1834,14 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-serif font-light text-foreground">
-            Tomorrow's Plan
+            <DynamicText todayText="Your Same-Day Plan">
+              Tomorrow's Plan
+            </DynamicText>
           </h1>
           <p className="text-muted-foreground">
-            Your intelligent schedule is ready
+            <DynamicText todayText="Your intelligent schedule for the remaining day is ready">
+              Your intelligent schedule is ready
+            </DynamicText>
           </p>
         </div>
 
@@ -1724,8 +1868,54 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
                 <span className="font-medium">Plan saved successfully!</span>
               </div>
               <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                Your schedule is ready for tomorrow
+                <DynamicText todayText="Your schedule is ready for the rest of today">
+                  Your schedule is ready for tomorrow
+                </DynamicText>
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Enrichment Status */}
+        {planSaved && (
+          <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <Brain className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                    Schedule Enrichment
+                  </h3>
+                </div>
+                
+                {/* Status */}
+                <div className="space-y-3">
+                  {isEnriching && (
+                    <div className="flex items-center gap-3 text-blue-700 dark:text-blue-300">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm">Generating AI-powered session insights...</span>
+                    </div>
+                  )}
+                  
+                  {enrichmentComplete && !isEnriching && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          {enrichmentResults?.success 
+                            ? `Enhanced ${enrichmentResults.scaffolds_generated}/${enrichmentResults.total_blocks} sessions`
+                            : 'Enrichment completed with fallback'
+                          }
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        Your sessions now have AI-powered context and insights for better focus.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1751,7 +1941,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
             />
             
             <Button 
-              onClick={() => {
+              onClick={async () => {
                 // Save the plan data
                 const planData = {
                   timestamp: new Date().toISOString(),
@@ -1765,8 +1955,14 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
                 // Store in localStorage for now (could be enhanced to save to server)
                 localStorage.setItem('echo_current_plan', JSON.stringify(planData));
                 
-                // TODO: Also save to server endpoint
+                // Mark plan as saved
                 setPlanSaved(true);
+                
+                // Trigger post-planning enrichment (scaffold generation)
+                // Get context briefing data from wizard state if available
+                const contextBriefing = wizardData?.contextBriefing?.briefing || {};
+                await generateScaffolds(planData, contextBriefing);
+                
                 setShowSaveModal(true);
               }}
               size="lg"
@@ -1800,33 +1996,58 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
 // ==============================================================================
 
 export default function PlanningWizard() {
+  const [showDemo, setShowDemo] = useState(false);
+  const { planningMode, setPlanningMode } = usePlanning();
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: 'welcome',
     data: {}
   });
 
+  // Handle URL parameters for planning mode
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const modeParam = urlParams.get('mode');
+    
+    if (modeParam === 'today' || modeParam === 'tomorrow') {
+      setPlanningMode(modeParam, 'url_parameter');
+    }
+  }, [setPlanningMode]);
+
+  // Define step flows based on planning mode
+  const getStepFlow = (mode: 'today' | 'tomorrow'): WizardStep[] => {
+    if (mode === 'today') {
+      // Streamlined same-day flow: skip reflection steps
+      return ['welcome', 'context-briefing', 'planning-prompts', 'generated-plan'];
+    } else {
+      // Traditional tomorrow planning flow: include all reflection steps
+      return ['welcome', 'day-review', 'journal', 'habits', 'context-briefing', 'planning-prompts', 'generated-plan'];
+    }
+  };
+
   const nextStep = (stepData?: any) => {
-    const steps: WizardStep[] = ['welcome', 'day-review', 'journal', 'habits', 'context-briefing', 'planning-prompts', 'generated-plan'];
+    const steps = getStepFlow(planningMode);
     const currentIndex = steps.indexOf(wizardState.currentStep);
     const nextStep = steps[currentIndex + 1];
     
     if (nextStep) {
       // Convert kebab-case to camelCase for consistent data keys
       const dataKey = wizardState.currentStep.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
-      console.log(`Saving step data for ${wizardState.currentStep} with key ${dataKey}:`, stepData);
+      console.log(`Saving step data for ${wizardState.currentStep} with key ${dataKey} (${planningMode} mode):`, stepData);
       
       setWizardState({
         currentStep: nextStep,
         data: {
           ...wizardState.data,
-          [dataKey]: stepData
+          [dataKey]: stepData,
+          // Store planning mode in wizard data
+          planningMode: planningMode
         }
       });
     }
   };
 
   const previousStep = () => {
-    const steps: WizardStep[] = ['welcome', 'day-review', 'journal', 'habits', 'context-briefing', 'planning-prompts', 'generated-plan'];
+    const steps = getStepFlow(planningMode);
     const currentIndex = steps.indexOf(wizardState.currentStep);
     const prevStep = steps[currentIndex - 1];
     
@@ -1851,7 +2072,7 @@ export default function PlanningWizard() {
   const renderCurrentStep = () => {
     switch (wizardState.currentStep) {
       case 'welcome':
-        return <WelcomeStep onNext={() => nextStep()} />;
+        return <WelcomeStep onNext={nextStep} />;
       case 'day-review':
         return <DayReviewStep onNext={nextStep} onPrevious={previousStep} />;
       case 'journal':
@@ -1864,14 +2085,35 @@ export default function PlanningWizard() {
         return <PlanningPromptsStep onNext={nextStep} onPrevious={previousStep} wizardData={wizardState.data} />;
       case 'generated-plan':
         console.log('Rendering GeneratedPlanStep with wizardState.data:', wizardState.data);
-        return <GeneratedPlanStep planningData={wizardState.data.planningPrompts} onRefine={handleRefinement} onPrevious={previousStep} />;
+        return <GeneratedPlanStep planningData={wizardState.data.planningPrompts} onRefine={handleRefinement} onPrevious={previousStep} wizardData={wizardState.data} />;
       default:
         return <WelcomeStep onNext={() => nextStep()} />;
     }
   };
 
+  // Show demo if requested
+  if (showDemo) {
+    return (
+      <div className="relative">
+        <div className="fixed top-4 right-4 z-50">
+          <Button onClick={() => setShowDemo(false)} variant="outline">
+            ← Back to Planning
+          </Button>
+        </div>
+        <PlanningModeDemo />
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
+      {/* Demo Toggle - Remove this in production */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button onClick={() => setShowDemo(true)} variant="outline" size="sm">
+          🧪 Demo Planning Context
+        </Button>
+      </div>
+      
       {/* Wizard Steps */}
       <div className="transition-all duration-500 ease-in-out">
         {renderCurrentStep()}

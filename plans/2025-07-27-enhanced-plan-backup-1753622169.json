@@ -1,0 +1,302 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "Healthcare enrollment clarification and opt-out request needs attention",
+      "calendar_conflicts": [],
+      "energy_patterns": "Energy level 7/10 - good for productive work in morning, social activity midday, and household tasks in evening",
+      "strategic_priorities": [
+        "Finish echo dev project",
+        "Golf with Jacob at 11:10",
+        "Prepare house for Hunter's return",
+        "Plan weekly meals",
+        "Grocery shopping if time permits"
+      ],
+      "time_constraints": [
+        "Must leave for golf by 10:00",
+        "Golf at 11:10",
+        "Hunter arrives at 22:00"
+      ]
+    },
+    "scheduling_strategy": "Front-load echo dev work before golf (6:00-9:30), use post-golf afternoon for household tasks and meal planning. Evening reserved for final house prep and potential grocery run.",
+    "energy_optimization": "Leverage high morning energy for focused dev work. Golf provides active break. Afternoon tasks are less cognitively demanding, suitable for post-activity energy dip.",
+    "priority_sequencing": "1) Echo dev (most important objective), 2) Golf commitment (fixed time), 3) House cleaning, 4) Meal planning, 5) Grocery shopping (if time allows)",
+    "recovery_planning": "Built-in recovery through golf activity and lighter afternoon tasks. Evening wind-down before Hunter's arrival allows for relaxation."
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine",
+      "type": "anchor",
+      "note": "Light breakfast and coffee to fuel productive morning",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "09:00",
+      "title": "echo | Deep Work Session",
+      "type": "flex",
+      "note": "Prime morning hours for finishing echo dev - most important objective",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:00",
+      "end": "09:30",
+      "title": "personal | Healthcare Enrollment Task",
+      "type": "flex",
+      "note": "Handle enrollment clarification and opt-out request before golf",
+      "icon": "FileText",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Get ready and drive to golf course",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "10:40",
+      "title": "Driving Range Warmup",
+      "type": "fixed",
+      "note": "Hit balls before round with Jacob",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "10:40",
+      "end": "13:30",
+      "title": "Golf with Jacob",
+      "type": "fixed",
+      "note": "9 holes starting at 11:10",
+      "icon": "Flag",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:30",
+      "title": "Lunch & Recovery",
+      "type": "flex",
+      "note": "Post-golf meal and rest",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:30",
+      "end": "16:30",
+      "title": "personal | House Cleaning",
+      "type": "flex",
+      "note": "Tidy up house for Hunter's return tonight",
+      "icon": "Home",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:30",
+      "end": "17:30",
+      "title": "personal | Weekly Meal Planning",
+      "type": "flex",
+      "note": "Plan meals for the week ahead",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:30",
+      "end": "19:00",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly meals if time permits",
+      "icon": "ShoppingCart",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "Dinner",
+      "type": "anchor",
+      "note": "Relaxed dinner at home",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "21:30",
+      "title": "personal | Final House Prep & Relax",
+      "type": "flex",
+      "note": "Last touches on house and unwind before Hunter arrives",
+      "icon": "Sparkles",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "21:30",
+      "end": "22:00",
+      "title": "Welcome Hunter Home",
+      "type": "fixed",
+      "note": "Be ready for Hunter's 10 PM arrival",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "Morning echo dev work leverages peak energy before golf commitment",
+    "Healthcare task scheduled before leaving to avoid forgetting",
+    "Afternoon reserved for household tasks when energy naturally dips",
+    "Grocery shopping marked as optional based on available time",
+    "Schedule ensures house is ready well before Hunter's arrival"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine",
+      "type": "anchor",
+      "note": "Light breakfast and coffee to fuel productive morning",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "09:00",
+      "title": "echo | Deep Work Session",
+      "type": "flex",
+      "note": "Prime morning hours for finishing echo dev - most important objective",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:00",
+      "end": "09:30",
+      "title": "personal | Healthcare Enrollment Task",
+      "type": "flex",
+      "note": "Handle enrollment clarification and opt-out request before golf",
+      "icon": "FileText",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "title": "Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Get ready and drive to golf course",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "10:40",
+      "title": "Driving Range Warmup",
+      "type": "fixed",
+      "note": "Hit balls before round with Jacob",
+      "icon": "Target",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "10:40",
+      "end": "13:30",
+      "title": "Golf with Jacob",
+      "type": "fixed",
+      "note": "9 holes starting at 11:10",
+      "icon": "Flag",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:30",
+      "title": "Lunch & Recovery",
+      "type": "flex",
+      "note": "Post-golf meal and rest",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:30",
+      "end": "16:30",
+      "title": "personal | House Cleaning",
+      "type": "flex",
+      "note": "Tidy up house for Hunter's return tonight",
+      "icon": "Home",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:30",
+      "end": "17:30",
+      "title": "personal | Weekly Meal Planning",
+      "type": "flex",
+      "note": "Plan meals for the week ahead",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "17:30",
+      "end": "19:00",
+      "title": "personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Shop for weekly meals if time permits",
+      "icon": "ShoppingCart",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "Dinner",
+      "type": "anchor",
+      "note": "Relaxed dinner at home",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "21:30",
+      "title": "personal | Final House Prep & Relax",
+      "type": "flex",
+      "note": "Last touches on house and unwind before Hunter arrives",
+      "icon": "Sparkles",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "21:30",
+      "end": "22:00",
+      "title": "Welcome Hunter Home",
+      "type": "fixed",
+      "note": "Be ready for Hunter's 10 PM arrival",
+      "icon": "Heart",
+      "priority": "high",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T08:15:38.305794",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753622138"
+  }
+}

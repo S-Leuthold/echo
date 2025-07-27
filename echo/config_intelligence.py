@@ -22,13 +22,15 @@ logger = logging.getLogger(__name__)
 class ConfigDeadlineExtractor:
     """Extract and surface commitments from user configuration."""
     
-    def get_upcoming_commitments(self, config, days_ahead: int = 7) -> Dict[str, Any]:
+    def get_upcoming_commitments(self, config, days_ahead: int = 7, planning_mode: str = "tomorrow", current_time: Optional[str] = None) -> Dict[str, Any]:
         """
         Main entry point for config-based commitments.
         
         Args:
             config: User configuration object or dict
             days_ahead: How many days ahead to look for deadlines
+            planning_mode: "tomorrow" for next-day planning, "today" for same-day planning
+            current_time: Current time for same-day planning (e.g., "14:30")
             
         Returns:
             Dict containing deadlines, events, birthdays with metadata
@@ -43,13 +45,15 @@ class ConfigDeadlineExtractor:
                 'metadata': {
                     'days_ahead': days_ahead,
                     'extracted_at': datetime.now().isoformat(),
-                    'config_version': getattr(config, 'version', 'unknown')
+                    'config_version': getattr(config, 'version', 'unknown'),
+                    'planning_mode': planning_mode,
+                    'current_time': current_time
                 }
             }
             
         except Exception as e:
             logger.error(f"Config intelligence extraction failed: {e}")
-            return self._error_response(str(e), days_ahead)
+            return self._error_response(str(e), days_ahead, planning_mode, current_time)
     
     def _extract_deadlines(self, config, days_ahead: int) -> List[Dict]:
         """Find upcoming deadlines from config."""
@@ -483,10 +487,11 @@ class ConfigDeadlineExtractor:
         except Exception:
             return 999999  # Sort unparseable times last
     
-    def _error_response(self, error_message: str, days_ahead: int) -> Dict[str, Any]:
+    def _error_response(self, error_message: str, days_ahead: int, planning_mode: str = "tomorrow", current_time: Optional[str] = None) -> Dict[str, Any]:
         """Return error response structure."""
         return {
             'deadlines': [],
+            'reminders': [],
             'recurring_events': [],
             'birthdays': [],
             'fixed_meetings': [],
@@ -494,6 +499,8 @@ class ConfigDeadlineExtractor:
                 'error': error_message,
                 'days_ahead': days_ahead,
                 'extracted_at': datetime.now().isoformat(),
-                'config_version': 'unknown'
+                'config_version': 'unknown',
+                'planning_mode': planning_mode,
+                'current_time': current_time
             }
         }

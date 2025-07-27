@@ -241,9 +241,10 @@ export function PlanTimeline({
 
   // Map time categories to config categories
   const mapToConfigCategory = (timeCategory: string, label: string) => {
+    const safeLabel = (label || '').toLowerCase();
     switch (timeCategory) {
       case "DEEP_WORK": return "deep_work";
-      case "SHALLOW_WORK": return label.toLowerCase().includes('admin') || label.toLowerCase().includes('email') ? "admin" : "shallow_work";
+      case "SHALLOW_WORK": return safeLabel.includes('admin') || safeLabel.includes('email') ? "admin" : "shallow_work";
       case "MEETINGS": return "meetings";
       case "PERSONAL": return "personal";
       case "HEALTH": return "health";

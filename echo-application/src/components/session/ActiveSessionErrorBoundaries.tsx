@@ -496,57 +496,6 @@ export const EnhancedConnectionStatus: React.FC<EnhancedConnectionStatusProps> =
 export const ErrorSimulationPanel: React.FC<{
   onSimulateError: (errorType: ActiveSessionErrorType) => void;
 }> = ({ onSimulateError }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Only show in development
-  if (process.env.NODE_ENV !== 'development') return null;
-
-  return (
-    <div className="fixed bottom-4 left-4 z-50">
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        size="sm"
-        variant="outline"
-        className="bg-yellow-100 border-yellow-300 text-yellow-800"
-      >
-        🐛 Error Sim
-      </Button>
-      
-      {isOpen && (
-        <Card className="absolute bottom-full mb-2 w-64 border-yellow-300 bg-yellow-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-yellow-800">
-              Error Simulation (Dev Only)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              onClick={() => onSimulateError(ActiveSessionErrorType.AUTO_SAVE_FAILURE)}
-              size="sm"
-              variant="outline"
-              className="w-full text-xs"
-            >
-              Auto-save Failure
-            </Button>
-            <Button
-              onClick={() => onSimulateError(ActiveSessionErrorType.SESSION_STATE_CORRUPTION)}
-              size="sm"
-              variant="outline"
-              className="w-full text-xs"
-            >
-              State Corruption
-            </Button>
-            <Button
-              onClick={() => onSimulateError(ActiveSessionErrorType.PROGRESS_CALCULATION_ERROR)}
-              size="sm"
-              variant="outline"
-              className="w-full text-xs"
-            >
-              Progress Error
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+  // Development controls disabled for production
+  return null;
 };

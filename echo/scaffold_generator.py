@@ -184,7 +184,7 @@ class ScaffoldGenerator:
         
         # Call Claude with structured output
         response = self.claude_client.beta.chat.completions.parse(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-4-20250514",
             messages=messages,
             response_format=SessionScaffoldData,
             temperature=0.2,  # Low temperature for consistent, helpful output

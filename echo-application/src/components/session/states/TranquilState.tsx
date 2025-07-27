@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Block } from '@/hooks/useSessionState';
 import { Dumbbell, User, Utensils, Bike } from 'lucide-react';
+import { quoteService } from '@/services/quoteService';
 
 /**
  * TranquilState Component - Theater Mode Experience
@@ -38,11 +39,14 @@ export function TranquilState({
   theaterModeActive = true
 }: TranquilStateProps) {
   
-  // EMERGENCY FIX: Static quote to prevent infinite loops
-  const contextualQuote = {
-    text: "Sometimes the most productive thing you can do is relax.",
-    author: "Mark Black"
-  };
+  // Get contextual quote based on upcoming session
+  const contextualQuote = useMemo(() => {
+    const quote = quoteService.getContextualQuote(nextWorkBlock);
+    return {
+      text: quote.quote,
+      author: quote.author
+    };
+  }, [nextWorkBlock]);
   
   // Format time display for header
   const formatTime = (timeStr: string): string => {

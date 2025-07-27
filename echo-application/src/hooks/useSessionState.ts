@@ -34,7 +34,7 @@ const STATE_CONFIG = {
   SPIN_UP_LEAD_TIME: 10, // minutes before work block to enter spin-up
   WORK_CATEGORIES: ['DEEP_WORK', 'SHALLOW_WORK', 'ADMIN', 'MEETINGS', 'RESEARCH', 'PLANNING'],
   REST_CATEGORIES: ['PERSONAL', 'HEALTH', 'MEALS', 'TRANSIT', 'REST'],
-  DEVELOPMENT_MODE: process.env.NODE_ENV === 'development'
+  DEVELOPMENT_MODE: false // Development controls disabled
 };
 
 /**
@@ -152,22 +152,18 @@ export const useSessionState = (schedule: Block[] = []) => {
   
   // Transition helpers
   const transitionToSpinUp = useCallback(() => {
-    // TODO: Implement manual spin-up transition
-    console.log('Manual transition to spin-up state');
+    // Manual spin-up transition (development functionality disabled)
   }, []);
   
   const transitionToActive = useCallback((sessionData: any) => {
-    console.log('Transitioning to active state', sessionData);
     setManualStateOverride('ACTIVE');
   }, []);
   
   const transitionToSpinDown = useCallback(() => {
-    console.log('Transitioning to spin-down state');
     setManualStateOverride('SPIN_DOWN');
   }, []);
   
   const transitionToTranquil = useCallback(() => {
-    console.log('Transitioning to tranquil state');
     setManualStateOverride('TRANQUIL');
   }, []);
   

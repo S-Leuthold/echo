@@ -7,12 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Block } from '@/hooks/useSessionState';
 import { IconResolutionService } from '@/lib/icon-resolution';
 import { SessionErrorBoundary, ScaffoldErrorFallback } from '@/components/session/SessionErrorBoundary';
+import { sessionApi } from '@/services/sessionApiService';
 import { 
   AutoSaveErrorBoundary, 
   SessionProgressErrorBoundary, 
   SessionRecoveryModal,
   EnhancedConnectionStatus,
-  ErrorSimulationPanel,
   ActiveSessionErrorType 
 } from '@/components/session/ActiveSessionErrorBoundaries';
 import { CheckCircle2, Circle, ListChecks, PenSquare, SquareCheckBig, Target, Users, RefreshCw, Save, Wifi, WifiOff, Clock, Info } from 'lucide-react';
@@ -236,14 +236,16 @@ export function ActiveSessionState({
         return;
       }
       
-      // TODO: Replace with actual API call when backend is ready
-      // Simulate API call with potential failures
-      if (Math.random() < 0.1 && attempt === 0) { // 10% failure rate on first attempt for testing
-        throw new Error('Simulated network failure');
-      }
+      // Real API call to save session notes
+      const response = await sessionApi.saveSessionNotes(
+        sessionData.blockId,
+        notes,
+        checklistData
+      );
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to save session notes');
+      }
       
       setLastSaveTime(new Date());
       setSaveStatus('saved');
@@ -482,25 +484,10 @@ export function ActiveSessionState({
     performAutoSave(sessionNotes, checklist);
   };
   
-  // Error simulation for development (dev mode only)
+  // Error simulation for development (disabled)
   const handleSimulateError = (errorType: ActiveSessionErrorType) => {
-    if (process.env.NODE_ENV !== 'development') return;
-    
-    switch (errorType) {
-      case ActiveSessionErrorType.AUTO_SAVE_FAILURE:
-        setSaveStatus('error');
-        setSaveError('Simulated auto-save failure');
-        break;
-      case ActiveSessionErrorType.SESSION_STATE_CORRUPTION:
-        setCorruptedData({ notes: sessionNotes, checklist });
-        setShowRecoveryModal(true);
-        break;
-      case ActiveSessionErrorType.PROGRESS_CALCULATION_ERROR:
-        // This will be handled by the SessionProgressErrorBoundary
-        throw new Error('Simulated progress calculation error');
-      default:
-        // Unknown error type
-    }
+    // Development controls disabled
+    return;
   };
   
   // Helper function to group checklist items by category
@@ -539,8 +526,7 @@ export function ActiveSessionState({
           corruptedData={corruptedData}
         />
         
-        {/* Error Simulation Panel (Dev Mode Only) */}
-        <ErrorSimulationPanel onSimulateError={handleSimulateError} />
+        {/* Error Simulation Panel - Disabled */}
         
         {/* 1. THE HEADER - Refined Vitals Display */}
       <div className="flex-shrink-0">

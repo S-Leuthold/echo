@@ -3,27 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, BarChart3, Settings, BookOpen, Mail, Moon, Cog, Brain } from "lucide-react";
+import { Calendar, BarChart3, Settings, BookOpen, Moon, Cog, FolderOpen } from "lucide-react";
 import { usePlanStatus } from "@/contexts/PlanStatusContext";
 
-const getNavigation = (emailSummary: any) => [
+const getNavigation = () => [
   {
     name: "Today",
     href: "/today",
     icon: Calendar,
-  },
-  {
-    name: "Email", 
-    href: "/email",
-    icon: Mail,
-    badge: emailSummary?.total_emails || 0, // Dynamic email count
-    urgentBadge: emailSummary?.urgent_emails > 0 ? emailSummary.urgent_emails : undefined, // Only show if > 0
-  },
-  {
-    name: "Analytics", 
-    href: "/analytics",
-    icon: BarChart3,
   },
   {
     name: "Planning",
@@ -31,19 +18,24 @@ const getNavigation = (emailSummary: any) => [
     icon: Moon,
   },
   {
+    name: "Schedule",
+    href: "/config-wizard",
+    icon: Cog,
+  },
+  {
     name: "Journal",
     href: "/journal", 
     icon: BookOpen,
   },
   {
-    name: "Config Wizard",
-    href: "/config-wizard",
-    icon: Cog,
+    name: "Analytics", 
+    href: "/analytics",
+    icon: BarChart3,
   },
   {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
+    name: "Projects",
+    href: "/projects",
+    icon: FolderOpen,
   },
 ];
 
@@ -72,14 +64,9 @@ export function Sidebar() {
     
     // Handle no plan state
     if (planStatus === 'missing') {
-      const emailCount = todayData?.email_summary?.action_items?.length || 0;
-      if (emailCount > 0) {
-        return `You have ${emailCount} email action items waiting. Ready to plan your day?`;
-      } else {
-        return hour < 18 
-          ? "No plan for today yet. What would you like to focus on?"
-          : "Time to plan tomorrow. What are your priorities?";
-      }
+      return hour < 18 
+        ? "No plan for today yet. What would you like to focus on?"
+        : "Time to plan tomorrow. What are your priorities?";
     }
     
     if (planStatus === 'loading') {
@@ -168,42 +155,28 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {getNavigation(todayData?.email_summary).map((item) => {
+        {getNavigation().map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                "flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 isActive
                   ? "bg-accent text-accent-foreground shadow-lg shadow-accent/20"
                   : "text-muted-foreground hover:bg-accent/10 hover:text-accent-foreground"
               )}
             >
-              <div className="flex items-center space-x-3">
-                <item.icon className="w-5 h-5" />
-                <span>{item.name}</span>
-              </div>
-              
-              {/* Notification badges */}
-              {item.urgentBadge && (
-                <Badge variant="destructive" className="h-5 px-1.5 text-xs font-semibold">
-                  {item.urgentBadge}
-                </Badge>
-              )}
-              {item.badge && !item.urgentBadge && (
-                <Badge variant="secondary" className="h-5 px-1.5 text-xs font-semibold">
-                  {item.badge}
-                </Badge>
-              )}
+              <item.icon className="w-5 h-5" />
+              <span>{item.name}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-sidebar-border">
+      {/* Footer with Settings */}
+      <div className="p-4 border-t border-sidebar-border flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
           {new Date().toLocaleDateString("en-US", { 
             weekday: "long", 
@@ -211,6 +184,19 @@ export function Sidebar() {
             day: "numeric" 
           })}
         </div>
+        
+        <Link
+          href="/settings"
+          className={cn(
+            "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+            pathname === "/settings"
+              ? "bg-accent text-accent-foreground shadow-lg shadow-accent/20"
+              : "text-muted-foreground hover:bg-accent/10 hover:text-accent-foreground"
+          )}
+          title="Settings"
+        >
+          <Settings className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

@@ -217,8 +217,8 @@ export function SessionStatePanel({
           </button>
         )}
         
-        {/* Dev Mode State Override Panel */}
-        {process.env.NODE_ENV === 'development' && devOverrideState && (
+        {/* Dev Mode State Override Panel - Disabled */}
+        {false && (
           <div className="fixed bottom-4 right-4 z-50 bg-yellow-100 border border-yellow-300 rounded-lg p-3 shadow-lg">
             <div className="text-sm font-medium text-yellow-800 mb-2">
               🔧 Dev State Override

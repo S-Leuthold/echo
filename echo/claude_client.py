@@ -102,7 +102,7 @@ class ClaudeCompletions:
     
     def parse(
         self,
-        model: str = "claude-3-5-sonnet-20241022",
+        model: str = "claude-sonnet-4-20250514",
         messages: List[Dict[str, str]] = None,
         response_format: Type[T] = None,
         temperature: float = 0.1,

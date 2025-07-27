@@ -168,11 +168,19 @@ Process the following data sources comprehensively:
 ## Output Requirements
 
 ### Schedule Coverage
-- Cover the complete day from wake time to sleep time (typically 06:00-22:00)
+- **Full Day Planning**: Cover the complete day from wake time to sleep time (typically 06:00-22:00)
+- **Same-Day Planning**: Cover ONLY from the current time onwards - never schedule blocks in the past
 - Create blocks of 45-120 minutes (no more than 2 consecutive 120-min blocks)
 - Include NO time gaps in the schedule
 - Maintain logical flow and transitions
 - **MANDATORY**: Include exactly one 45-minute "Email & Communications" block scheduled in the afternoon (1-5 PM optimal) - this block MUST be exactly 45 minutes duration, do not extend to 60, 90, or 120 minutes
+
+### Same-Day Planning Special Rules
+When `schedulable_start_time` is provided:
+- NEVER schedule blocks before the current time
+- Focus on maximizing the remaining day
+- Adjust energy optimization for the current time of day
+- Prioritize urgent items that can't wait until tomorrow
 
 ### Block Specifications
 - Use canonical format: "Project | Specific Activity" with proper capitalization (e.g., "Echo | Email Processing", "Personal | Morning Routine")
@@ -221,7 +229,9 @@ def build_unified_planning_prompt(
     config: Optional[Config] = None,
     wake_time: str = "06:00",
     sleep_time: str = "22:00",
-    routine_overrides: str = ""
+    routine_overrides: str = "",
+    planning_mode: str = "tomorrow",
+    schedulable_start_time: Optional[str] = None
 ) -> str:
     """
     Build the unified planning prompt following Claude Opus best practices.
@@ -243,6 +253,8 @@ def build_unified_planning_prompt(
         wake_time: Day start time (default: 06:00)
         sleep_time: Day end time (default: 22:00)
         routine_overrides: Natural language overrides for usual routine
+        planning_mode: "tomorrow" for next-day planning, "today" for same-day planning
+        schedulable_start_time: Current time for same-day planning (e.g., "14:30")
         
     Returns:
         Complete unified planning prompt for Claude Opus
@@ -361,19 +373,75 @@ def build_unified_planning_prompt(
 If the user says "skip breakfast for brunch at 10:30", ignore the breakfast config block and create a brunch block instead.
 Be specific about timing and make the requested changes happen."""
 
+    # Build time constraints section based on planning mode
+    time_context = ""
+    if planning_mode == "today" and schedulable_start_time:
+        time_context = f"""
+
+## 🕒 **CRITICAL TIME CONSTRAINT - SAME-DAY PLANNING**
+**Current Time**: {schedulable_start_time}
+**Schedulable Window**: {schedulable_start_time} - {sleep_time}
+
+**MANDATORY RULE**: You MUST ONLY schedule blocks from {schedulable_start_time} onwards. 
+Do NOT create any blocks before {schedulable_start_time} as that time has already passed.
+Do NOT reference or schedule anything in the past - focus only on the remaining day."""
+    
+    # Determine day reference for copy
+    day_reference = "today" if planning_mode == "today" else "tomorrow"
+    
+    # Build conditional sections
+    routine_reminder = ""
+    if routine_overrides and routine_overrides.strip():
+        routine_reminder = "**REMEMBER**: Honor the routine overrides above - they override all other constraints including config blocks."
+    
+    planning_mode_note = ""
+    if planning_mode == 'today':
+        planning_mode_note = "**SAME-DAY PLANNING**: Focus on making the most of the remaining day from now until bedtime."
+    
+    schedule_type = 'remaining day' if planning_mode == 'today' else 'daily'
+    
+    # JSON schema as a separate string to avoid f-string nesting issues
+    json_schema = """{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "string (max 500 chars)",
+      "calendar_conflicts": ["array of strings"],
+      "energy_patterns": "string (max 300 chars)",
+      "strategic_priorities": ["array of strings"],
+      "time_constraints": ["array of strings"]
+    },
+    "scheduling_strategy": "string (max 800 chars)",
+    "energy_optimization": "string (max 800 chars)",
+    "priority_sequencing": "string (max 600 chars)",
+    "recovery_planning": "string (max 600 chars)"
+  },
+  "schedule": [
+    {
+      "start": "HH:MM",
+      "end": "HH:MM",
+      "title": "Project | Activity",
+      "type": "anchor|fixed|flex",
+      "note": "Strategic rationale (max 300 chars)",
+      "icon": "LucideIconName",
+      "priority": "high|medium|low",
+      "energy_requirement": "high|medium|low"
+    }
+  ],
+  "key_insights": ["array of strings (max 5)"]
+}"""
+
     # Combine all context
-    context_block = f"""
-# Planning Context
+    context_block = f"""# Planning Context
 
 ## User Intent & Priorities
 **Most Important Objective**: {most_important}
 **Energy Level**: {energy_level}
 **Specific Tasks**: {todos_section}
 **Non-Negotiables**: {non_negotiables}
-**Avoid Today**: {avoid_today}{overrides_section}
+**Avoid {day_reference.title()}**: {avoid_today}{overrides_section}
 
 ## Schedule Constraints  
-**Day Structure**: {wake_time} - {sleep_time}
+**Day Structure**: {wake_time} - {sleep_time}{time_context}
 {calendar_section}
 
 ## Email Intelligence
@@ -387,11 +455,19 @@ Be specific about timing and make the requested changes happen."""
 
 # Your Task
 
-Using the Chain-of-Thought reasoning process, analyze this context comprehensively and generate an optimized daily schedule that maximizes the user's effectiveness while respecting their energy patterns and constraints.
+Using the Chain-of-Thought reasoning process, analyze this context comprehensively and generate an optimized {schedule_type} schedule that maximizes the user's effectiveness while respecting their energy patterns and constraints.
 
-{f"**REMEMBER**: Honor the routine overrides above - they override all other constraints including config blocks." if routine_overrides and routine_overrides.strip() else ""}
+{routine_reminder}
 
-Think step by step through your analysis, then provide the structured planning response."""
+{planning_mode_note}
+
+Think step by step through your analysis, then provide the structured planning response.
+
+**CRITICAL OUTPUT REQUIREMENT**: You MUST provide your response as a valid JSON object that exactly matches this schema:
+
+{json_schema}
+
+Return ONLY this JSON object, no additional text or explanation outside the JSON."""
 
     return context_block
 

@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { PlanStatusProvider } from "@/contexts/PlanStatusContext";
+import { PlanningProvider } from "@/contexts/PlanningContext";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,12 +24,14 @@ export default function RootLayout({
     <html lang="en" className={manrope.variable}>
       <body className="font-manrope antialiased">
         <PlanStatusProvider>
-          <div className="flex h-screen bg-background">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              {children}
-            </main>
-          </div>
+          <PlanningProvider>
+            <div className="flex h-screen bg-background">
+              <Sidebar />
+              <main className="flex-1 overflow-y-auto">
+                {children}
+              </main>
+            </div>
+          </PlanningProvider>
         </PlanStatusProvider>
       </body>
     </html>

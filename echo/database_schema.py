@@ -57,6 +57,7 @@ class SessionLog:
     category: str
     generated_log_markdown: str
     ai_insights: Dict[str, Any]
+    ai_keywords: List[str]
     created_at: datetime
     
     def to_dict(self) -> Dict[str, Any]:
@@ -69,6 +70,7 @@ class SessionLog:
             "category": self.category,
             "generated_log_markdown": self.generated_log_markdown,
             "ai_insights": self.ai_insights,
+            "ai_keywords": self.ai_keywords,
             "created_at": self.created_at.isoformat()
         }
 
@@ -116,9 +118,17 @@ class SessionDatabase:
                 category TEXT NOT NULL,
                 generated_log_markdown TEXT NOT NULL,
                 ai_insights TEXT NOT NULL,               -- JSON string
+                ai_keywords TEXT NOT NULL,               -- JSON string array
                 created_at TIMESTAMP NOT NULL
             )
         """)
+        
+        # Add ai_keywords column to existing tables if it doesn't exist
+        try:
+            self.conn.execute("ALTER TABLE session_logs ADD COLUMN ai_keywords TEXT")
+        except sqlite3.OperationalError:
+            # Column already exists
+            pass
         
         # Create indexes for session logs
         self.conn.execute("""
@@ -242,6 +252,25 @@ class SessionDatabase:
             print(f"Error marking scaffolds stale: {e}")
             return False
     
+    def get_scaffold_count(self) -> int:
+        """Get total count of active scaffolds."""
+        try:
+            cursor = self.conn.execute("SELECT COUNT(*) as count FROM session_scaffolds WHERE is_stale = FALSE")
+            return cursor.fetchone()['count']
+        except sqlite3.Error as e:
+            print(f"Error getting scaffold count: {e}")
+            return 0
+    
+    def delete_scaffold(self, block_id: str) -> bool:
+        """Delete scaffold for a specific block."""
+        try:
+            self.conn.execute("DELETE FROM session_scaffolds WHERE schedule_block_id = ?", (block_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error deleting scaffold: {e}")
+            return False
+    
     # ===== SESSION LOGS =====
     
     def create_session_log(self, session_log: SessionLog) -> bool:
@@ -250,8 +279,8 @@ class SessionDatabase:
             self.conn.execute("""
                 INSERT INTO session_logs
                 (id, project_id, block_title, session_date, duration_minutes, 
-                 category, generated_log_markdown, ai_insights, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 category, generated_log_markdown, ai_insights, ai_keywords, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 session_log.id,
                 session_log.project_id,
@@ -261,6 +290,7 @@ class SessionDatabase:
                 session_log.category,
                 session_log.generated_log_markdown,
                 json.dumps(session_log.ai_insights),
+                json.dumps(session_log.ai_keywords),
                 session_log.created_at.isoformat()
             ))
             self.conn.commit()
@@ -280,6 +310,14 @@ class SessionDatabase:
         
         logs = []
         for row in cursor.fetchall():
+            # Handle ai_keywords column that might not exist in older records
+            ai_keywords = []
+            try:
+                if row['ai_keywords']:
+                    ai_keywords = json.loads(row['ai_keywords'])
+            except (KeyError, json.JSONDecodeError):
+                pass
+            
             logs.append(SessionLog(
                 id=row['id'],
                 project_id=row['project_id'],
@@ -289,6 +327,7 @@ class SessionDatabase:
                 category=row['category'],
                 generated_log_markdown=row['generated_log_markdown'],
                 ai_insights=json.loads(row['ai_insights']),
+                ai_keywords=ai_keywords,
                 created_at=datetime.fromisoformat(row['created_at'])
             ))
         
@@ -304,6 +343,14 @@ class SessionDatabase:
         
         logs = []
         for row in cursor.fetchall():
+            # Handle ai_keywords column that might not exist in older records
+            ai_keywords = []
+            try:
+                if row['ai_keywords']:
+                    ai_keywords = json.loads(row['ai_keywords'])
+            except (KeyError, json.JSONDecodeError):
+                pass
+            
             logs.append(SessionLog(
                 id=row['id'],
                 project_id=row['project_id'],
@@ -313,6 +360,7 @@ class SessionDatabase:
                 category=row['category'],
                 generated_log_markdown=row['generated_log_markdown'],
                 ai_insights=json.loads(row['ai_insights']),
+                ai_keywords=ai_keywords,
                 created_at=datetime.fromisoformat(row['created_at'])
             ))
         

@@ -75,20 +75,8 @@ export function SessionLogModal({
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef<string | null>(null);
   
-  // DIAGNOSTIC: Track API responses and errors
-  const [lastApiResponse, setLastApiResponse] = useState<any>(null);
+  // Track essential state for debugging
   const [lastApiError, setLastApiError] = useState<any>(null);
-  
-  // DIAGNOSTIC: Track sessionLog state changes
-  useEffect(() => {
-    console.log('🔍 sessionLog STATE CHANGED:', {
-      length: sessionLog?.length || 0,
-      hasContent: !!sessionLog?.trim(),
-      type: typeof sessionLog,
-      preview: sessionLog?.slice(0, 100) + '...',
-      phase: phase
-    });
-  }, [sessionLog, phase]);
   
   // Loading animation state (moved from renderLoadingPhase)
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -151,7 +139,6 @@ export function SessionLogModal({
       setSessionMetadata(null);
       setIsGenerating(true);
       
-      console.log('🚀 SessionLogModal: Starting generation, current sessionLog length:', sessionLog.length);
       
       // Generate session log using live Claude API
       const generateSessionLog = async () => {
@@ -194,29 +181,10 @@ export function SessionLogModal({
           
           if (result.success && result.data) {
             console.log(`✅ [${currentRequestId}] Session log generated successfully`);
-            console.log('🔍 DIAGNOSTIC: Complete API Response:', {
-              success: result.success,
-              dataKeys: Object.keys(result.data),
-              hasSessionLog: !!result.data.session_log_markdown,
-              sessionLogType: typeof result.data.session_log_markdown,
-              sessionLogLength: result.data.session_log_markdown?.length || 0,
-              sessionLogIsEmpty: !result.data.session_log_markdown?.trim(),
-              rawContent: result.data.session_log_markdown,
-              contentPreview: result.data.session_log_markdown?.slice(0, 200) + '...',
-              metadata: result.data.session_metadata
-            });
             
-            // DIAGNOSTIC: Store API response for debug panel
-            setLastApiResponse(result);
             setLastApiError(null);
-            
-            // CRITICAL: Log the exact content being set
-            console.log('🎯 SETTING sessionLog STATE TO:', result.data.session_log_markdown);
             setSessionLog(result.data.session_log_markdown);
             setSessionMetadata(result.data.session_metadata);
-            
-            // Log phase transition
-            console.log('🔄 PHASE TRANSITION: loading → editing');
             setPhase('editing');
           } else {
             throw new Error('Session completion API returned unsuccessful result');
@@ -229,10 +197,7 @@ export function SessionLogModal({
           }
           
           console.error(`🚨 [${currentRequestId}] Failed to generate session log:`, error);
-          
-          // DIAGNOSTIC: Store error for debug panel
           setLastApiError(error);
-          setLastApiResponse(null);
           
           // Create fallback content using snapshot data
           const fallbackContent = `# Session Log Generation Failed
@@ -252,10 +217,6 @@ ${dataSnapshot.debriefData.outstanding}
 **Final Notes:**
 ${dataSnapshot.debriefData.finalNotes}`;
           
-          console.log('⚠️ SessionLogModal: Setting fallback content:', {
-            contentLength: fallbackContent.length,
-            contentPreview: fallbackContent.slice(0, 150) + '...'
-          });
           
           setSessionLog(fallbackContent);
           
@@ -332,16 +293,6 @@ ${dataSnapshot.debriefData.finalNotes}`;
   
   // Editor Phase Content
   const renderEditorPhase = () => {
-    // DIAGNOSTIC: Log what's being passed to the editor (reduced frequency)
-    // console.log('🎨 RENDERING EDITOR PHASE:', {
-    //   sessionLogValue: sessionLog,
-    //   sessionLogLength: sessionLog?.length || 0,
-    //   sessionLogType: typeof sessionLog,
-    //   hasContent: !!sessionLog?.trim(),
-    //   isEmpty: !sessionLog || sessionLog.trim() === '',
-    //   timestamp: new Date().toISOString()
-    // });
-    
     return (
       <div className="space-y-6">
         {/* Metadata Header */}
@@ -371,114 +322,11 @@ ${dataSnapshot.debriefData.finalNotes}`;
             autoFocus={true}
           />
           
-          {/* Comprehensive Debug Panel */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-3 bg-muted/20 rounded text-xs text-muted-foreground space-y-3">
-              <div className="font-semibold text-foreground border-b border-border/30 pb-1">🔍 Debug Panel</div>
-              
-              {/* Current State */}
-              <div>
-                <div className="font-medium text-foreground mb-1">📊 Current State:</div>
-                <div className="pl-2 space-y-1">
-                  <div>Phase: <span className="text-accent">{phase}</span></div>
-                  <div>SessionLog Length: <span className="text-accent">{sessionLog?.length || 0}</span></div>
-                  <div>SessionLog Type: <span className="text-accent">{typeof sessionLog}</span></div>
-                  <div>Has Content: <span className="text-accent">{!!sessionLog?.trim() ? 'YES' : 'NO'}</span></div>
-                  <div>Is Empty: <span className="text-accent">{!sessionLog || sessionLog.trim() === '' ? 'YES' : 'NO'}</span></div>
-                </div>
-              </div>
-              
-              {/* Last API Response */}
-              <div>
-                <div className="font-medium text-foreground mb-1">🌐 Last API Response:</div>
-                <div className="pl-2">
-                  {lastApiResponse ? (
-                    <div className="space-y-1">
-                      <div>Success: <span className="text-green-500">✓</span></div>
-                      <div>Data Keys: <span className="text-accent">{lastApiResponse.data ? Object.keys(lastApiResponse.data).join(', ') : 'none'}</span></div>
-                      <div>Session Log Present: <span className="text-accent">{!!lastApiResponse.data?.session_log_markdown ? 'YES' : 'NO'}</span></div>
-                      <div>Session Log Length: <span className="text-accent">{lastApiResponse.data?.session_log_markdown?.length || 0}</span></div>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">No response yet</span>
-                  )}
-                </div>
-              </div>
-              
-              {/* Last API Error */}
-              {lastApiError && (
-                <div>
-                  <div className="font-medium text-red-500 mb-1">❌ Last API Error:</div>
-                  <div className="pl-2 text-red-400">
-                    {lastApiError instanceof Error ? lastApiError.message : String(lastApiError)}
-                  </div>
-                </div>
-              )}
-              
-              {/* Content Preview */}
-              <div>
-                <div className="font-medium text-foreground mb-1">📄 Content Preview:</div>
-                <div className="pl-2 bg-muted/30 rounded p-2 max-h-20 overflow-y-auto">
-                  {sessionLog ? (
-                    <pre className="whitespace-pre-wrap text-xs">{sessionLog.slice(0, 200)}...</pre>
-                  ) : (
-                    <span className="text-muted-foreground italic">No content</span>
-                  )}
-                </div>
-              </div>
-              
-              {/* Raw Data */}
-              <details className="cursor-pointer">
-                <summary className="font-medium text-foreground hover:text-accent">🔬 Raw Data</summary>
-                <div className="pl-2 mt-1 bg-muted/30 rounded p-2 max-h-32 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap text-xs">{JSON.stringify({ sessionLog, lastApiResponse, lastApiError }, null, 2)}</pre>
-                </div>
-              </details>
-              
-              {/* Test Controls */}
-              <div className="border-t border-border/30 pt-2">
-                <div className="font-medium text-foreground mb-2">🧪 Test Controls:</div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      const testContent = "# Test Content\n\nThis is **hardcoded** test content to verify the editor works.\n\n- Item 1\n- Item 2\n- Item 3\n\n*Testing italic text*";
-                      console.log('🧪 TESTING: Setting hardcoded content:', testContent);
-                      setSessionLog(testContent);
-                    }}
-                    className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                  >
-                    Test Short Content
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('🧪 TESTING: Clearing content');
-                      setSessionLog('');
-                    }}
-                    className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-                  >
-                    Clear Content
-                  </button>
-                  <button
-                    onClick={() => {
-                      const longContent = `# Long Test Content\n\n## Section 1\nThis is a longer test to see if the editor handles substantial content properly.\n\n### Subsection A\n- First bullet point with **bold text**\n- Second bullet point with *italic text*\n- Third bullet point with \`code\`\n\n### Subsection B\n1. Numbered list item one\n2. Numbered list item two\n3. Numbered list item three\n\n## Section 2\nLorem ipsum dolor sit amet, consectetur adipiscing elit.\n\n> This is a blockquote to test formatting\n\n## Section 3\nFinal section with more content.`;
-                      console.log('🧪 TESTING: Setting long content:', longContent);
-                      setSessionLog(longContent);
-                    }}
-                    className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                  >
-                    Test Long Content
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('🧪 TESTING: Setting null');
-                      setSessionLog(null as any);
-                    }}
-                    className="px-2 py-1 bg-purple-500 text-white rounded text-xs hover:bg-purple-600"
-                  >
-                    Test Null
-                  </button>
-                </div>
-              </div>
+          {/* Minimal Error Display */}
+          {process.env.NODE_ENV === 'development' && lastApiError && (
+            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+              <div className="font-medium mb-1">Session Generation Error:</div>
+              <div>{lastApiError instanceof Error ? lastApiError.message : String(lastApiError)}</div>
             </div>
           )}
         </div>
