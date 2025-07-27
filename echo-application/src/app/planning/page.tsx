@@ -1750,17 +1750,19 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center animate-in fade-in duration-500">
         <div className="text-center space-y-4">
           <Calendar className="w-8 h-8 mx-auto animate-pulse text-accent" />
-          <p className="text-muted-foreground">Crafting your perfect day...</p>
+          <p className="text-muted-foreground animate-in fade-in slide-in-from-bottom-4 duration-700">
+            Crafting your perfect day...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-in fade-in slide-in-from-bottom-6 duration-500">
       {/* Command Center Header */}
       <div className="bg-card border-b border-border px-8 py-6">
         <div className="max-w-7xl mx-auto">
@@ -1781,11 +1783,11 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
       <div className="min-h-[calc(100vh-120px)]">
         
         {/* Left Column: The Conversation (70% width) */}
-        <div className="overflow-y-auto border-r border-border" style={{ width: '70vw', paddingRight: '0', marginRight: '30vw' }}>
+        <div className="overflow-y-auto border-r border-border animate-in slide-in-from-left-8 duration-700" style={{ width: '70vw', paddingRight: '0', marginRight: '30vw' }}>
           <div className="p-8 max-w-4xl mx-auto space-y-8">
             
             {/* Part A: AI Narrative Summary */}
-            <section className="space-y-4">
+            <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
               <div className="flex items-center gap-3 mb-4">
                 <Brain className="w-5 h-5 text-amber-500" />
                 <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
@@ -1833,7 +1835,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
             </section>
 
             {/* Part C: User Refinement Input */}
-            <section className="space-y-4">
+            <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '400ms' }}>
               <div className="flex items-center gap-3 mb-4">
                 <Sparkles className="w-5 h-5 text-amber-500" />
                 <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
@@ -1858,19 +1860,21 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                     onClick={handleInlineRefinement}
                     disabled={!refinementText.trim() || isRefining}
                     variant="outline"
-                    className="px-6"
+                    className="px-6 transition-all duration-300 ease-in-out"
                   >
-                    {isRefining ? (
-                      <>
-                        <Clock className="w-4 h-4 mr-2 animate-spin" />
-                        Refining...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Refine Plan
-                      </>
-                    )}
+                    <div className="flex items-center transition-all duration-200 ease-in-out">
+                      {isRefining ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin transition-transform duration-200" />
+                          <span className="animate-in fade-in slide-in-from-left-2 duration-300">Refining...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2 transition-all duration-200 ease-in-out" />
+                          <span className="transition-all duration-200 ease-in-out">Refine Plan</span>
+                        </>
+                      )}
+                    </div>
                   </Button>
                 </div>
               </div>
@@ -1920,6 +1924,11 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                         "Plan Saved Successfully!"
                       );
                       
+                      // Reset save state after brief success display
+                      setTimeout(() => {
+                        setPlanSaved(false);
+                      }, 3000); // Show "Plan Saved" for 3 seconds, then allow re-saving
+                      
                       // Trigger post-planning enrichment (scaffold generation)
                       // Get context briefing data from wizard state if available
                       const contextBriefing = wizardData?.contextBriefing?.briefing || {};
@@ -1934,17 +1943,19 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                     }
                   }}
                   size="lg"
-                  className="px-8 py-3 ml-auto"
+                  className="px-8 py-3 ml-auto transition-all duration-300 ease-in-out"
                   disabled={planSaved}
                 >
-                  {planSaved ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Plan Saved
-                    </>
-                  ) : (
-                    'Save Plan'
-                  )}
+                  <div className="flex items-center transition-all duration-200 ease-in-out">
+                    {planSaved ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 mr-2 text-green-600 animate-in fade-in zoom-in duration-300" />
+                        <span className="animate-in fade-in slide-in-from-left-2 duration-300">Plan Saved</span>
+                      </>
+                    ) : (
+                      <span className="transition-all duration-200 ease-in-out">Save Plan</span>  
+                    )}
+                  </div>
                 </Button>
               </div>
               
@@ -1973,22 +1984,24 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
         </div>
 
         {/* Right Column: The Visual Plan (30% width) */}
-        <div className="bg-muted/20 flex flex-col h-screen fixed right-0 top-0 w-[30vw]">
+        <div className="bg-muted/20 flex flex-col h-screen fixed right-0 top-0 w-[30vw] animate-in slide-in-from-right-8 duration-700" style={{ animationDelay: '300ms' }}>
           <div className="px-6 pt-6 pb-2 flex-shrink-0" style={{ height: '120px' }}>
             {/* Header space - matches main header height */}
           </div>
           
           <div ref={calendarRef} className="flex-1 px-6 pb-6 overflow-hidden">
             {plan?.blocks ? (
-              <PlanTimeline 
-                schedule={transformPlanToTimeline(plan)} 
-                context="command-center"
-                availableHeight={calendarHeight}
-              />
+              <div className="animate-in fade-in duration-500" key={JSON.stringify(plan.blocks)}>
+                <PlanTimeline 
+                  schedule={transformPlanToTimeline(plan)} 
+                  context="command-center"
+                  availableHeight={calendarHeight}
+                />
+              </div>
             ) : (
-              <div className="h-full flex items-center justify-center">
+              <div className="h-full flex items-center justify-center animate-in fade-in duration-300">
                 <div className="text-center space-y-4">
-                  <Calendar className="w-8 h-8 mx-auto text-muted-foreground" />
+                  <Calendar className="w-8 h-8 mx-auto text-muted-foreground animate-pulse" />
                   <p className="text-muted-foreground">
                     Your schedule will appear here
                   </p>
