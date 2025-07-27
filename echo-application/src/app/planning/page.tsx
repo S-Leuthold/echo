@@ -13,6 +13,7 @@ import { PlanTimeline } from "@/components/shared/PlanTimeline";
 import { PlanningModeDemo } from "@/components/shared/PlanningModeDemo";
 import { DynamicText, TimeAwareText, PlanningModeBadge, TimeContextDisplay, ConditionalPlanningContent, PlanningModeToggle } from "@/components/ui/dynamic-text";
 import { usePlanning } from "@/contexts/PlanningContext";
+import { ToastProvider, useToast } from "@/contexts/ToastContext";
 import { ChevronRight, ChevronLeft, Clock, Calendar, BookOpen, Heart, Brain, Sparkles, Mail, CheckCircle2, Info, Activity, Sun, Coffee, Car, Briefcase, NotebookText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -798,9 +799,11 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
           
           {/* Executive Summary - Most Prominent */}
           <section>
-            <div className="flex items-center gap-4 mb-8">
-              <Brain className="w-6 h-6 text-accent" />
-              <h2 className="text-2xl font-semibold text-foreground">Executive Summary</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <Brain className="w-5 h-5 text-amber-500" />
+              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                EXECUTIVE • SUMMARY
+              </h3>
             </div>
             {briefing?.executive_summary ? (
               <div className="prose prose-lg max-w-none">
@@ -817,9 +820,11 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
 
           {/* Email Summary */}
           <section>
-            <div className="flex items-center gap-4 mb-6">
-              <Mail className="w-5 h-5 text-accent" />
-              <h3 className="text-xl font-medium text-foreground">Email Summary</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <Mail className="w-5 h-5 text-amber-500" />
+              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                EMAIL • SUMMARY
+              </h3>
             </div>
             
             {/* Scrollable email container */}
@@ -914,9 +919,11 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
 
           {/* Commitments & Deadlines */}
           <section>
-            <div className="flex items-center gap-4 mb-6">
-              <Calendar className="w-5 h-5 text-accent" />
-              <h3 className="text-xl font-medium text-foreground">Commitments & Deadlines</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <Calendar className="w-5 h-5 text-amber-500" />
+              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                COMMITMENTS • DEADLINES
+              </h3>
             </div>
             
             {/* Scrollable commitments container */}
@@ -1022,9 +1029,11 @@ function ContextBriefingStep({ onNext, onPrevious }: WizardStepProps) {
 
           {/* Session Notes */}
           <section>
-            <div className="flex items-center gap-4 mb-6">
-              <NotebookText className="w-5 h-5 text-accent" />
-              <h3 className="text-xl font-medium text-foreground">Session Notes</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <NotebookText className="w-5 h-5 text-amber-500" />
+              <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                SESSION • NOTES
+              </h3>
             </div>
             
             {/* Scrollable session notes container */}
@@ -1517,58 +1526,14 @@ interface GeneratedPlanStepProps {
   isExistingPlan?: boolean;
 }
 
-// Save Plan Success Modal Component
-function SavePlanModal({ 
-  isOpen, 
-  onClose 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-}) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-serif flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-            Plan Saved Successfully!
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4 py-4">
-          <p className="text-muted-foreground">
-            Your schedule has been saved and is ready for tomorrow. 
-          </p>
-          
-          <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-            <p className="text-sm font-medium">What's Next?</p>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Schedule will appear in your Today view tomorrow</li>
-              <li>• You can refine or update at any time</li>
-              <li>• Session tracking will use these time blocks</li>
-            </ul>
-          </div>
-          
-          <div className="flex justify-end gap-3 pt-4">
-            <Button 
-              onClick={onClose}
-              className="px-6"
-            >
-              Got it!
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 
 function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, existingPlan, isExistingPlan }: GeneratedPlanStepProps) {
   const [plan, setPlan] = useState<{ blocks: any[]; narrative?: any; reasoning?: any } | null>(null);
   const [loading, setLoading] = useState(true);
   const [planSaved, setPlanSaved] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const { showSuccess, showError, showInfo } = useToast();
+  const { planningMode, timeContext } = usePlanning();
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentComplete, setEnrichmentComplete] = useState(false);
   const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
@@ -1589,7 +1554,16 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
     // Show refinement success feedback if changes were made
     if (refinedPlan.changes_made && refinedPlan.changes_made.length > 0) {
       console.log('Plan refinement changes:', refinedPlan.changes_made);
-      // TODO: Show toast notification with changes made
+      const changeCount = refinedPlan.changes_made.length;
+      showSuccess(
+        `Made ${changeCount} improvement${changeCount === 1 ? '' : 's'} to your schedule`,
+        "Plan Refined Successfully"
+      );
+    } else {
+      showInfo(
+        "Your plan has been updated based on your feedback",
+        "Plan Updated"
+      );
     }
   };
 
@@ -1623,7 +1597,10 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
       handleRefinementComplete(refinementResponse);
     } catch (error) {
       console.error('Plan refinement failed:', error);
-      // TODO: Add proper error handling/toast notification
+      showError(
+        "Unable to refine your plan right now. Please try again in a moment.",
+        "Refinement Failed"
+      );
     } finally {
       setIsRefining(false);
     }
@@ -1809,9 +1786,11 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
             
             {/* Part A: AI Narrative Summary */}
             <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Brain className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-semibold text-foreground">Summary</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <Brain className="w-5 h-5 text-amber-500" />
+                <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                  SUMMARY
+                </h3>
               </div>
               
               {plan?.narrative?.summary ? (
@@ -1855,9 +1834,11 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
 
             {/* Part C: User Refinement Input */}
             <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-medium text-foreground">Make Adjustments</h3>
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <h3 className="text-sm font-bold tracking-wider text-amber-500 uppercase">
+                  MAKE • ADJUSTMENTS
+                </h3>
               </div>
               
               <div className="space-y-4">
@@ -1895,62 +1876,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
               </div>
             </section>
 
-            {/* Success Messages */}
-            {planSaved && (
-              <section className="space-y-4">
-                <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span className="font-medium">Plan saved successfully!</span>
-                    </div>
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                      <DynamicText todayText="Your schedule is ready for the rest of today">
-                        Your schedule is ready for tomorrow
-                      </DynamicText>
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Enrichment Status */}
-                <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Brain className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                          Schedule Enhancement
-                        </h4>
-                      </div>
-                      
-                      {isEnriching && (
-                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                          <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                          <span className="text-sm">Generating AI-powered session insights...</span>
-                        </div>
-                      )}
-                      
-                      {enrichmentComplete && !isEnriching && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span className="text-sm font-medium">
-                              {enrichmentResults?.success 
-                                ? `Enhanced ${enrichmentResults.scaffolds_generated}/${enrichmentResults.total_blocks} sessions`
-                                : 'Enhancement completed'
-                              }
-                            </span>
-                          </div>
-                          <p className="text-xs text-blue-600 dark:text-blue-400">
-                            Your sessions now have AI-powered context and insights for better focus.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </section>
-            )}
             
             {/* Navigation */}
             <section className="space-y-4 pt-8 border-t border-border">
@@ -1969,29 +1894,44 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                 
                 <Button 
                   onClick={async () => {
-                    // Save the plan data
-                    const planData = {
-                      timestamp: new Date().toISOString(),
-                      blocks: plan?.blocks || [],
-                      narrative: plan?.narrative || {},
-                      metadata: {
-                        generated_at: new Date().toISOString(),
-                        wizard_completed: true
-                      }
-                    };
-                    
-                    // Store in localStorage for now (could be enhanced to save to server)
-                    localStorage.setItem('echo_current_plan', JSON.stringify(planData));
-                    
-                    // Mark plan as saved
-                    setPlanSaved(true);
-                    
-                    // Trigger post-planning enrichment (scaffold generation)
-                    // Get context briefing data from wizard state if available
-                    const contextBriefing = wizardData?.contextBriefing?.briefing || {};
-                    await generateScaffolds(planData, contextBriefing);
-                    
-                    setShowSaveModal(true);
+                    try {
+                      // Save the plan data
+                      const planData = {
+                        timestamp: new Date().toISOString(),
+                        blocks: plan?.blocks || [],
+                        narrative: plan?.narrative || {},
+                        metadata: {
+                          generated_at: new Date().toISOString(),
+                          wizard_completed: true
+                        }
+                      };
+                      
+                      // Store in localStorage for now (could be enhanced to save to server)
+                      localStorage.setItem('echo_current_plan', JSON.stringify(planData));
+                      
+                      // Mark plan as saved
+                      setPlanSaved(true);
+                      
+                      // Show success toast
+                      showSuccess(
+                        planningMode === 'today' 
+                          ? "Your schedule is ready for the rest of today" 
+                          : "Your schedule is ready for tomorrow",
+                        "Plan Saved Successfully!"
+                      );
+                      
+                      // Trigger post-planning enrichment (scaffold generation)
+                      // Get context briefing data from wizard state if available
+                      const contextBriefing = wizardData?.contextBriefing?.briefing || {};
+                      await generateScaffolds(planData, contextBriefing);
+                      
+                    } catch (error) {
+                      console.error('Failed to save plan:', error);
+                      showError(
+                        "There was an issue saving your plan. Please try again.",
+                        "Save Failed"
+                      );
+                    }
                   }}
                   size="lg"
                   className="px-8 py-3 ml-auto"
@@ -2058,12 +1998,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
           </div>
         </div>
       </div>
-      
-      {/* Save Plan Success Modal */}
-      <SavePlanModal 
-        isOpen={showSaveModal}
-        onClose={() => setShowSaveModal(false)}
-      />
     </div>
   );
 }
@@ -2292,18 +2226,20 @@ export default function PlanningWizard() {
   }
 
   return (
-    <div className="relative">
-      {/* Demo Toggle - Remove this in production */}
-      <div className="fixed top-4 right-4 z-50">
-        <Button onClick={() => setShowDemo(true)} variant="outline" size="sm">
-          🧪 Demo Planning Context
-        </Button>
+    <ToastProvider>
+      <div className="relative">
+        {/* Demo Toggle - Remove this in production */}
+        <div className="fixed top-4 right-4 z-50">
+          <Button onClick={() => setShowDemo(true)} variant="outline" size="sm">
+            🧪 Demo Planning Context
+          </Button>
+        </div>
+        
+        {/* Wizard Steps */}
+        <div className="transition-all duration-500 ease-in-out">
+          {renderCurrentStep()}
+        </div>
       </div>
-      
-      {/* Wizard Steps */}
-      <div className="transition-all duration-500 ease-in-out">
-        {renderCurrentStep()}
-      </div>
-    </div>
+    </ToastProvider>
   );
 }

@@ -1,0 +1,393 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails requiring action or response",
+      "calendar_conflicts": [],
+      "energy_patterns": "Energy level 7/10 indicates good capacity for focused work. Peak performance likely in morning hours with gradual decline through afternoon",
+      "strategic_priorities": [
+        "Existing plan loaded - need to maintain continuity",
+        "No specific tasks mentioned - opportunity for deep work or strategic planning"
+      ],
+      "time_constraints": [
+        "16-hour workday window (6am-10pm)",
+        "No fixed commitments - full flexibility for optimization"
+      ]
+    },
+    "scheduling_strategy": "With energy at 7/10 and no fixed constraints, I'll front-load cognitively demanding work in the morning when energy is highest. The existing plan reference suggests maintaining some continuity while optimizing for current energy state. I'll create 90-minute deep work blocks with strategic breaks to maintain momentum throughout the day.",
+    "energy_optimization": "Starting with high-energy tasks during 6-9am window when cognitive function peaks. Scheduling creative or strategic work for mid-morning (9-11am) when energy remains strong. Afternoon blocks (1-4pm) reserved for collaborative or administrative tasks that require less intense focus. Evening wind-down with planning and reflection.",
+    "priority_sequencing": "Without specific tasks, I'm prioritizing: 1) Deep focused work on echo project during peak hours, 2) Personal project development during creative mid-morning slot, 3) Administrative catch-up in lower-energy afternoon, 4) Strategic planning for tomorrow in evening reflection period.",
+    "recovery_planning": "Built-in 15-30 minute breaks between major work blocks to prevent burnout. Longer lunch break (12-1pm) for physical and mental reset. Evening buffer (8-10pm) allows for flexible wind-down without forcing productivity when energy naturally declines."
+  },
+  "narrative": {
+    "summary": "I've crafted your schedule around your solid energy level of 7, front-loading your most important work into the morning hours when you'll be sharpest. Since you have no fixed commitments today, I've created focused 90-minute blocks that align with your natural energy rhythms - starting with deep work on the echo project when your mind is freshest. I've also built in strategic breaks between sessions to help you maintain this energy throughout the day, with a gradual transition to lighter tasks in the afternoon. The evening includes time for planning tomorrow, ensuring you stay ahead without burning out.",
+    "questions": [
+      {
+        "question": "Would you like me to adjust the balance between echo and personal project time based on current priorities?",
+        "importance": "high",
+        "context": "Both projects are allocated time but I don't know their relative importance"
+      },
+      {
+        "question": "Do you prefer longer uninterrupted work blocks or shorter sessions with more frequent breaks?",
+        "importance": "low",
+        "context": "Current 90-minute blocks are optimal for focus but can be adjusted to your preference"
+      }
+    ]
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine & Planning",
+      "type": "anchor",
+      "note": "Start day with clarity - review priorities, hydrate, and set intentions for maximum productivity",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "08:00",
+      "title": "echo | Deep Work Session",
+      "type": "anchor",
+      "note": "Peak energy window - tackle most complex or important echo project tasks requiring deep focus",
+      "icon": "Brain",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "Movement Break",
+      "type": "flex",
+      "note": "Quick walk or stretch to refresh mind and maintain energy momentum",
+      "icon": "Activity",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:15",
+      "end": "09:45",
+      "title": "echo | Continued Development",
+      "type": "anchor",
+      "note": "Continue momentum on echo project while energy remains high",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:45",
+      "end": "10:00",
+      "title": "Break & Refuel",
+      "type": "flex",
+      "note": "Snack break and mental reset before switching contexts",
+      "icon": "Apple",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:30",
+      "title": "personal | Creative Work",
+      "type": "anchor",
+      "note": "Mid-morning creative energy ideal for personal project development or brainstorming",
+      "icon": "Lightbulb",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "title": "Email & Communication Check",
+      "type": "flex",
+      "note": "Handle any urgent communications before lunch break",
+      "icon": "Mail",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "title": "Lunch & Recharge",
+      "type": "fixed",
+      "note": "Proper break to refuel and reset for afternoon productivity",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "13:00",
+      "end": "14:30",
+      "title": "echo | Documentation/Testing",
+      "type": "flex",
+      "note": "Lower-intensity echo tasks that don't require peak cognitive load",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "14:30",
+      "end": "14:45",
+      "title": "Afternoon Break",
+      "type": "flex",
+      "note": "Combat post-lunch energy dip with movement or fresh air",
+      "icon": "Wind",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:45",
+      "end": "16:00",
+      "title": "personal | Administrative Tasks",
+      "type": "flex",
+      "note": "Handle personal project admin, planning, or lighter tasks",
+      "icon": "ClipboardList",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "16:00",
+      "end": "17:00",
+      "title": "Review & Organize",
+      "type": "flex",
+      "note": "Review day's progress, organize notes, update task lists",
+      "icon": "CheckSquare",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "title": "Flexible Work Block",
+      "type": "flex",
+      "note": "Buffer time for overflow tasks or additional focus on priority items",
+      "icon": "Clock",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "18:00",
+      "end": "19:00",
+      "title": "Dinner Break",
+      "type": "fixed",
+      "note": "Proper evening meal and mental break from work",
+      "icon": "Pizza",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "Light Work or Learning",
+      "type": "flex",
+      "note": "Optional light work, reading, or skill development if energy permits",
+      "icon": "BookOpen",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "21:00",
+      "title": "Tomorrow's Planning",
+      "type": "anchor",
+      "note": "Plan next day while today is fresh - set up for morning success",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "Wind Down",
+      "type": "flex",
+      "note": "Personal time to relax and prepare for quality sleep",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "Front-loaded schedule maximizes high-energy morning hours for deep work",
+    "90-minute focus blocks align with natural attention spans",
+    "Strategic breaks prevent energy depletion throughout the day",
+    "Flexible afternoon blocks accommodate natural energy decline",
+    "Evening planning ensures continuous momentum into tomorrow"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Morning Routine & Planning",
+      "type": "anchor",
+      "note": "Start day with clarity - review priorities, hydrate, and set intentions for maximum productivity",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "08:00",
+      "title": "echo | Deep Work Session",
+      "type": "anchor",
+      "note": "Peak energy window - tackle most complex or important echo project tasks requiring deep focus",
+      "icon": "Brain",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "Movement Break",
+      "type": "flex",
+      "note": "Quick walk or stretch to refresh mind and maintain energy momentum",
+      "icon": "Activity",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:15",
+      "end": "09:45",
+      "title": "echo | Continued Development",
+      "type": "anchor",
+      "note": "Continue momentum on echo project while energy remains high",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:45",
+      "end": "10:00",
+      "title": "Break & Refuel",
+      "type": "flex",
+      "note": "Snack break and mental reset before switching contexts",
+      "icon": "Apple",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:30",
+      "title": "personal | Creative Work",
+      "type": "anchor",
+      "note": "Mid-morning creative energy ideal for personal project development or brainstorming",
+      "icon": "Lightbulb",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "title": "Email & Communication Check",
+      "type": "flex",
+      "note": "Handle any urgent communications before lunch break",
+      "icon": "Mail",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "title": "Lunch & Recharge",
+      "type": "fixed",
+      "note": "Proper break to refuel and reset for afternoon productivity",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "13:00",
+      "end": "14:30",
+      "title": "echo | Documentation/Testing",
+      "type": "flex",
+      "note": "Lower-intensity echo tasks that don't require peak cognitive load",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "14:30",
+      "end": "14:45",
+      "title": "Afternoon Break",
+      "type": "flex",
+      "note": "Combat post-lunch energy dip with movement or fresh air",
+      "icon": "Wind",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:45",
+      "end": "16:00",
+      "title": "personal | Administrative Tasks",
+      "type": "flex",
+      "note": "Handle personal project admin, planning, or lighter tasks",
+      "icon": "ClipboardList",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "16:00",
+      "end": "17:00",
+      "title": "Review & Organize",
+      "type": "flex",
+      "note": "Review day's progress, organize notes, update task lists",
+      "icon": "CheckSquare",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "title": "Flexible Work Block",
+      "type": "flex",
+      "note": "Buffer time for overflow tasks or additional focus on priority items",
+      "icon": "Clock",
+      "priority": "low",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "18:00",
+      "end": "19:00",
+      "title": "Dinner Break",
+      "type": "fixed",
+      "note": "Proper evening meal and mental break from work",
+      "icon": "Pizza",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "title": "Light Work or Learning",
+      "type": "flex",
+      "note": "Optional light work, reading, or skill development if energy permits",
+      "icon": "BookOpen",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "20:00",
+      "end": "21:00",
+      "title": "Tomorrow's Planning",
+      "type": "anchor",
+      "note": "Plan next day while today is fresh - set up for morning success",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "21:00",
+      "end": "22:00",
+      "title": "Wind Down",
+      "type": "flex",
+      "note": "Personal time to relax and prepare for quality sleep",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T09:20:02.927478",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753626002"
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails to process",
+      "calendar_conflicts": [],
+      "energy_patterns": "Energy level 7/10 indicates good capacity for both physical activity (golf) and focused work (Echo dev). Should leverage morning energy for development before golf.",
+      "strategic_priorities": [
+        "Echo dev on project panel and database",
+        "Golf with Jacob at 11:10",
+        "House cleaning before Hunter returns at 10 PM",
+        "Meal planning and grocery shopping"
+      ],
+      "time_constraints": [
+        "Must leave by 10:00 for golf warmup",
+        "Golf at 11:10 (9 holes ~2.5 hours)",
+        "Hunter home at 10 PM - house must be clean"
+      ]
+    },
+    "scheduling_strategy": "Front-load Echo development in early morning when energy and focus are highest (6:00-9:30). Golf commitment creates a hard stop at 10:00. Afternoon reserved for household tasks, strategically ordering them to ensure house is clean well before Hunter's arrival.",
+    "energy_optimization": "Capitalize on morning mental clarity for complex database work. Golf provides active recovery mid-day. Schedule lower-cognitive tasks (cleaning, shopping) for afternoon when energy naturally dips. End with meal planning when mentally refreshed.",
+    "priority_sequencing": "1) Echo dev first (highest priority + best energy match), 2) Golf (fixed commitment), 3) House cleaning immediately after golf (critical for Hunter's return), 4) Grocery shopping, 5) Meal planning last (can be done relaxed at home)",
+    "recovery_planning": "Golf serves as active recovery between coding and household tasks. Built in transition time after golf for lunch/rest. Evening buffer after all tasks complete allows for relaxation before Hunter arrives."
+  },
+  "narrative": {
+    "summary": "I've crafted your schedule around your golf commitment at 11:10 and Hunter's 10 PM return. I prioritized Echo development in the early morning when your energy is fresh - giving you a solid 3.5-hour block for database work before golf. After golf, I've sequenced your household tasks strategically: cleaning first (ensuring it's done well before Hunter arrives), then grocery shopping, and finally meal planning at home. This flow respects your energy patterns while hitting all your objectives.",
+    "questions": [
+      {
+        "question": "Would you prefer to do meal planning before grocery shopping to create a targeted list?",
+        "importance": "low",
+        "context": "Could save time at the store but requires switching the task order"
+      }
+    ]
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Personal | Morning Routine",
+      "type": "anchor",
+      "note": "Start day with usual routine to build momentum",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "10:00",
+      "title": "Echo | Database & Project Panel Development",
+      "type": "flex",
+      "note": "Prime morning hours for complex development work. Hard stop at 10:00 for golf prep.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "title": "Personal | Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Leave for course, warm up, hit practice balls",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:30",
+      "end": "13:30",
+      "title": "Personal | Golf with Jacob Smyle",
+      "type": "fixed",
+      "note": "9 holes including warmup time. Great midday active break.",
+      "icon": "Trophy",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:00",
+      "title": "Personal | Lunch & Transition",
+      "type": "flex",
+      "note": "Quick meal and mental shift to afternoon tasks",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "title": "Personal | House Cleaning",
+      "type": "flex",
+      "note": "Priority task - ensure house is tidy for Hunter's return at 10 PM",
+      "icon": "Home",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "16:15",
+      "title": "Personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Get ingredients for upcoming meals",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "17:00",
+      "title": "Personal | Meal Planning",
+      "type": "flex",
+      "note": "Plan week's meals at home with groceries unpacked",
+      "icon": "BookOpen",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "22:00",
+      "title": "Personal | Evening Flex Time",
+      "type": "flex",
+      "note": "Dinner, relaxation, and buffer time before Hunter arrives",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "3.5-hour morning block maximizes high-energy time for Echo development",
+    "Golf creates natural break between cognitive and physical tasks",
+    "House cleaning scheduled early afternoon ensures completion before Hunter's arrival",
+    "5-hour evening buffer provides flexibility and stress-free wind-down"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "Personal | Morning Routine",
+      "type": "anchor",
+      "note": "Start day with usual routine to build momentum",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "10:00",
+      "title": "Echo | Database & Project Panel Development",
+      "type": "flex",
+      "note": "Prime morning hours for complex development work. Hard stop at 10:00 for golf prep.",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "title": "Personal | Golf Prep & Travel",
+      "type": "fixed",
+      "note": "Leave for course, warm up, hit practice balls",
+      "icon": "Car",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:30",
+      "end": "13:30",
+      "title": "Personal | Golf with Jacob Smyle",
+      "type": "fixed",
+      "note": "9 holes including warmup time. Great midday active break.",
+      "icon": "Trophy",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "13:30",
+      "end": "14:00",
+      "title": "Personal | Lunch & Transition",
+      "type": "flex",
+      "note": "Quick meal and mental shift to afternoon tasks",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "title": "Personal | House Cleaning",
+      "type": "flex",
+      "note": "Priority task - ensure house is tidy for Hunter's return at 10 PM",
+      "icon": "Home",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "16:15",
+      "title": "Personal | Grocery Shopping",
+      "type": "flex",
+      "note": "Get ingredients for upcoming meals",
+      "icon": "ShoppingCart",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "17:00",
+      "title": "Personal | Meal Planning",
+      "type": "flex",
+      "note": "Plan week's meals at home with groceries unpacked",
+      "icon": "BookOpen",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "22:00",
+      "title": "Personal | Evening Flex Time",
+      "type": "flex",
+      "note": "Dinner, relaxation, and buffer time before Hunter arrives",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T09:11:35.228443",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753625495"
+  }
+}

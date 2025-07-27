@@ -1,0 +1,337 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "No new emails to process - clear focus available for development work",
+      "calendar_conflicts": [
+        "Untitled Event with TBD timing needs clarification"
+      ],
+      "energy_patterns": "High energy (8/10) - optimal for complex technical work requiring deep focus",
+      "strategic_priorities": [
+        "Complete Plan Preview Command Center",
+        "Test two-column layout",
+        "Validate AI narrative generation"
+      ],
+      "time_constraints": [
+        "Fixed lunch at 12:30",
+        "16-hour workday window (6am-10pm)",
+        "Unknown calendar event timing"
+      ]
+    },
+    "scheduling_strategy": "Leverage high energy morning hours for complex implementation work. Front-load testing activities when cognitive capacity peaks. Build in buffer time around the undefined calendar event. Structure day with 90-minute deep work blocks followed by short breaks to maintain momentum.",
+    "energy_optimization": "Start with the most cognitively demanding task (Command Center implementation) during peak morning hours. Schedule layout testing mid-morning when visual acuity is sharp. Place AI validation after lunch when creative thinking often peaks. Include strategic breaks to sustain the high energy level throughout the day.",
+    "priority_sequencing": "1) Core implementation work first (highest complexity), 2) Layout testing (visual validation), 3) AI narrative validation (requires fresh perspective). This sequence ensures critical path items complete even if interruptions occur.",
+    "recovery_planning": "Built in 15-minute breaks after each deep work session. Extended lunch break for proper recovery. Evening wind-down period after 8pm to prevent burnout. Buffer zones around undefined event to adapt without stress."
+  },
+  "narrative": {
+    "summary": "I've crafted your schedule around your high energy level and the Command Center implementation priority. I'm front-loading the complex development work in your peak morning hours (6:30-11:30), giving you two solid 90-minute blocks for deep focus. I've positioned the layout testing right before lunch when you'll want a more visual task, and saved the AI narrative validation for the afternoon when creative thinking often flows best. I've also built in flexibility around that undefined calendar event - once you know the timing, we can adjust the surrounding blocks accordingly.",
+    "questions": [
+      {
+        "question": "What time is your 'Untitled Event' scheduled for? This will help me optimize the work blocks around it.",
+        "importance": "high",
+        "context": "Need to ensure deep work sessions don't conflict with this commitment"
+      },
+      {
+        "question": "Would you prefer to batch both testing activities together, or keep them separated as currently planned?",
+        "importance": "low",
+        "context": "Some developers prefer unified testing sessions for better context retention"
+      }
+    ]
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "personal | Morning Routine & Planning Review",
+      "type": "anchor",
+      "note": "Start strong - review implementation plan and set up development environment",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "08:00",
+      "title": "echo | Command Center Core Implementation",
+      "type": "anchor",
+      "note": "Peak energy window - tackle the most complex parts of the implementation",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "personal | Movement Break",
+      "type": "flex",
+      "note": "Quick walk or stretch to maintain energy levels",
+      "icon": "Activity",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:15",
+      "end": "09:45",
+      "title": "echo | Command Center Feature Development",
+      "type": "anchor",
+      "note": "Continue implementation - focus on component integration",
+      "icon": "Layers",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:45",
+      "end": "10:00",
+      "title": "personal | Break & Context Switch",
+      "type": "flex",
+      "note": "Prepare for testing phase - clear mind for quality assurance",
+      "icon": "RefreshCw",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:30",
+      "title": "echo | Two-Column Layout Testing",
+      "type": "anchor",
+      "note": "Systematic testing of new layout - document any issues found",
+      "icon": "Layout",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:30",
+      "end": "12:30",
+      "title": "personal | Lunch Prep & Buffer",
+      "type": "flex",
+      "note": "Transition time - wrap up morning work and prepare for lunch",
+      "icon": "Clock",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:30",
+      "end": "13:30",
+      "title": "personal | Lunch Break",
+      "type": "fixed",
+      "note": "Non-negotiable lunch time - proper break for sustained afternoon performance",
+      "icon": "Utensils",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "13:30",
+      "end": "15:00",
+      "title": "echo | AI Narrative Generation Validation",
+      "type": "anchor",
+      "note": "Test AI outputs - verify narrative quality and edge cases",
+      "icon": "Brain",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "15:15",
+      "title": "personal | Afternoon Break",
+      "type": "flex",
+      "note": "Recharge before final push - grab water and move around",
+      "icon": "Coffee",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "15:15",
+      "end": "16:45",
+      "title": "echo | Integration Testing & Bug Fixes",
+      "type": "anchor",
+      "note": "Address any issues found during testing - ensure smooth integration",
+      "icon": "Bug",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:45",
+      "end": "17:00",
+      "title": "personal | Daily Review & Tomorrow Prep",
+      "type": "flex",
+      "note": "Document progress and prepare handoff notes",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "20:00",
+      "title": "personal | Flex Time / Undefined Event",
+      "type": "flex",
+      "note": "Buffer for calendar event or additional work if needed",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "20:00",
+      "end": "22:00",
+      "title": "personal | Evening Wind-down",
+      "type": "flex",
+      "note": "Personal time - maintain work-life balance",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "High energy level (8) enables ambitious technical work - scheduled 4.5 hours of focused development",
+    "Unknown calendar event requires flexible afternoon structure",
+    "Testing activities separated to maintain focus and prevent context-switching fatigue",
+    "Strategic breaks every 90 minutes align with natural attention cycles",
+    "Evening buffer ensures sustainable pace despite long workday window"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "06:30",
+      "title": "personal | Morning Routine & Planning Review",
+      "type": "anchor",
+      "note": "Start strong - review implementation plan and set up development environment",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "06:30",
+      "end": "08:00",
+      "title": "echo | Command Center Core Implementation",
+      "type": "anchor",
+      "note": "Peak energy window - tackle the most complex parts of the implementation",
+      "icon": "Code",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "personal | Movement Break",
+      "type": "flex",
+      "note": "Quick walk or stretch to maintain energy levels",
+      "icon": "Activity",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:15",
+      "end": "09:45",
+      "title": "echo | Command Center Feature Development",
+      "type": "anchor",
+      "note": "Continue implementation - focus on component integration",
+      "icon": "Layers",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "09:45",
+      "end": "10:00",
+      "title": "personal | Break & Context Switch",
+      "type": "flex",
+      "note": "Prepare for testing phase - clear mind for quality assurance",
+      "icon": "RefreshCw",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "10:00",
+      "end": "11:30",
+      "title": "echo | Two-Column Layout Testing",
+      "type": "anchor",
+      "note": "Systematic testing of new layout - document any issues found",
+      "icon": "Layout",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:30",
+      "end": "12:30",
+      "title": "personal | Lunch Prep & Buffer",
+      "type": "flex",
+      "note": "Transition time - wrap up morning work and prepare for lunch",
+      "icon": "Clock",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:30",
+      "end": "13:30",
+      "title": "personal | Lunch Break",
+      "type": "fixed",
+      "note": "Non-negotiable lunch time - proper break for sustained afternoon performance",
+      "icon": "Utensils",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "13:30",
+      "end": "15:00",
+      "title": "echo | AI Narrative Generation Validation",
+      "type": "anchor",
+      "note": "Test AI outputs - verify narrative quality and edge cases",
+      "icon": "Brain",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:00",
+      "end": "15:15",
+      "title": "personal | Afternoon Break",
+      "type": "flex",
+      "note": "Recharge before final push - grab water and move around",
+      "icon": "Coffee",
+      "priority": "low",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "15:15",
+      "end": "16:45",
+      "title": "echo | Integration Testing & Bug Fixes",
+      "type": "anchor",
+      "note": "Address any issues found during testing - ensure smooth integration",
+      "icon": "Bug",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:45",
+      "end": "17:00",
+      "title": "personal | Daily Review & Tomorrow Prep",
+      "type": "flex",
+      "note": "Document progress and prepare handoff notes",
+      "icon": "FileText",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "17:00",
+      "end": "20:00",
+      "title": "personal | Flex Time / Undefined Event",
+      "type": "flex",
+      "note": "Buffer for calendar event or additional work if needed",
+      "icon": "Calendar",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "20:00",
+      "end": "22:00",
+      "title": "personal | Evening Wind-down",
+      "type": "flex",
+      "note": "Personal time - maintain work-life balance",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T09:09:50.858462",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753625390"
+  }
+}
