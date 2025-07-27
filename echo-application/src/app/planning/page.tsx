@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1574,6 +1574,8 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
   const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
   const [refinementText, setRefinementText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+  const [calendarHeight, setCalendarHeight] = useState(800); // For calendar height calculation
+  const calendarRef = useRef<HTMLDivElement>(null);
   const { planningMode, timeContext } = usePlanning();
 
   const handleRefinementComplete = (refinedPlan: any) => {
@@ -1626,6 +1628,33 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
       setIsRefining(false);
     }
   };
+
+  // Calendar height calculation like Today page
+  useEffect(() => {
+    const calculateHeight = () => {
+      const windowHeight = window.innerHeight;
+      
+      // Command Center layout: Header (120px) + padding (48px) = 168px reserved
+      const reservedSpace = 168;
+      const availableHeight = windowHeight - reservedSpace;
+      const finalHeight = Math.max(availableHeight, 700);
+      
+      setCalendarHeight(finalHeight);
+    };
+    
+    // Initial calculation and multiple attempts to ensure it works
+    calculateHeight(); // Immediate
+    const timer1 = setTimeout(calculateHeight, 100);
+    const timer2 = setTimeout(calculateHeight, 500); // Additional attempt
+    
+    window.addEventListener('resize', calculateHeight);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      window.removeEventListener('resize', calculateHeight);
+    };
+  }, []);
 
   const generateScaffolds = async (planData: any, contextBriefing: any) => {
     try {
@@ -1771,25 +1800,49 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
         </div>
       </div>
 
-      {/* Command Center Grid Layout */}
-      <div className="grid grid-cols-10 gap-0 min-h-[calc(100vh-120px)]">
+      {/* Command Center Layout */}
+      <div className="min-h-[calc(100vh-120px)]">
         
         {/* Left Column: The Conversation (70% width) */}
-        <div className="col-span-7 overflow-y-auto border-r border-border">
+        <div className="overflow-y-auto border-r border-border" style={{ width: '70vw', paddingRight: '0', marginRight: '30vw' }}>
           <div className="p-8 max-w-4xl mx-auto space-y-8">
             
             {/* Part A: AI Narrative Summary */}
             <section className="space-y-4">
               <div className="flex items-center gap-3">
                 <Brain className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-semibold text-foreground">AI Planning Summary</h2>
+                <h2 className="text-lg font-semibold text-foreground">Summary</h2>
               </div>
               
               {plan?.narrative?.summary ? (
-                <div className="prose prose-foreground max-w-none">
+                <div className="prose prose-foreground max-w-none space-y-6">
                   <p className="text-foreground leading-relaxed text-base">
                     {plan.narrative.summary}
                   </p>
+                  
+                  {/* Integrated AI Questions as natural prompts */}
+                  {plan?.narrative?.questions && plan.narrative.questions.length > 0 && (
+                    <div className="space-y-3 pt-4 border-t border-border/30">
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                        A few things I'm wondering about:
+                      </p>
+                      {plan.narrative.questions.map((question: any, index: number) => (
+                        <div key={index} className="text-foreground leading-relaxed">
+                          <p className="italic text-muted-foreground">
+                            • {question.question}
+                          </p>
+                          {question.context && (
+                            <p className="text-sm text-muted-foreground/70 ml-3 mt-1">
+                              {question.context}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      <p className="text-sm text-muted-foreground/70 italic pt-2">
+                        Feel free to address any of these in the refinement box below, or save your plan as-is.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-muted/30 border border-border rounded-lg p-6">
@@ -1799,54 +1852,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                 </div>
               )}
             </section>
-
-            {/* Part B: Optional AI Questions */}
-            {plan?.narrative?.questions && plan.narrative.questions.length > 0 && (
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5 text-accent" />
-                  <h3 className="text-lg font-medium text-foreground">Questions & Suggestions</h3>
-                </div>
-                
-                <div className="space-y-3">
-                  {plan.narrative.questions.map((question: any, index: number) => {
-                    const isHighImportance = question.importance === 'high';
-                    return (
-                      <div 
-                        key={index}
-                        className={`border rounded-lg p-4 ${
-                          isHighImportance 
-                            ? 'border-accent bg-accent/5' 
-                            : 'border-border bg-muted/20'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {isHighImportance ? (
-                            <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                          ) : (
-                            <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          )}
-                          <div className="space-y-2">
-                            <p className={`font-medium ${isHighImportance ? 'text-accent' : 'text-foreground'}`}>
-                              {question.question}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {question.context}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="bg-muted/20 border border-border rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">
-                    💡 These are optional considerations. You can ignore them and save your plan immediately, or use the refinement box below to make adjustments.
-                  </p>
-                </div>
-              </section>
-            )}
 
             {/* Part C: User Refinement Input */}
             <section className="space-y-4">
@@ -1871,6 +1876,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                   <Button
                     onClick={handleInlineRefinement}
                     disabled={!refinementText.trim() || isRefining}
+                    variant="outline"
                     className="px-6"
                   >
                     {isRefining ? (
@@ -1881,7 +1887,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 mr-2" />
-                        ✨ Refine Plan
+                        Refine Plan
                       </>
                     )}
                   </Button>
@@ -2027,12 +2033,17 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
         </div>
 
         {/* Right Column: The Visual Plan (30% width) */}
-        <div className="col-span-3 bg-muted/20">
-          <div className="p-6 h-full">
+        <div className="bg-muted/20 flex flex-col h-screen fixed right-0 top-0 w-[30vw]">
+          <div className="px-6 pt-6 pb-2 flex-shrink-0" style={{ height: '120px' }}>
+            {/* Header space - matches main header height */}
+          </div>
+          
+          <div ref={calendarRef} className="flex-1 px-6 pb-6 overflow-hidden">
             {plan?.blocks ? (
               <PlanTimeline 
                 schedule={transformPlanToTimeline(plan)} 
                 context="command-center"
+                availableHeight={calendarHeight}
               />
             ) : (
               <div className="h-full flex items-center justify-center">

@@ -63,7 +63,7 @@ class AIQuestion(BaseModel):
 
 class PlanNarrative(BaseModel):
     """First-person narrative explaining the planning decisions."""
-    summary: str = Field(max_length=800, description="First-person explanation of key planning decisions")
+    summary: str = Field(max_length=1200, description="Conversational first-person explanation of key planning decisions in a trusted advisor tone")
     questions: List[AIQuestion] = Field(max_length=3, description="Optional clarifying questions for the user")
 
 class UnifiedPlanResponse(BaseModel):
@@ -130,12 +130,14 @@ Design the optimal daily flow:
 - **REQUIRED**: Plan a dedicated 45-minute "Email & Communications" block in the afternoon (1-5 PM) for processing action items, responses, and reminders - this block MUST be exactly 45 minutes, never longer
 
 ### Step 4: Narrative Generation
-Create a compelling first-person narrative that:
-- Explains your key planning decisions in a conversational, first-person voice ("I" statements)
-- Highlights the strategic reasoning behind major time blocks
-- Connects your choices to the user's energy levels and priorities
-- Demonstrates understanding of their context and constraints
-- Keeps the tone collaborative and intelligent, like a trusted advisor
+Create a compelling first-person narrative in a warm, trusted advisor tone that:
+- Explains your key planning decisions conversationally using "I" statements ("I've placed your most important work..." "I noticed you mentioned...")
+- Shows genuine understanding of their context and challenges ("Given that you're feeling energetic today..." "Since you mentioned wanting to...")
+- Highlights strategic reasoning in accessible language, not jargon
+- Connects decisions to their energy, priorities, and constraints naturally
+- Uses a supportive, collaborative tone - like a smart colleague who's got their back
+- Feels personal and thoughtful, avoiding robotic or formulaic language
+- Should be substantial (3-4 paragraphs) to feel comprehensive and caring
 
 ### Step 5: Question Generation (Optional)
 If appropriate, pose 1-3 thoughtful questions that:
@@ -501,11 +503,13 @@ Using the Chain-of-Thought reasoning process, analyze this context comprehensive
 
 Think step by step through your analysis, then provide the structured planning response.
 
-**NARRATIVE REQUIREMENTS**: In the "narrative.summary" field, write as Sam's planning assistant using first-person voice:
-- Start with "I've crafted your schedule around..." or similar
-- Explain 2-3 key decisions you made and why
-- Reference specific constraints or priorities you accommodated
-- Keep it conversational and collaborative, like talking to a colleague
+**NARRATIVE REQUIREMENTS**: In the "narrative.summary" field, write as Sam's trusted planning advisor using warm, first-person voice:
+- Write 3-4 substantial paragraphs showing genuine care and understanding
+- Start naturally ("I've taken a close look at your day and..." or "Given your energy level and priorities...")
+- Explain key decisions with reasoning, not just what you did but why it makes sense
+- Reference their specific context, energy, and constraints with empathy
+- Use conversational, supportive language - like a thoughtful colleague who understands their challenges
+- Avoid robotic phrases; sound human and personally invested in their success
 
 **QUESTION REQUIREMENTS**: If you have suggestions or need clarification, add 1-3 questions:
 - HIGH importance: conflicts, timing issues, or critical optimization opportunities  
