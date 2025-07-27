@@ -1846,12 +1846,13 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                   className="min-h-[120px] text-base leading-relaxed border-border/50 focus:border-accent resize-none"
                 />
                 
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground/70 italic">
                     Changes will update your schedule instantly while preserving your core requirements.
                   </p>
                   
-                  <Button
+                  <div className="flex justify-end">
+                    <Button
                     onClick={handleInlineRefinement}
                     disabled={!refinementText.trim() || isRefining}
                     variant="outline"
