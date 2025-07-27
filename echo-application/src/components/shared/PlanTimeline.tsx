@@ -160,11 +160,13 @@ export function PlanTimeline({
       const containerBorders = 2; // border-border top + bottom (1px each)
       const totalReservedSpace = titleSpace + containerBorders;
       
-      // For command-center context, force static full-day view
+      // For command-center context, use full viewport height like Today page
       let finalAvailableHeight;
       if (context === 'command-center') {
-        // Force a standardized height for command center right column
-        finalAvailableHeight = Math.min(window.innerHeight - 200, 800); // Cap at 800px for consistency
+        // Use availableHeight if provided and reasonable, otherwise calculate from viewport
+        finalAvailableHeight = (availableHeight && availableHeight > 200) 
+          ? availableHeight 
+          : window.innerHeight - 168; // Fallback: viewport minus header space (120px + 48px padding)
       } else {
         // Use availableHeight if provided and reasonable, otherwise calculate from viewport
         finalAvailableHeight = (availableHeight && availableHeight > 200) 

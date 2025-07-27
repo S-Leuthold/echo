@@ -1441,8 +1441,8 @@ const transformPlanToTimeline = (planData: any) => {
     const endMinutes = endTime.hours * 60 + endTime.minutes;
     const duration = endMinutes - startMinutes;
     
-    const timeCategory = mapBlockTypeToCategory(block.type, block.label);
-    const IconComponent = getBlockIcon(block.label, timeCategory);
+    const timeCategory = mapBlockTypeToCategory(block.type, block.title);
+    const IconComponent = getBlockIcon(block.title, timeCategory);
     
     // Check if this block is from user config (anchor/fixed) vs AI-generated (flex)
     const isConfigBlock = block.type === 'anchor' || block.type === 'fixed';
@@ -1451,7 +1451,7 @@ const transformPlanToTimeline = (planData: any) => {
       id: `block-${index}`,
       startTime: block.start.substring(0, 5), // Format as HH:MM
       endTime: block.end.substring(0, 5),
-      label: block.label,
+      label: block.title,
       timeCategory,
       icon: IconComponent,
       duration: `${Math.floor(duration / 60)}h ${duration % 60}m`,
