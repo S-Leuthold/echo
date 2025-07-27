@@ -1561,43 +1561,49 @@ function SavePlanModal({
   );
 }
 
-// Plan Refinement Modal Component
-function PlanRefinementModal({ 
-  currentPlan, 
-  onRefinementComplete 
-}: { 
-  currentPlan: any; 
-  onRefinementComplete: (refinedPlan: any) => void; 
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [refinementRequest, setRefinementRequest] = useState("");
-  const [isRefining, setIsRefining] = useState(false);
 
-  const handleRefinePlan = async () => {
-    if (!refinementRequest.trim()) return;
+function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlanStepProps) {
+  const [plan, setPlan] = useState<{ blocks: any[]; narrative?: any; reasoning?: any } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [planSaved, setPlanSaved] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentComplete, setEnrichmentComplete] = useState(false);
+  const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
+  const [refinementText, setRefinementText] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
+  const { planningMode, timeContext } = usePlanning();
+
+  const handleRefinementComplete = (refinedPlan: any) => {
+    console.log('Plan refinement completed:', refinedPlan);
+    setPlan(refinedPlan);
+    // Reset save status since plan has changed
+    setPlanSaved(false);
+    setEnrichmentComplete(false);
+    setRefinementText(""); // Clear refinement input
+    
+    // Show refinement success feedback if changes were made
+    if (refinedPlan.changes_made && refinedPlan.changes_made.length > 0) {
+      console.log('Plan refinement changes:', refinedPlan.changes_made);
+      // TODO: Show toast notification with changes made
+    }
+  };
+
+  const handleInlineRefinement = async () => {
+    if (!refinementText.trim()) return;
 
     setIsRefining(true);
     
     try {
-      // Get the original planning data from session storage or reconstruct it
-      const originalRequest = {
-        most_important: "Refinement of existing plan",
-        todos: [],
-        energy_level: "7",
-        non_negotiables: "",
-        avoid_today: "",
-        fixed_events: []
-      };
-
       // Use the unified planning endpoint with refinement instructions
       const response = await fetch('http://localhost:8000/plan-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          most_important: `PLAN REFINEMENT: ${refinementRequest}. IMPORTANT: This is a refinement request that can override ALL existing constraints including config anchors and fixed blocks. Prioritize the user's refinement request above all other constraints.`,
-          todos: [`Apply this refinement: ${refinementRequest}`],
+          most_important: `PLAN REFINEMENT: ${refinementText}. IMPORTANT: This is a refinement request that can override ALL existing constraints including config anchors and fixed blocks. Prioritize the user's refinement request above all other constraints.`,
+          todos: [`Apply this refinement: ${refinementText}`],
           energy_level: "7",
-          non_negotiables: `User refinement request: ${refinementRequest}`,
+          non_negotiables: `User refinement request: ${refinementText}`,
           avoid_today: "",
           fixed_events: [],
           planning_mode: planningMode,
@@ -1610,105 +1616,12 @@ function PlanRefinementModal({
       }
 
       const refinementResponse = await response.json();
-      
-      // Use the response directly as it's in the expected format
-      const refinedPlan = refinementResponse;
-      
-      onRefinementComplete(refinedPlan);
-      setIsOpen(false);
-      setRefinementRequest("");
+      handleRefinementComplete(refinementResponse);
     } catch (error) {
       console.error('Plan refinement failed:', error);
       // TODO: Add proper error handling/toast notification
     } finally {
       setIsRefining(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="outline"
-          size="lg"
-          className="px-8 py-3"
-        >
-          <Sparkles className="w-4 h-4 mr-2" />
-          Refine Plan
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-serif">Refine Your Plan</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4 py-4">
-          <p className="text-muted-foreground">
-            Tell me what you'd like to change about your schedule. I can adjust timing, add tasks, 
-            move things around, or make any other modifications.
-          </p>
-          
-          <Textarea
-            value={refinementRequest}
-            onChange={(e) => setRefinementRequest(e.target.value)}
-            placeholder="Example: 'Move the Echo work to earlier in the day and add a 30-minute break after lunch' or 'I need more time for email processing' or 'Make my gym session longer'"
-            className="min-h-[120px] text-base leading-relaxed"
-            autoFocus
-          />
-          
-          <div className="flex justify-end gap-3 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsOpen(false)}
-              disabled={isRefining}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleRefinePlan}
-              disabled={!refinementRequest.trim() || isRefining}
-              className="px-6"
-            >
-              {isRefining ? (
-                <>
-                  <Clock className="w-4 h-4 mr-2 animate-spin" />
-                  Refining...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Apply Changes
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlanStepProps) {
-  const [plan, setPlan] = useState<{ blocks: any[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [planSaved, setPlanSaved] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [isEnriching, setIsEnriching] = useState(false);
-  const [enrichmentComplete, setEnrichmentComplete] = useState(false);
-  const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
-  const { planningMode } = usePlanning();
-
-  const handleRefinementComplete = (refinedPlan: any) => {
-    console.log('Plan refinement completed:', refinedPlan);
-    setPlan(refinedPlan);
-    // Reset save status since plan has changed
-    setPlanSaved(false);
-    setEnrichmentComplete(false);
-    
-    // Show refinement success feedback if changes were made
-    if (refinedPlan.changes_made && refinedPlan.changes_made.length > 0) {
-      console.log('Plan refinement changes:', refinedPlan.changes_made);
-      // TODO: Show toast notification with changes made
     }
   };
 
@@ -1829,155 +1742,273 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
   }
 
   return (
-    <div className="min-h-screen p-8 bg-background">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl font-serif font-light text-foreground">
+    <div className="min-h-screen bg-background">
+      {/* Command Center Header */}
+      <div className="bg-card border-b border-border px-8 py-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl font-serif font-light text-foreground">
             <DynamicText todayText="Your Same-Day Plan">
               Tomorrow's Plan
             </DynamicText>
           </h1>
-          <p className="text-muted-foreground">
-            <DynamicText todayText="Your intelligent schedule for the remaining day is ready">
-              Your intelligent schedule is ready
+          <p className="text-sm text-muted-foreground mt-1">
+            <DynamicText todayText="Review your intelligent schedule for the remaining day">
+              Review your intelligent schedule and make any adjustments
             </DynamicText>
           </p>
         </div>
+      </div>
 
-        {/* Visual Timeline Display */}
-        {plan?.blocks && (
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
+      {/* Command Center Grid Layout */}
+      <div className="grid grid-cols-10 gap-0 min-h-[calc(100vh-120px)]">
+        
+        {/* Left Column: The Conversation (70% width) */}
+        <div className="col-span-7 overflow-y-auto border-r border-border">
+          <div className="p-8 max-w-4xl mx-auto space-y-8">
+            
+            {/* Part A: AI Narrative Summary */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Brain className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-semibold text-foreground">AI Planning Summary</h2>
+              </div>
+              
+              {plan?.narrative?.summary ? (
+                <div className="prose prose-foreground max-w-none">
+                  <p className="text-foreground leading-relaxed text-base">
+                    {plan.narrative.summary}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-muted/30 border border-border rounded-lg p-6">
+                  <p className="text-muted-foreground italic">
+                    Your AI assistant is analyzing your requirements and will provide a detailed explanation of the scheduling decisions once the plan is generated.
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {/* Part B: Optional AI Questions */}
+            {plan?.narrative?.questions && plan.narrative.questions.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-accent" />
+                  <h3 className="text-lg font-medium text-foreground">Questions & Suggestions</h3>
+                </div>
+                
+                <div className="space-y-3">
+                  {plan.narrative.questions.map((question: any, index: number) => {
+                    const isHighImportance = question.importance === 'high';
+                    return (
+                      <div 
+                        key={index}
+                        className={`border rounded-lg p-4 ${
+                          isHighImportance 
+                            ? 'border-accent bg-accent/5' 
+                            : 'border-border bg-muted/20'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {isHighImportance ? (
+                            <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                          ) : (
+                            <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="space-y-2">
+                            <p className={`font-medium ${isHighImportance ? 'text-accent' : 'text-foreground'}`}>
+                              {question.question}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {question.context}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="bg-muted/20 border border-border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">
+                    💡 These are optional considerations. You can ignore them and save your plan immediately, or use the refinement box below to make adjustments.
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {/* Part C: User Refinement Input */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <h3 className="text-lg font-medium text-foreground">Make Adjustments</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <Textarea
+                  value={refinementText}
+                  onChange={(e) => setRefinementText(e.target.value)}
+                  placeholder="Tell me what you'd like to change about your schedule. For example: 'Move the deep work block to earlier in the day' or 'Add more time for email processing' or 'I need a longer break after lunch'"
+                  className="min-h-[120px] text-base leading-relaxed border-border/50 focus:border-accent resize-none"
+                />
+                
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-muted-foreground">
+                    Changes will update your schedule instantly while preserving your core requirements.
+                  </p>
+                  
+                  <Button
+                    onClick={handleInlineRefinement}
+                    disabled={!refinementText.trim() || isRefining}
+                    className="px-6"
+                  >
+                    {isRefining ? (
+                      <>
+                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                        Refining...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        ✨ Refine Plan
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            {/* Success Messages */}
+            {planSaved && (
+              <section className="space-y-4">
+                <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span className="font-medium">Plan saved successfully!</span>
+                    </div>
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      <DynamicText todayText="Your schedule is ready for the rest of today">
+                        Your schedule is ready for tomorrow
+                      </DynamicText>
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Enrichment Status */}
+                <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Brain className="w-4 h-4 text-blue-600" />
+                        <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                          Schedule Enhancement
+                        </h4>
+                      </div>
+                      
+                      {isEnriching && (
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm">Generating AI-powered session insights...</span>
+                        </div>
+                      )}
+                      
+                      {enrichmentComplete && !isEnriching && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span className="text-sm font-medium">
+                              {enrichmentResults?.success 
+                                ? `Enhanced ${enrichmentResults.scaffolds_generated}/${enrichmentResults.total_blocks} sessions`
+                                : 'Enhancement completed'
+                              }
+                            </span>
+                          </div>
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Your sessions now have AI-powered context and insights for better focus.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+            
+            {/* Navigation */}
+            <section className="flex justify-between items-center pt-8 border-t border-border">
+              {onPrevious && (
+                <Button 
+                  onClick={onPrevious}
+                  size="lg"
+                  variant="outline"
+                  className="px-6 py-3"
+                >
+                  <ChevronLeft className="w-5 h-5 mr-2" />
+                  Back
+                </Button>
+              )}
+              
+              <Button 
+                onClick={async () => {
+                  // Save the plan data
+                  const planData = {
+                    timestamp: new Date().toISOString(),
+                    blocks: plan?.blocks || [],
+                    narrative: plan?.narrative || {},
+                    metadata: {
+                      generated_at: new Date().toISOString(),
+                      wizard_completed: true
+                    }
+                  };
+                  
+                  // Store in localStorage for now (could be enhanced to save to server)
+                  localStorage.setItem('echo_current_plan', JSON.stringify(planData));
+                  
+                  // Mark plan as saved
+                  setPlanSaved(true);
+                  
+                  // Trigger post-planning enrichment (scaffold generation)
+                  // Get context briefing data from wizard state if available
+                  const contextBriefing = wizardData?.contextBriefing?.briefing || {};
+                  await generateScaffolds(planData, contextBriefing);
+                  
+                  setShowSaveModal(true);
+                }}
+                size="lg"
+                className="px-8 py-3 ml-auto"
+                disabled={planSaved}
+              >
+                {planSaved ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Plan Saved
+                  </>
+                ) : (
+                  'Save Plan'
+                )}
+              </Button>
+            </section>
+          </div>
+        </div>
+
+        {/* Right Column: The Visual Plan (30% width) */}
+        <div className="col-span-3 bg-muted/20">
+          <div className="p-6 h-full">
+            {plan?.blocks ? (
               <PlanTimeline 
                 schedule={transformPlanToTimeline(plan)} 
-                context="planning"
+                context="command-center"
               />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Success Message */}
-        {planSaved && (
-          <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
-            <CardContent className="p-6 text-center">
-              <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="font-medium">Plan saved successfully!</span>
-              </div>
-              <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                <DynamicText todayText="Your schedule is ready for the rest of today">
-                  Your schedule is ready for tomorrow
-                </DynamicText>
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Enrichment Status */}
-        {planSaved && (
-          <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-center gap-3">
-                  <Brain className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                    Schedule Enrichment
-                  </h3>
-                </div>
-                
-                {/* Status */}
-                <div className="space-y-3">
-                  {isEnriching && (
-                    <div className="flex items-center gap-3 text-blue-700 dark:text-blue-300">
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Generating AI-powered session insights...</span>
-                    </div>
-                  )}
-                  
-                  {enrichmentComplete && !isEnriching && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {enrichmentResults?.success 
-                            ? `Enhanced ${enrichmentResults.scaffolds_generated}/${enrichmentResults.total_blocks} sessions`
-                            : 'Enrichment completed with fallback'
-                          }
-                        </span>
-                      </div>
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                        Your sessions now have AI-powered context and insights for better focus.
-                      </p>
-                    </div>
-                  )}
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <Calendar className="w-8 h-8 mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    Your schedule will appear here
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Navigation and Actions */}
-        <div className="flex justify-between items-center pt-8">
-          {onPrevious && (
-            <Button 
-              onClick={onPrevious}
-              size="lg"
-              variant="outline"
-              className="px-6 py-3"
-            >
-              <ChevronLeft className="w-5 h-5 mr-2" />
-              Back
-            </Button>
-          )}
-          
-          <div className="flex gap-4 ml-auto">
-            <PlanRefinementModal 
-              currentPlan={plan}
-              onRefinementComplete={handleRefinementComplete}
-            />
-            
-            <Button 
-              onClick={async () => {
-                // Save the plan data
-                const planData = {
-                  timestamp: new Date().toISOString(),
-                  blocks: plan?.blocks || [],
-                  metadata: {
-                    generated_at: new Date().toISOString(),
-                    wizard_completed: true
-                  }
-                };
-                
-                // Store in localStorage for now (could be enhanced to save to server)
-                localStorage.setItem('echo_current_plan', JSON.stringify(planData));
-                
-                // Mark plan as saved
-                setPlanSaved(true);
-                
-                // Trigger post-planning enrichment (scaffold generation)
-                // Get context briefing data from wizard state if available
-                const contextBriefing = wizardData?.contextBriefing?.briefing || {};
-                await generateScaffolds(planData, contextBriefing);
-                
-                setShowSaveModal(true);
-              }}
-              size="lg"
-              className="px-8 py-3"
-              disabled={planSaved}
-            >
-              {planSaved ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Plan Saved
-                </>
-              ) : (
-                'Save Plan'
-              )}
-            </Button>
+            )}
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Info } from "lucide-react";
 // Enhanced PlanTimeline with perfect-fit calculations and today context support
 interface PlanTimelineProps {
   schedule: any[];
-  context?: 'planning' | 'today';
+  context?: 'planning' | 'today' | 'command-center';
   availableHeight?: number; // For perfect-fit calculations in today context
   currentTime?: Date; // For real-time features in today context
 }
@@ -141,7 +141,7 @@ export function PlanTimeline({
 
   // Dynamic timeline calculations based on actual schedule
   useEffect(() => {
-    if (context === 'today') {
+    if (context === 'today' || context === 'command-center') {
       // Use config-based time range if available, otherwise fall back to dynamic calculation
       let timeRange;
       if (userConfig) {
@@ -160,14 +160,19 @@ export function PlanTimeline({
       const containerBorders = 2; // border-border top + bottom (1px each)
       const totalReservedSpace = titleSpace + containerBorders;
       
-      // Use availableHeight if provided and reasonable, otherwise calculate from viewport
-      const finalAvailableHeight = (availableHeight && availableHeight > 200) 
-        ? availableHeight 
-        : window.innerHeight - 128; // Fallback: viewport minus header space
+      // For command-center context, force static full-day view
+      let finalAvailableHeight;
+      if (context === 'command-center') {
+        // Force a standardized height for command center right column
+        finalAvailableHeight = Math.min(window.innerHeight - 200, 800); // Cap at 800px for consistency
+      } else {
+        // Use availableHeight if provided and reasonable, otherwise calculate from viewport
+        finalAvailableHeight = (availableHeight && availableHeight > 200) 
+          ? availableHeight 
+          : window.innerHeight - 128; // Fallback: viewport minus header space
+      }
         
-      const usableHeight = Math.max(finalAvailableHeight - totalReservedSpace, 700);
-      
-      
+      const usableHeight = Math.max(finalAvailableHeight - totalReservedSpace, 600);
       
       // Calculate perfect-fit scale factor based on actual schedule needs
       const rawScaleFactor = usableHeight / TOTAL_DAY_DURATION;
@@ -181,24 +186,26 @@ export function PlanTimeline({
       const SCALE_FACTOR = Math.max(0.6, Math.min(targetScaleFactor, 2.5));
       const TIMELINE_HEIGHT = TOTAL_DAY_DURATION * SCALE_FACTOR;
       
-      // console.log('Timeline sizing:', {
-      //   usableHeight,
-      //   dayDuration: TOTAL_DAY_DURATION,
-      //   targetRange,
-      //   scaleFactor: SCALE_FACTOR,
-      //   finalHeight: TIMELINE_HEIGHT
-      // });
-      
-      
-      // Dynamic timeline configuration completed
-      
-      setConfig({
-        SCALE_FACTOR,
-        DAY_START_MINUTES,
-        DAY_END_MINUTES,
-        TOTAL_DAY_DURATION,
-        TIMELINE_HEIGHT
-      });
+      // For command-center, ensure the timeline fits exactly in the viewport
+      if (context === 'command-center') {
+        // Force fit within the right column
+        const commandCenterScaleFactor = usableHeight / TOTAL_DAY_DURATION;
+        setConfig({
+          SCALE_FACTOR: Math.max(0.5, commandCenterScaleFactor),
+          DAY_START_MINUTES,
+          DAY_END_MINUTES,
+          TOTAL_DAY_DURATION,
+          TIMELINE_HEIGHT: usableHeight
+        });
+      } else {
+        setConfig({
+          SCALE_FACTOR,
+          DAY_START_MINUTES,
+          DAY_END_MINUTES,
+          TOTAL_DAY_DURATION,
+          TIMELINE_HEIGHT
+        });
+      }
     } else if (context === 'planning') {
       // For planning context, use simpler default configuration
       setConfig({
@@ -314,11 +321,11 @@ export function PlanTimeline({
     <TooltipProvider>
       <div className="relative">
         <h2 className="text-lg font-semibold text-foreground mb-6">
-          {context === 'today' ? "Today's Schedule" : "Your Intelligent Schedule"}
+          {context === 'today' ? "Today's Schedule" : context === 'command-center' ? "The Visual Plan" : "Your Intelligent Schedule"}
         </h2>
         
         
-        {/* Timeline container - scrollable for planning, perfect-fit for today */}
+        {/* Timeline container - scrollable for planning, perfect-fit for today/command-center */}
         <div className={`relative ${
           context === 'planning' 
             ? 'h-[65vh] overflow-y-auto' 

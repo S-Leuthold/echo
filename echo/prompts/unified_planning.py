@@ -55,9 +55,21 @@ class PlanningReasoning(BaseModel):
     priority_sequencing: str = Field(max_length=600, description="Rationale for task order and timing")
     recovery_planning: str = Field(max_length=600, description="How breaks and transitions are positioned")
 
+class AIQuestion(BaseModel):
+    """AI-generated question for user consideration."""
+    question: str = Field(max_length=300, description="Specific clarifying question")
+    importance: str = Field(description="Question importance: high or low")
+    context: str = Field(max_length=200, description="Why this question matters")
+
+class PlanNarrative(BaseModel):
+    """First-person narrative explaining the planning decisions."""
+    summary: str = Field(max_length=800, description="First-person explanation of key planning decisions")
+    questions: List[AIQuestion] = Field(max_length=3, description="Optional clarifying questions for the user")
+
 class UnifiedPlanResponse(BaseModel):
     """Complete planning response with reasoning and schedule."""
     reasoning: PlanningReasoning
+    narrative: PlanNarrative
     schedule: List[TimeBlock] = Field(max_length=100, description="Complete daily schedule blocks")
     key_insights: List[str] = Field(max_length=5, description="Top insights for successful execution")
 
@@ -117,7 +129,23 @@ Design the optimal daily flow:
 - Ensure adequate time for each activity type
 - **REQUIRED**: Plan a dedicated 45-minute "Email & Communications" block in the afternoon (1-5 PM) for processing action items, responses, and reminders - this block MUST be exactly 45 minutes, never longer
 
-### Step 4: Block Generation
+### Step 4: Narrative Generation
+Create a compelling first-person narrative that:
+- Explains your key planning decisions in a conversational, first-person voice ("I" statements)
+- Highlights the strategic reasoning behind major time blocks
+- Connects your choices to the user's energy levels and priorities
+- Demonstrates understanding of their context and constraints
+- Keeps the tone collaborative and intelligent, like a trusted advisor
+
+### Step 5: Question Generation (Optional)
+If appropriate, pose 1-3 thoughtful questions that:
+- Address potential optimizations or clarifications
+- Focus on user preferences that could improve the schedule
+- Distinguish between HIGH importance (conflicts, tight timing) and LOW importance (nice-to-have tweaks)
+- Provide context for why each question matters
+- Only ask if genuinely helpful - many plans need no questions
+
+### Step 6: Block Generation
 Create specific time blocks that:
 - Follow the canonical "Project | Activity" naming format
 - Include strategic rationale for timing decisions
@@ -415,6 +443,16 @@ Do NOT reference or schedule anything in the past - focus only on the remaining 
     "priority_sequencing": "string (max 600 chars)",
     "recovery_planning": "string (max 600 chars)"
   },
+  "narrative": {
+    "summary": "string (max 800 chars) - First-person explanation of planning decisions",
+    "questions": [
+      {
+        "question": "string (max 300 chars)",
+        "importance": "high|low",
+        "context": "string (max 200 chars)"
+      }
+    ]
+  },
   "schedule": [
     {
       "start": "HH:MM",
@@ -463,6 +501,18 @@ Using the Chain-of-Thought reasoning process, analyze this context comprehensive
 
 Think step by step through your analysis, then provide the structured planning response.
 
+**NARRATIVE REQUIREMENTS**: In the "narrative.summary" field, write as Sam's planning assistant using first-person voice:
+- Start with "I've crafted your schedule around..." or similar
+- Explain 2-3 key decisions you made and why
+- Reference specific constraints or priorities you accommodated
+- Keep it conversational and collaborative, like talking to a colleague
+
+**QUESTION REQUIREMENTS**: If you have suggestions or need clarification, add 1-3 questions:
+- HIGH importance: conflicts, timing issues, or critical optimization opportunities  
+- LOW importance: nice-to-have preferences or minor tweaks
+- Provide context for why each question matters
+- Only ask if genuinely helpful - perfect plans need no questions
+
 **CRITICAL OUTPUT REQUIREMENT**: You MUST provide your response as a valid JSON object that exactly matches this schema:
 
 {json_schema}
@@ -481,7 +531,7 @@ def parse_unified_planning_response(response_text: str) -> tuple[List[Block], Di
         response_text: Raw response from Claude Opus
         
     Returns:
-        Tuple of (schedule blocks, reasoning analysis)
+        Tuple of (schedule blocks, complete response data including narrative)
     """
     try:
         # If using structured outputs, the response should already be parsed
@@ -520,10 +570,14 @@ def parse_unified_planning_response(response_text: str) -> tuple[List[Block], Di
             )
             blocks.append(block)
         
-        # Extract reasoning
-        reasoning = data.get('reasoning', {})
+        # Extract complete response data including narrative and reasoning
+        response_data = {
+            'reasoning': data.get('reasoning', {}),
+            'narrative': data.get('narrative', {}),
+            'key_insights': data.get('key_insights', [])
+        }
         
-        return blocks, reasoning
+        return blocks, response_data
         
     except (json.JSONDecodeError, ValueError, KeyError) as e:
         logger = logging.getLogger(__name__)
