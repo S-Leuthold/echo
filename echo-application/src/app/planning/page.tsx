@@ -1541,7 +1541,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
   const [isRefining, setIsRefining] = useState(false);
   const [calendarHeight, setCalendarHeight] = useState(800); // For calendar height calculation
   const calendarRef = useRef<HTMLDivElement>(null);
-  const { planningMode, timeContext } = usePlanning();
 
   const handleRefinementComplete = (refinedPlan: any) => {
     console.log('Plan refinement completed:', refinedPlan);
