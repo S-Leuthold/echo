@@ -1513,6 +1513,8 @@ interface GeneratedPlanStepProps {
   onRefine: (data: unknown) => void;
   onPrevious?: () => void;
   wizardData?: WizardState['data'];
+  existingPlan?: any;
+  isExistingPlan?: boolean;
 }
 
 // Save Plan Success Modal Component
@@ -1562,7 +1564,7 @@ function SavePlanModal({
 }
 
 
-function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlanStepProps) {
+function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, existingPlan, isExistingPlan }: GeneratedPlanStepProps) {
   const [plan, setPlan] = useState<{ blocks: any[]; narrative?: any; reasoning?: any } | null>(null);
   const [loading, setLoading] = useState(true);
   const [planSaved, setPlanSaved] = useState(false);
@@ -1665,6 +1667,16 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
 
   useEffect(() => {
     console.log('GeneratedPlanStep received planningData:', planningData);
+    
+    // If we have an existing plan, use it instead of generating a new one
+    if (isExistingPlan && existingPlan) {
+      console.log('Loading existing plan:', existingPlan);
+      setPlan(existingPlan);
+      setPlanSaved(true); // Mark as saved since it's an existing plan
+      setLoading(false);
+      return;
+    }
+    
     const generatePlan = async (): Promise<void> => {
       try {
         // First, load user config to get anchors and fixed events
@@ -1728,7 +1740,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
     };
 
     generatePlan();
-  }, [planningData]);
+  }, [planningData, isExistingPlan, existingPlan]);
 
   if (loading) {
     return (
@@ -1935,58 +1947,81 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious }: GeneratedPlan
             )}
             
             {/* Navigation */}
-            <section className="flex justify-between items-center pt-8 border-t border-border">
-              {onPrevious && (
-                <Button 
-                  onClick={onPrevious}
-                  size="lg"
-                  variant="outline"
-                  className="px-6 py-3"
-                >
-                  <ChevronLeft className="w-5 h-5 mr-2" />
-                  Back
-                </Button>
-              )}
-              
-              <Button 
-                onClick={async () => {
-                  // Save the plan data
-                  const planData = {
-                    timestamp: new Date().toISOString(),
-                    blocks: plan?.blocks || [],
-                    narrative: plan?.narrative || {},
-                    metadata: {
-                      generated_at: new Date().toISOString(),
-                      wizard_completed: true
-                    }
-                  };
-                  
-                  // Store in localStorage for now (could be enhanced to save to server)
-                  localStorage.setItem('echo_current_plan', JSON.stringify(planData));
-                  
-                  // Mark plan as saved
-                  setPlanSaved(true);
-                  
-                  // Trigger post-planning enrichment (scaffold generation)
-                  // Get context briefing data from wizard state if available
-                  const contextBriefing = wizardData?.contextBriefing?.briefing || {};
-                  await generateScaffolds(planData, contextBriefing);
-                  
-                  setShowSaveModal(true);
-                }}
-                size="lg"
-                className="px-8 py-3 ml-auto"
-                disabled={planSaved}
-              >
-                {planSaved ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Plan Saved
-                  </>
-                ) : (
-                  'Save Plan'
+            <section className="space-y-4 pt-8 border-t border-border">
+              <div className="flex justify-between items-center">
+                {onPrevious && (
+                  <Button 
+                    onClick={onPrevious}
+                    size="lg"
+                    variant="outline"
+                    className="px-6 py-3"
+                  >
+                    <ChevronLeft className="w-5 h-5 mr-2" />
+                    Back
+                  </Button>
                 )}
-              </Button>
+                
+                <Button 
+                  onClick={async () => {
+                    // Save the plan data
+                    const planData = {
+                      timestamp: new Date().toISOString(),
+                      blocks: plan?.blocks || [],
+                      narrative: plan?.narrative || {},
+                      metadata: {
+                        generated_at: new Date().toISOString(),
+                        wizard_completed: true
+                      }
+                    };
+                    
+                    // Store in localStorage for now (could be enhanced to save to server)
+                    localStorage.setItem('echo_current_plan', JSON.stringify(planData));
+                    
+                    // Mark plan as saved
+                    setPlanSaved(true);
+                    
+                    // Trigger post-planning enrichment (scaffold generation)
+                    // Get context briefing data from wizard state if available
+                    const contextBriefing = wizardData?.contextBriefing?.briefing || {};
+                    await generateScaffolds(planData, contextBriefing);
+                    
+                    setShowSaveModal(true);
+                  }}
+                  size="lg"
+                  className="px-8 py-3 ml-auto"
+                  disabled={planSaved}
+                >
+                  {planSaved ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Plan Saved
+                    </>
+                  ) : (
+                    'Save Plan'
+                  )}
+                </Button>
+              </div>
+              
+              {/* Early next-day planning link - only show if we're viewing an existing plan */}
+              {isExistingPlan && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={() => {
+                      // Clear existing plan state and restart wizard for tomorrow
+                      setShouldSkipToCommandCenter(false);
+                      setExistingPlan(null);
+                      setPlanningMode('tomorrow', 'user_choice');
+                      setWizardState({
+                        currentStep: 'welcome',
+                        data: {}
+                      });
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
+                  >
+                    Plan tomorrow instead
+                  </button>
+                </div>
+              )}
             </section>
           </div>
         </div>
@@ -2033,6 +2068,8 @@ export default function PlanningWizard() {
     currentStep: 'welcome',
     data: {}
   });
+  const [existingPlan, setExistingPlan] = useState<any>(null);
+  const [shouldSkipToCommandCenter, setShouldSkipToCommandCenter] = useState(false);
 
   // Handle URL parameters for planning mode
   useEffect(() => {
@@ -2043,6 +2080,106 @@ export default function PlanningWizard() {
       setPlanningMode(modeParam, 'url_parameter');
     }
   }, [setPlanningMode]);
+
+  // Check for existing plan and determine if we should skip to Command Center
+  useEffect(() => {
+    const checkExistingPlan = async () => {
+      try {
+        const currentHour = new Date().getHours();
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Check if it's before 6 PM (18:00)
+        const isBeforeEvening = currentHour < 18;
+        
+        if (!isBeforeEvening) {
+          return; // After 6 PM, use normal planning flow
+        }
+        
+        // Check for saved plan in localStorage
+        const savedPlan = localStorage.getItem('echo_current_plan');
+        if (savedPlan) {
+          try {
+            const planData = JSON.parse(savedPlan);
+            const planDate = new Date(planData.timestamp).toISOString().split('T')[0];
+            
+            // If there's a plan for today, skip to Command Center
+            if (planDate === today && planData.blocks && planData.blocks.length > 0) {
+              console.log('Found existing plan for today, skipping to Command Center');
+              setExistingPlan(planData);
+              setShouldSkipToCommandCenter(true);
+              
+              // Set up wizard state to show Command Center directly
+              setWizardState({
+                currentStep: 'generated-plan',
+                data: {
+                  planningPrompts: {
+                    oneThing: "Existing plan loaded",
+                    tasks: [],
+                    appointments: [],
+                    energyLevel: 7,
+                    workEnvironment: "home",
+                    routineOverrides: ""
+                  }
+                }
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('Error parsing saved plan:', error);
+          }
+        }
+        
+        // Also check for plan file from API (fallback)
+        const response = await fetch(`http://localhost:8000/today`);
+        if (response.ok) {
+          const todayData = await response.json();
+          if (todayData.blocks && todayData.blocks.length > 0) {
+            console.log('Found existing plan from API, skipping to Command Center');  
+            
+            // Convert API format to expected format
+            const apiPlan = {
+              blocks: todayData.blocks.map((block: any) => ({
+                start: block.start_time,
+                end: block.end_time,
+                title: block.label,
+                type: block.type,
+                note: block.note || '',
+                icon: block.icon || 'Calendar',
+                priority: 'medium',
+                energy_requirement: 'medium'
+              })),
+              narrative: {
+                summary: "Your existing schedule has been loaded. You can review it below and make any adjustments needed.",
+                questions: []
+              },
+              timestamp: new Date().toISOString()
+            };
+            
+            setExistingPlan(apiPlan);
+            setShouldSkipToCommandCenter(true);
+            
+            setWizardState({
+              currentStep: 'generated-plan',
+              data: {
+                planningPrompts: {
+                  oneThing: "Existing plan loaded",
+                  tasks: [],
+                  appointments: [],
+                  energyLevel: 7,
+                  workEnvironment: "home",
+                  routineOverrides: ""
+                }
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for existing plan:', error);
+      }
+    };
+    
+    checkExistingPlan();
+  }, []);
 
   // Define step flows based on planning mode
   const getStepFlow = (mode: 'today' | 'tomorrow'): WizardStep[] => {
@@ -2116,7 +2253,14 @@ export default function PlanningWizard() {
         return <PlanningPromptsStep onNext={nextStep} onPrevious={previousStep} wizardData={wizardState.data} />;
       case 'generated-plan':
         console.log('Rendering GeneratedPlanStep with wizardState.data:', wizardState.data);
-        return <GeneratedPlanStep planningData={wizardState.data.planningPrompts} onRefine={handleRefinement} onPrevious={previousStep} wizardData={wizardState.data} />;
+        return <GeneratedPlanStep 
+          planningData={wizardState.data.planningPrompts} 
+          onRefine={handleRefinement} 
+          onPrevious={shouldSkipToCommandCenter ? undefined : previousStep} 
+          wizardData={wizardState.data}
+          existingPlan={existingPlan}
+          isExistingPlan={shouldSkipToCommandCenter}
+        />;
       default:
         return <WelcomeStep onNext={() => nextStep()} />;
     }
