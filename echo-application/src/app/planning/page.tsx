@@ -1643,7 +1643,13 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          daily_plan: planData.blocks || [],
+          daily_plan: (planData.blocks || []).map((block: any) => ({
+            start: block.start,
+            end: block.end,
+            label: block.title,
+            type: block.type,
+            meta: block.meta || {}
+          })),
           context_briefing: contextBriefing || {},
           force_refresh: false
         })
@@ -1796,27 +1802,21 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                     {plan.narrative.summary}
                   </p>
                   
-                  {/* Integrated AI Questions as natural prompts */}
+                  {/* AI Questions without header - integrated naturally */}
                   {plan?.narrative?.questions && plan.narrative.questions.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-border/30">
-                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                        A few things I'm wondering about:
-                      </p>
+                    <div className="space-y-3 pt-0">
                       {plan.narrative.questions.map((question: any, index: number) => (
-                        <div key={index} className="text-foreground leading-relaxed">
-                          <p className="italic text-muted-foreground">
-                            • {question.question}
+                        <div key={index} className="text-sm leading-relaxed">
+                          <p className="italic text-muted-foreground/80">
+                            {question.question}
                           </p>
                           {question.context && (
-                            <p className="text-sm text-muted-foreground/70 ml-3 mt-1">
+                            <p className="text-xs text-muted-foreground/60 mt-1">
                               {question.context}
                             </p>
                           )}
                         </div>
                       ))}
-                      <p className="text-sm text-muted-foreground/70 italic pt-2">
-                        Feel free to address any of these in the refinement box below, or save your plan as-is.
-                      </p>
                     </div>
                   )}
                 </div>
@@ -1834,7 +1834,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
               <div className="flex items-center gap-3 mb-4">
                 <Sparkles className="w-5 h-5 text-accent" />
                 <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
-                  MAKE • ADJUSTMENTS
+                  MAKE ADJUSTMENTS
                 </h3>
               </div>
               
@@ -1853,11 +1853,11 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                   
                   <div className="flex justify-end">
                     <Button
-                    onClick={handleInlineRefinement}
-                    disabled={!refinementText.trim() || isRefining}
-                    variant="outline"
-                    className="px-6 transition-all duration-300 ease-in-out"
-                  >
+                      onClick={handleInlineRefinement}
+                      disabled={!refinementText.trim() || isRefining}
+                      variant="outline"
+                      className="px-6 transition-all duration-300 ease-in-out"
+                    >
                     <div className="flex items-center transition-all duration-200 ease-in-out">
                       {isRefining ? (
                         <>
@@ -1874,9 +1874,124 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                   </Button>
                 </div>
               </div>
+            </div>
+            </section>
+            {/* Plan Analytics Card */}
+            <section className="space-y-4 pt-8">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="w-5 h-5 text-accent" />
+                <h3 className="text-sm font-bold tracking-wider text-accent uppercase">
+                  PLAN ANALYTICS
+                </h3>
+              </div>
+              
+              <div className="bg-card/50 border border-border/50 rounded-lg p-6">
+                <div className="space-y-4">
+                  {/* Time Allocation Summary */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Total scheduled time</span>
+                    <span className="font-medium text-foreground">12 hours</span>
+                  </div>
+                  
+                  {/* Time Allocation Bar Mock */}
+                  <div className="space-y-3">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Time Allocation</div>
+                    
+                    {/* Segmented Bar with Floating Icons */}
+                    <div className="relative h-12 bg-muted/30 rounded-lg flex overflow-hidden border border-border/50">
+                      {/* Deep Work - 4.2 hours (35%) */}
+                      <div 
+                        className="relative flex items-center justify-center border-r-2 transition-all duration-200 hover:brightness-110 group" 
+                        style={{ 
+                          width: '35%', 
+                          backgroundColor: '#6A994E20',
+                          borderRightColor: '#6A994E'
+                        }}
+                      >
+                        <Brain className="w-5 h-5" style={{ color: '#6A994E' }} />
+                        <div className="invisible group-hover:visible absolute bottom-14 left-1/2 transform -translate-x-1/2 z-50 w-32 p-3 bg-popover border border-border rounded-md shadow-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Deep Work:</div>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            4.2 hrs (35%)
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Admin Work - 3 hours (25%) */}
+                      <div 
+                        className="relative flex items-center justify-center border-r-2 transition-all duration-200 hover:brightness-110 group" 
+                        style={{ 
+                          width: '25%', 
+                          backgroundColor: '#A9874320',
+                          borderRightColor: '#A98743'
+                        }}
+                      >
+                        <Mail className="w-5 h-5" style={{ color: '#A98743' }} />
+                        <div className="invisible group-hover:visible absolute bottom-14 left-1/2 transform -translate-x-1/2 z-50 w-32 p-3 bg-popover border border-border rounded-md shadow-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Admin Work:</div>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            3.0 hrs (25%)
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Meetings - 1.8 hours (15%) */}
+                      <div 
+                        className="relative flex items-center justify-center border-r-2 transition-all duration-200 hover:brightness-110 group" 
+                        style={{ 
+                          width: '15%', 
+                          backgroundColor: '#BC474920',
+                          borderRightColor: '#BC4749'
+                        }}
+                      >
+                        <Calendar className="w-4 h-4" style={{ color: '#BC4749' }} />
+                        <div className="invisible group-hover:visible absolute bottom-14 left-1/2 transform -translate-x-1/2 z-50 w-32 p-3 bg-popover border border-border rounded-md shadow-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Meetings:</div>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            1.8 hrs (15%)
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Personal - 3 hours (25%) */}
+                      <div 
+                        className="relative flex items-center justify-center transition-all duration-200 hover:brightness-110 group" 
+                        style={{ 
+                          width: '25%', 
+                          backgroundColor: '#A6A6A620',
+                          borderRightColor: '#A6A6A6'
+                        }}
+                      >
+                        <Coffee className="w-5 h-5" style={{ color: '#A6A6A6' }} />
+                        <div className="invisible group-hover:visible absolute bottom-14 left-1/2 transform -translate-x-1/2 z-50 w-32 p-3 bg-popover border border-border rounded-md shadow-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Personal:</div>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            3.0 hrs (25%)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Centered Category Labels */}
+                    <div className="flex text-xs">
+                      <div className="text-center text-muted-foreground/70" style={{ width: '35%' }}>
+                        Deep Work
+                      </div>
+                      <div className="text-center text-muted-foreground/70" style={{ width: '25%' }}>
+                        Admin
+                      </div>
+                      <div className="text-center text-muted-foreground/70" style={{ width: '15%' }}>
+                        Meetings
+                      </div>
+                      <div className="text-center text-muted-foreground/70" style={{ width: '25%' }}>
+                        Personal
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </section>
 
-            
             {/* Navigation */}
             <section className="space-y-4 pt-8 border-t border-border">
               <div className="flex justify-between items-center">
@@ -1925,10 +2040,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                         setPlanSaved(false);
                       }, 3000); // Show "Plan Saved" for 3 seconds, then allow re-saving
                       
-                      // Trigger post-planning enrichment (scaffold generation)
-                      // Get context briefing data from wizard state if available
-                      const contextBriefing = wizardData?.contextBriefing?.briefing || {};
-                      await generateScaffolds(planData, contextBriefing);
                       
                     } catch (error) {
                       console.error('Failed to save plan:', error);
@@ -1936,7 +2047,16 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                         "There was an issue saving your plan. Please try again.",
                         "Save Failed"
                       );
+                      return; // Exit early if save failed
                     }
+                    
+                    // Trigger post-planning enrichment (scaffold generation) - non-blocking
+                    // Get context briefing data from wizard state if available
+                    const contextBriefing = wizardData?.contextBriefing?.briefing || {};
+                    generateScaffolds(planData, contextBriefing).catch(error => {
+                      console.warn('Scaffold generation failed (non-critical):', error);
+                      // Don't show error to user - this is a background enhancement
+                    });
                   }}
                   size="lg"
                   className="px-8 py-3 ml-auto transition-all duration-300 ease-in-out"

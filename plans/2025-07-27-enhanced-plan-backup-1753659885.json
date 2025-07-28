@@ -1,0 +1,374 @@
+{
+  "reasoning": {
+    "context_analysis": {
+      "email_summary": "Katie responded about soil carbon paper - suggests SOIL or Geoderma journal after editing. Need to respond (15min task).",
+      "calendar_conflicts": [
+        "08:00-08:15 Paige meeting will delay morning departure",
+        "10:00-11:00 AI-LEAF All Hands is non-negotiable"
+      ],
+      "energy_patterns": "Energy level 7/10 - good capacity for focused work. Planning 4:15pm gym departure suggests managing energy through exercise break.",
+      "strategic_priorities": [
+        "Geoderma Review is top priority",
+        "MAOM-N MS edits (1.5h)",
+        "Ensemble MS Methods writing (2h)",
+        "Start horizons run for overnight processing"
+      ],
+      "time_constraints": [
+        "Late 8:30am departure due to Paige meeting",
+        "Must leave at 4:15pm for gym",
+        "Need to start horizons run immediately when home (~6:15pm)"
+      ]
+    },
+    "scheduling_strategy": "Front-load high-cognitive tasks (Geoderma Review response, MAOM-N edits) in morning peak hours. Schedule Ensemble MS writing after AI-LEAF meeting when focus returns. Place echo analytics work in early afternoon when energy may dip slightly. Quick horizons setup before leaving.",
+    "energy_optimization": "With energy at 7/10, can handle substantial cognitive work but need strategic breaks. Morning block for critical review work, mid-morning meeting provides natural break, then deep writing work. Afternoon technical tasks when energy naturally lower. Gym at 4:15pm will restore energy for evening horizons setup.",
+    "priority_sequencing": "1) Katie's response first (quick win, clears mental space), 2) MAOM-N edits while fresh, 3) Ensemble Methods writing post-meeting, 4) Echo analytics and Margenot email in afternoon, 5) Horizons prep before leaving",
+    "recovery_planning": "Built-in recovery through meeting transitions and lunch break. Gym session at 4:15pm provides physical reset. Evening kept light - just horizons setup and cooking. Avoiding overcommitment given last week was slow and tomorrow needs to be catch-up day."
+  },
+  "narrative": {
+    "summary": "I've structured your day to maximize that solid energy level of 7 while respecting your late start and early departure. Given that finishing the Geoderma Review is your top priority, I've front-loaded the response to Katie and the MAOM-N edits in your morning peak hours - you'll knock out Katie's response first thing to clear that mental tab, then dive into the substantive editing work while your focus is sharpest. The AI-LEAF meeting actually works well as a natural break before your deep writing session on the Ensemble Methods. I've placed the echo analytics work and Margenot email draft in the early afternoon when your energy might naturally dip a bit - these tasks require focus but perhaps less creative heavy lifting than the morning's writing work. The horizons setup is perfectly positioned at the end of your workday so you can get it running as soon as you get home. This schedule respects your need to catch up after a slow week while not overextending yourself before tomorrow's heavier day.",
+    "questions": [
+      {
+        "question": "Would you prefer to draft the Margenot email earlier in the day while your writing energy is higher, or is afternoon placement okay?",
+        "importance": "low",
+        "context": "Email drafting can benefit from morning clarity but current placement allows uninterrupted morning research focus"
+      }
+    ]
+  },
+  "schedule": [
+    {
+      "start": "06:00",
+      "end": "07:45",
+      "title": "Morning Routine",
+      "type": "anchor",
+      "note": "Standard morning prep - extra time buffer for slightly delayed departure",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "Meeting with Paige Lewis",
+      "type": "fixed",
+      "note": "Weekly check-in - will delay departure to 8:30am",
+      "icon": "Users",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "08:15",
+      "end": "08:30",
+      "title": "Commute Prep & Departure",
+      "type": "flex",
+      "note": "Quick transition after Paige meeting",
+      "icon": "Car",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:00",
+      "end": "09:15",
+      "title": "Respond to Katie - Geoderma Review",
+      "type": "flex",
+      "note": "Quick win to start day - acknowledge journal suggestion for soil carbon paper",
+      "icon": "Mail",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:15",
+      "end": "10:00",
+      "title": "MAOM-N MS Edits Review",
+      "type": "flex",
+      "note": "First half of edits while mind is fresh - critical for Geoderma Review",
+      "icon": "FileEdit",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "title": "AI-LEAF All Hands",
+      "type": "fixed",
+      "note": "Non-negotiable meeting - good break between intensive tasks",
+      "icon": "Users",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:00",
+      "end": "11:45",
+      "title": "MAOM-N MS Edits (Continue)",
+      "type": "flex",
+      "note": "Complete remaining edits post-meeting",
+      "icon": "FileEdit",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "11:45",
+      "end": "12:30",
+      "title": "Lunch Break",
+      "type": "anchor",
+      "note": "Recharge before afternoon writing session",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:30",
+      "end": "14:30",
+      "title": "Ensemble MS Methods Writing",
+      "type": "flex",
+      "note": "2-3 paragraphs - substantial writing requiring deep focus",
+      "icon": "PenTool",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "14:30",
+      "end": "15:15",
+      "title": "Draft Email to Andrew Margenot",
+      "type": "flex",
+      "note": "For Francesca - afternoon task when writing energy lower",
+      "icon": "Mail",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:15",
+      "end": "15:45",
+      "title": "Horizons Run Setup",
+      "type": "flex",
+      "note": "Prep work so you can start run immediately when home",
+      "icon": "Settings",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:45",
+      "end": "16:15",
+      "title": "Echo Analytics Backend",
+      "type": "flex",
+      "note": "Technical work - shortened to fit schedule constraints",
+      "icon": "Code",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "16:30",
+      "title": "Gym Prep & Departure",
+      "type": "flex",
+      "note": "Leave work at 4:15 to hit gym by 4:30",
+      "icon": "Dumbbell",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:15",
+      "end": "18:30",
+      "title": "Start Horizons Run",
+      "type": "flex",
+      "note": "Immediately upon arriving home - will run overnight",
+      "icon": "PlayCircle",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "19:30",
+      "title": "Dinner Prep & Cooking",
+      "type": "anchor",
+      "note": "Relaxed cooking after productive day",
+      "icon": "ChefHat",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:30",
+      "end": "22:00",
+      "title": "Evening Wind Down",
+      "type": "anchor",
+      "note": "Chill evening - horizons running in background",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "key_insights": [
+    "Front-loaded Geoderma Review tasks during peak morning energy",
+    "Strategic use of AI-LEAF meeting as cognitive break between intensive tasks",
+    "Shortened echo analytics time to accommodate schedule constraints",
+    "Horizons run positioned for immediate evening start and overnight processing",
+    "Built recovery time through gym session and relaxed evening"
+  ],
+  "blocks": [
+    {
+      "start": "06:00",
+      "end": "07:45",
+      "title": "Morning Routine",
+      "type": "anchor",
+      "note": "Standard morning prep - extra time buffer for slightly delayed departure",
+      "icon": "Coffee",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "08:00",
+      "end": "08:15",
+      "title": "Meeting with Paige Lewis",
+      "type": "fixed",
+      "note": "Weekly check-in - will delay departure to 8:30am",
+      "icon": "Users",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "08:15",
+      "end": "08:30",
+      "title": "Commute Prep & Departure",
+      "type": "flex",
+      "note": "Quick transition after Paige meeting",
+      "icon": "Car",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:00",
+      "end": "09:15",
+      "title": "Respond to Katie - Geoderma Review",
+      "type": "flex",
+      "note": "Quick win to start day - acknowledge journal suggestion for soil carbon paper",
+      "icon": "Mail",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "09:15",
+      "end": "10:00",
+      "title": "MAOM-N MS Edits Review",
+      "type": "flex",
+      "note": "First half of edits while mind is fresh - critical for Geoderma Review",
+      "icon": "FileEdit",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "title": "AI-LEAF All Hands",
+      "type": "fixed",
+      "note": "Non-negotiable meeting - good break between intensive tasks",
+      "icon": "Users",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "11:00",
+      "end": "11:45",
+      "title": "MAOM-N MS Edits (Continue)",
+      "type": "flex",
+      "note": "Complete remaining edits post-meeting",
+      "icon": "FileEdit",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "11:45",
+      "end": "12:30",
+      "title": "Lunch Break",
+      "type": "anchor",
+      "note": "Recharge before afternoon writing session",
+      "icon": "Utensils",
+      "priority": "medium",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "12:30",
+      "end": "14:30",
+      "title": "Ensemble MS Methods Writing",
+      "type": "flex",
+      "note": "2-3 paragraphs - substantial writing requiring deep focus",
+      "icon": "PenTool",
+      "priority": "high",
+      "energy_requirement": "high"
+    },
+    {
+      "start": "14:30",
+      "end": "15:15",
+      "title": "Draft Email to Andrew Margenot",
+      "type": "flex",
+      "note": "For Francesca - afternoon task when writing energy lower",
+      "icon": "Mail",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:15",
+      "end": "15:45",
+      "title": "Horizons Run Setup",
+      "type": "flex",
+      "note": "Prep work so you can start run immediately when home",
+      "icon": "Settings",
+      "priority": "high",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "15:45",
+      "end": "16:15",
+      "title": "Echo Analytics Backend",
+      "type": "flex",
+      "note": "Technical work - shortened to fit schedule constraints",
+      "icon": "Code",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "16:15",
+      "end": "16:30",
+      "title": "Gym Prep & Departure",
+      "type": "flex",
+      "note": "Leave work at 4:15 to hit gym by 4:30",
+      "icon": "Dumbbell",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:15",
+      "end": "18:30",
+      "title": "Start Horizons Run",
+      "type": "flex",
+      "note": "Immediately upon arriving home - will run overnight",
+      "icon": "PlayCircle",
+      "priority": "high",
+      "energy_requirement": "low"
+    },
+    {
+      "start": "18:30",
+      "end": "19:30",
+      "title": "Dinner Prep & Cooking",
+      "type": "anchor",
+      "note": "Relaxed cooking after productive day",
+      "icon": "ChefHat",
+      "priority": "medium",
+      "energy_requirement": "medium"
+    },
+    {
+      "start": "19:30",
+      "end": "22:00",
+      "title": "Evening Wind Down",
+      "type": "anchor",
+      "note": "Chill evening - horizons running in background",
+      "icon": "Moon",
+      "priority": "low",
+      "energy_requirement": "low"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2025-07-27T18:43:47.219503",
+    "model": "claude-opus-4-20250514",
+    "prompt_version": "unified_v2",
+    "request_id": "plan_1753659827"
+  }
+}
