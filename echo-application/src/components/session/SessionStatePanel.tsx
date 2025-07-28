@@ -25,9 +25,6 @@ interface SessionStatePanelProps {
   schedule?: any[];
   // Future: Accept session configuration
   className?: string;
-  // Theater mode control
-  theaterModeActive?: boolean;
-  onTheaterModeChange?: (active: boolean) => void;
   // Session state callback for parent components
   onSessionStateChange?: (state: SessionState) => void;
 }
@@ -35,8 +32,6 @@ interface SessionStatePanelProps {
 export function SessionStatePanel({ 
   schedule, 
   className = "",
-  theaterModeActive = true,
-  onTheaterModeChange,
   onSessionStateChange
 }: SessionStatePanelProps) {
   
@@ -82,12 +77,6 @@ export function SessionStatePanel({
     onSessionStateChange?.(currentState);
   }, [currentState, onSessionStateChange]);
   
-  // Theater mode handlers
-  const handleReenterTheaterMode = () => {
-    if (currentState === 'TRANQUIL' && stateInfo.currentBlock && onTheaterModeChange) {
-      onTheaterModeChange(true);
-    }
-  };
   
   
   // State-specific component rendering
@@ -100,8 +89,6 @@ export function SessionStatePanel({
             nextWorkBlock={stateInfo.nextWorkBlock}
             timeUntilTransition={stateInfo.timeUntilTransition}
             currentTime={currentTime}
-            onReenterTheaterMode={handleReenterTheaterMode}
-            theaterModeActive={theaterModeActive}
           />
         );
         
@@ -203,19 +190,6 @@ export function SessionStatePanel({
           {renderCurrentState()}
         </div>
         
-        {/* Re-entry button when theater mode is off during tranquil state */}
-        {currentState === 'TRANQUIL' && stateInfo.currentBlock && !theaterModeActive && (
-          <button
-            onClick={handleReenterTheaterMode}
-            className="absolute top-4 right-4 p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg 
-                       hover:bg-background/90 transition-all duration-200 text-xs text-muted-foreground hover:text-foreground
-                       shadow-sm"
-            aria-label="Enter tranquil theater mode"
-            title="Enter tranquil mode"
-          >
-            <span className="text-sm">🎭</span>
-          </button>
-        )}
         
         {/* Dev Mode State Override Panel - Disabled */}
         {false && (

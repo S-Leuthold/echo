@@ -7,7 +7,7 @@ import { Dumbbell, User, Utensils, Bike } from 'lucide-react';
 import { quoteService } from '@/services/quoteService';
 
 /**
- * TranquilState Component - Theater Mode Experience
+ * TranquilState Component - Tranquil Rest Experience
  * 
  * Creates an immersive, full-page tranquil experience with:
  * - Header: Essential block information with Lucide icons
@@ -15,7 +15,7 @@ import { quoteService } from '@/services/quoteService';
  * - Countdown: Subtle next session preview
  * 
  * Design Philosophy:
- * - Elegant 3-section layout for Theater Mode
+ * - Elegant 3-section layout for peaceful moments
  * - Category-based contextual quotes
  * - Bike-positive transport approach
  * - Respectful of personal time with beautiful typography
@@ -26,17 +26,13 @@ interface TranquilStateProps {
   nextWorkBlock: Block | null;
   timeUntilTransition: number;
   currentTime: Date;
-  onReenterTheaterMode?: () => void;
-  theaterModeActive?: boolean;
 }
 
 export function TranquilState({
   currentBlock,
   nextWorkBlock,
   timeUntilTransition,
-  currentTime,
-  onReenterTheaterMode,
-  theaterModeActive = true
+  currentTime
 }: TranquilStateProps) {
   
   // Stable quote management - only changes when block identity changes
@@ -95,22 +91,9 @@ export function TranquilState({
   // Get icon component for current block
   const IconComponent = currentBlock ? getCategoryIcon(currentBlock.timeCategory) : User;
   
-  // Stabilize event handler
-  const handleClick = useCallback(() => {
-    onReenterTheaterMode?.();
-  }, [onReenterTheaterMode]);
-  
-  // Determine if click is actually functional - only when theater mode is OFF
-  const isClickable = Boolean(onReenterTheaterMode && !theaterModeActive);
   
   return (
-    <div 
-      className={`h-full flex flex-col p-12 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
-      onClick={isClickable ? handleClick : undefined}
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={isClickable ? "Click to re-enter theater mode" : undefined}
-    >
+    <div className="h-full flex flex-col p-12">
       {/* THE HEADER - Following Session Scaffold Pattern */}
       <div className="flex-shrink-0 mb-12">
         <div className="mb-3">

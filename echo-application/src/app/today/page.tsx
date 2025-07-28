@@ -11,8 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PlanTimeline } from "@/components/shared/PlanTimeline";
 import { SessionStatePanel } from "@/components/session/SessionStatePanel";
-import { PanelDimmer } from "@/components/session/PanelDimmer";
-import { EscapeTooltip } from "@/components/session/EscapeTooltip";
 import { IconResolutionService } from "@/lib/icon-resolution";
 import { sessionApi } from "@/services/sessionApiService";
 import { SessionHistoryItem } from "@/types/sessionApi";
@@ -1264,10 +1262,6 @@ export default function TodayPage() {
   const [calendarHeight, setCalendarHeight] = useState(800); // Better default height
   const calendarRef = useRef<HTMLDivElement>(null);
   
-  // Theater mode state management
-  const [theaterModeActive, setTheaterModeActive] = useState(true);
-  const [showEscapeTooltip, setShowEscapeTooltip] = useState(false);
-  const [hasSeenTooltip, setHasSeenTooltip] = useState(false);
   const [currentSessionState, setCurrentSessionState] = useState<string>('TRANQUIL');
   
   // Session data state management
@@ -1331,61 +1325,7 @@ export default function TodayPage() {
     };
   }, []);
 
-  // Theater mode handlers (memoized to prevent recreation)
-  const handleTheaterModeChange = useCallback((active: boolean) => {
-    setTheaterModeActive(active);
-  }, []);
   
-  const handleFirstClickOnDimmed = useCallback(() => {
-    if (!hasSeenTooltip) {
-      setShowEscapeTooltip(true);
-      setHasSeenTooltip(true);
-    }
-  }, [hasSeenTooltip]);
-  
-  const handleDismissTooltip = useCallback(() => {
-    setShowEscapeTooltip(false);
-  }, []);
-  
-  // 'QT' key sequence handler for toggling theater mode (only in TRANQUIL state)
-  useEffect(() => {
-    let keySequence = '';
-    let sequenceTimer: NodeJS.Timeout;
-    
-    const handleTheaterToggle = (event: KeyboardEvent) => {
-      // Clear sequence if too much time has passed
-      clearTimeout(sequenceTimer);
-      
-      // Add key to sequence
-      keySequence += event.key.toLowerCase();
-      
-      // Check if sequence matches 'qt'
-      if (keySequence.endsWith('qt')) {
-        // Only allow theater mode toggle in TRANQUIL state
-        if (currentSessionState === 'TRANQUIL') {
-          setTheaterModeActive(prev => !prev);
-        }
-        keySequence = '';
-        return;
-      }
-      
-      // Reset sequence after 1 second of inactivity
-      sequenceTimer = setTimeout(() => {
-        keySequence = '';
-      }, 1000);
-      
-      // Keep only last 10 characters to prevent memory issues
-      if (keySequence.length > 10) {
-        keySequence = keySequence.slice(-10);
-      }
-    };
-    
-    document.addEventListener('keydown', handleTheaterToggle);
-    return () => {
-      document.removeEventListener('keydown', handleTheaterToggle);
-      clearTimeout(sequenceTimer);
-    };
-  }, []);
   
   // Load session data from API with context awareness
   const loadSessionData = useCallback(async () => {
@@ -1465,9 +1405,6 @@ export default function TodayPage() {
     return todayData ? transformTodayDataToSchedule(todayData, currentTime) : mockSchedule;
   }, [todayData, currentTime]);
   
-  // Determine if theater mode dimmers should be shown
-  // Need to check the current session state - for now using mock logic
-  const shouldShowDimmers = theaterModeActive; // Will be refined when we have session state access
   
   const currentTimeString = currentTime.toLocaleTimeString("en-US", { 
     hour12: false, 
@@ -1540,13 +1477,6 @@ export default function TodayPage() {
           </p>
         </div>
         
-        {/* Header Dimmer - Theater Mode */}
-        <PanelDimmer
-          isActive={shouldShowDimmers}
-          onFirstClick={handleFirstClickOnDimmed}
-          target="header"
-          className="rounded-none"
-        />
       </div>
 
       {/* Left Content Area - Independent Scrolling, leaves space for fixed calendar */}
@@ -1556,8 +1486,6 @@ export default function TodayPage() {
             {/* Session State Panel - State-driven co-pilot experience */}
             <SessionStatePanel 
               schedule={transformedSchedule}
-              theaterModeActive={theaterModeActive}
-              onTheaterModeChange={handleTheaterModeChange}
               onSessionStateChange={setCurrentSessionState}
             />
             
@@ -1571,13 +1499,6 @@ export default function TodayPage() {
                 onSessionClick={handleOpenSessionModal}
               />
               
-              {/* Session Notes Dimmer - Theater Mode */}
-              <PanelDimmer
-                isActive={shouldShowDimmers}
-                onFirstClick={handleFirstClickOnDimmed}
-                target="session-notes"
-                className="rounded-lg"
-              />
             </div>
           </div>
         </div>
@@ -1598,22 +1519,11 @@ export default function TodayPage() {
           />
         </div>
         
-        {/* Calendar Dimmer - Theater Mode */}
-        <PanelDimmer
-          isActive={shouldShowDimmers}
-          onFirstClick={handleFirstClickOnDimmed}
-          target="calendar"
-        />
       </div>
 
       {/* Session management now integrated into SessionStatePanel */}
       
       
-      {/* Theater Mode Escape Tooltip */}
-      <EscapeTooltip
-        isVisible={showEscapeTooltip}
-        onDismiss={handleDismissTooltip}
-      />
       
       {/* Session Log Modal */}
       <Dialog open={isSessionModalOpen} onOpenChange={handleCloseSessionModal}>
