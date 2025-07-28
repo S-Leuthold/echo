@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Block } from '@/hooks/useSessionState';
 import { Dumbbell, User, Utensils, Bike } from 'lucide-react';
@@ -39,14 +39,29 @@ export function TranquilState({
   theaterModeActive = true
 }: TranquilStateProps) {
   
-  // Get contextual quote based on upcoming session
-  const contextualQuote = useMemo(() => {
-    const quote = quoteService.getContextualQuote(nextWorkBlock);
-    return {
-      text: quote.quote,
-      author: quote.author
-    };
-  }, [nextWorkBlock]);
+  // Stable quote management - only changes when block identity changes
+  const [stableQuote, setStableQuote] = useState<{ text: string; author: string; blockId?: string }>({
+    text: '',
+    author: ''
+  });
+
+  // Update quote only when the actual block changes (not on every render)
+  useEffect(() => {
+    const blockId = nextWorkBlock?.id || 'default';
+    
+    // Only fetch new quote if block identity has changed
+    if (!stableQuote.blockId || stableQuote.blockId !== blockId) {
+      const quote = quoteService.getContextualQuote(nextWorkBlock);
+      setStableQuote({
+        text: quote.quote,
+        author: quote.author,
+        blockId: blockId
+      });
+    }
+  }, [nextWorkBlock?.id]); // Only depend on ID to prevent object reference changes
+
+  // Use stable quote for display
+  const contextualQuote = stableQuote;
   
   // Format time display for header
   const formatTime = (timeStr: string): string => {

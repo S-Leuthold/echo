@@ -133,7 +133,7 @@ const transformTodayDataToFocus = (todayData: any, currentTime: Date = new Date(
     type: 'active' as const,
     progress: realTimeProgress,
     strategicNote: currentBlock.note || 'Focus on completing this task with quality and intention.',
-    timeCategory: mapBlockTypeToCategory(currentBlock.type),
+    timeCategory: mapBlockTypeToCategory(currentBlock.type, currentBlock.label),
     sessionGoal: `Complete the current task: ${currentBlock.task_name}`,
     remainingMinutes, // Add real-time remaining minutes
     subtasks: [
@@ -173,7 +173,7 @@ const transformTodayDataToSchedule = (todayData: any, currentTime: Date = new Da
     }
     
     // Map time category to match PlanTimeline expectations
-    const timeCategory = mapBlockTypeToCategory(block.type);
+    const timeCategory = mapBlockTypeToCategory(block.type, block.label);
     
     // Resolve icon using IconResolutionService with backend icon name
     const { icon: IconComponent } = IconResolutionService.resolveIcon(
@@ -211,11 +211,41 @@ const parseTime = (timeStr: string) => {
   return { hours, minutes };
 };
 
-const mapBlockTypeToCategory = (blockType: string) => {
-  // Map API block types to UI categories
+const mapBlockTypeToCategory = (blockType: string, label: string = '') => {
+  // Enhanced category detection based on content, not just type
+  const lowerLabel = label.toLowerCase();
+  
+  // First check label content for accurate categorization
+  if (lowerLabel.includes('meeting') || lowerLabel.includes('standup') || lowerLabel.includes('call') || lowerLabel.includes('sync')) {
+    return 'MEETINGS';
+  }
+  if (lowerLabel.includes('email') || lowerLabel.includes('admin') || lowerLabel.includes('inbox')) {
+    return 'SHALLOW_WORK';
+  }
+  if (lowerLabel.includes('deep work') || lowerLabel.includes('focus') || lowerLabel.includes('development') || lowerLabel.includes('coding')) {
+    return 'DEEP_WORK';
+  }
+  if (lowerLabel.includes('gym') || lowerLabel.includes('workout') || lowerLabel.includes('exercise') || lowerLabel.includes('fitness')) {
+    return 'HEALTH';
+  }
+  if (lowerLabel.includes('lunch') || lowerLabel.includes('dinner') || lowerLabel.includes('breakfast') || lowerLabel.includes('meal')) {
+    return 'MEALS';
+  }
+  if (lowerLabel.includes('commute') || lowerLabel.includes('drive') || lowerLabel.includes('transit') || lowerLabel.includes('travel')) {
+    return 'TRANSIT';
+  }
+  if (lowerLabel.includes('personal') || lowerLabel.includes('break') || lowerLabel.includes('rest')) {
+    return 'PERSONAL';
+  }
+  if (lowerLabel.includes('planning') || lowerLabel.includes('review')) {
+    return 'PLANNING';
+  }
+  if (lowerLabel.includes('research') || lowerLabel.includes('study') || lowerLabel.includes('learn')) {
+    return 'RESEARCH';
+  }
+  
+  // Then fall back to type mapping (but don't assume anchor/fixed are personal)
   const typeMap: { [key: string]: string } = {
-    'fixed': 'PERSONAL',
-    'anchor': 'PERSONAL', 
     'flex': 'DEEP_WORK',
     'work': 'DEEP_WORK',
     'meeting': 'MEETINGS',
@@ -226,6 +256,16 @@ const mapBlockTypeToCategory = (blockType: string) => {
     'planning': 'PLANNING',
     'research': 'RESEARCH'
   };
+  
+  // For anchor/fixed, try to infer from label
+  if (blockType.toLowerCase() === 'anchor' || blockType.toLowerCase() === 'fixed') {
+    // Morning/evening routines are typically personal
+    if (lowerLabel.includes('morning') || lowerLabel.includes('evening') || lowerLabel.includes('routine')) {
+      return 'PERSONAL';
+    }
+    // Otherwise, default to work
+    return 'DEEP_WORK';
+  }
   
   return typeMap[blockType.toLowerCase()] || 'DEEP_WORK';
 };

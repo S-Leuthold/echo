@@ -71,10 +71,20 @@ const detectSessionState = (
       reason = `In rest block: ${currentBlock.label}`;
       timeUntilTransition = currentBlock.endMinutes - currentMinutes;
     } else if (STATE_CONFIG.WORK_CATEGORIES.includes(currentBlock.timeCategory)) {
-      // TODO: Check if session is active
-      state = 'TRANQUIL'; // Will be ACTIVE in future phases
-      reason = `In work block: ${currentBlock.label}`;
-      timeUntilTransition = currentBlock.endMinutes - currentMinutes;
+      // Work blocks should allow work states, not force tranquil
+      // Check if we're within 10 minutes of block start for SPIN_UP
+      const minutesSinceStart = currentMinutes - currentBlock.startMinutes;
+      if (minutesSinceStart < 0 && Math.abs(minutesSinceStart) <= STATE_CONFIG.SPIN_UP_LEAD_TIME) {
+        state = 'SPIN_UP';
+        reason = `Preparing for: ${currentBlock.label}`;
+        timeUntilTransition = Math.abs(minutesSinceStart);
+      } else {
+        // During work block, show SPIN_UP state by default
+        // In production, this would check for active session
+        state = 'SPIN_UP';
+        reason = `Ready to start: ${currentBlock.label}`;
+        timeUntilTransition = currentBlock.endMinutes - currentMinutes;
+      }
     }
   } else if (nextWorkBlock) {
     // Check if we're in spin-up window
