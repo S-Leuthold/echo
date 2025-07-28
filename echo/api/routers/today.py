@@ -10,10 +10,12 @@ import os
 from datetime import datetime, date
 from pathlib import Path
 
+import aiofiles
 from fastapi import APIRouter, HTTPException
 
 from echo.api.dependencies import get_email_processor
 from echo.api.models.response_models import TodayResponse, BlockResponse
+from echo.api.models.plan_models import safe_parse_plan_file, PlanFileValidationError
 from echo.models import Block, BlockType
 
 router = APIRouter()
@@ -58,24 +60,27 @@ async def get_today_schedule():
         plans_dir = Path(plans_base_dir).resolve()
         plan_file = plans_dir / f"{today.isoformat()}-enhanced-plan.json"
         
+        # Load and validate plan file once, reuse for both blocks and notes
+        plan_data = None
+        
         if not plan_file.exists():
             # Return empty blocks if no plan exists - don't auto-generate
             blocks = []
         else:
-            with open(plan_file, 'r') as f:
-                plan_data = json.load(f)
-                blocks = []
-                # Handle both unified planning format ("schedule") and legacy format ("blocks")
-                schedule_data = plan_data.get("schedule", plan_data.get("blocks", []))
+            try:
+                # Use validated plan file parsing with async I/O
+                async with aiofiles.open(plan_file, 'r') as f:
+                    file_content = await f.read()
                 
-                for block_data in schedule_data:
-                    # Parse time strings - unified planning uses HH:MM format
-                    start_str = block_data.get("start", "")
-                    end_str = block_data.get("end", "")
-                    
-                    if not start_str or not end_str:
-                        logger.warning(f"Block missing start/end time: {block_data}")
-                        continue
+                plan_data = safe_parse_plan_file(file_content)
+                blocks = []
+                
+                # Get validated blocks with proper time data
+                valid_blocks = plan_data.get_valid_blocks()
+                
+                for block_data in valid_blocks:
+                    start_str = block_data.get_start_time()
+                    end_str = block_data.get_end_time()
                     
                     # Convert HH:MM to HH:MM:SS format if needed
                     if len(start_str.split(':')) == 2:
@@ -86,20 +91,28 @@ async def get_today_schedule():
                     try:
                         start_time = datetime.strptime(start_str, "%H:%M:%S").time()
                         end_time = datetime.strptime(end_str, "%H:%M:%S").time()
+                        
+                        block = Block(
+                            start=start_time,
+                            end=end_time,
+                            label=block_data.get_label(),
+                            type=BlockType(block_data.type)
+                        )
+                        blocks.append(block)
+                        
                     except ValueError as e:
-                        logger.warning(f"Invalid time format in block: {block_data}, error: {e}")
+                        logger.warning(f"Invalid time format in validated block: {block_data}, error: {e}")
                         continue
-                    
-                    # Handle both unified planning ("title") and legacy ("label") field names
-                    label = block_data.get("title") or block_data.get("label") or "Untitled Block"
-                    
-                    block = Block(
-                        start=start_time,
-                        end=end_time,
-                        label=label,
-                        type=BlockType(block_data.get("type", "flex"))
-                    )
-                    blocks.append(block)
+                        
+            except PlanFileValidationError as e:
+                logger.error(f"Plan file validation failed for {plan_file}: {e.message}")
+                if e.errors:
+                    logger.error(f"Validation errors: {e.errors}")
+                # Return empty blocks on validation failure to prevent crashes
+                blocks = []
+            except Exception as e:
+                logger.error(f"Unexpected error reading plan file {plan_file}: {e}")
+                blocks = []
         
         # Convert blocks to response format
         block_responses = []
@@ -151,22 +164,19 @@ async def get_today_schedule():
             
             note = ""     # Default
             
-            # Check if plan data has enricher information for notes
-            if plan_file.exists():
-                with open(plan_file, 'r') as f:
-                    plan_data = json.load(f)
-                    # Handle both unified planning format ("schedule") and legacy format ("blocks")
-                    saved_blocks = plan_data.get("schedule", plan_data.get("blocks", []))
-                    for saved_block in saved_blocks:
-                        # Compare times in HH:MM format (without seconds)
-                        saved_start = saved_block.get("start", "")
-                        saved_end = saved_block.get("end", "")
-                        block_start = block.start.strftime("%H:%M")
-                        block_end = block.end.strftime("%H:%M")
-                        
-                        if saved_start == block_start and saved_end == block_end:
-                            note = saved_block.get("note", "")
-                            break
+            # Check if plan data has enricher information for notes (reuse loaded data)
+            if plan_data is not None:
+                schedule_data = plan_data.get_schedule_data()
+                for saved_block in schedule_data:
+                    # Compare times in HH:MM format (without seconds)
+                    saved_start = saved_block.get_start_time() or ""
+                    saved_end = saved_block.get_end_time() or ""
+                    block_start = block.start.strftime("%H:%M")
+                    block_end = block.end.strftime("%H:%M")
+                    
+                    if saved_start == block_start and saved_end == block_end:
+                        note = saved_block.note or ""
+                        break
             
             block_response = BlockResponse(
                 id=f"block_{block.start.isoformat()}",
