@@ -14,7 +14,7 @@ const customJestConfig = {
     '<rootDir>/node_modules/',
     '<rootDir>/tests/visual/',  // Exclude Playwright visual tests
     '.*\\.spec\\.ts$',   // Exclude Playwright test files
-    // Temporarily exclude broken test files for baseline creation
+    // Temporarily exclude broken test files - will fix after core refactoring
     '<rootDir>/src/hooks/__tests__/useSessionApi.test.tsx',
     '<rootDir>/src/hooks/__tests__/useSessionState.test.ts',
     '<rootDir>/src/components/session/states/__tests__/',
