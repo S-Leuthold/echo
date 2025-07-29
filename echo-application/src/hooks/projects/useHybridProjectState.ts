@@ -30,6 +30,7 @@ import { UploadedFile } from '@/components/projects/FileUploadZone';
 import { useProjects } from './useProjects';
 import { useConversation } from './useConversation';
 import { useBriefState } from './useBriefState';
+import { useFileUploads } from './useFileUploads';
 
 // Service imports
 import { HybridProjectParser } from '@/services/hybrid-project-parser';
@@ -68,13 +69,17 @@ interface UseHybridProjectStateReturn {
   
   // Conversation actions
   submitMessage: (message: string) => Promise<void>;
-  uploadFiles: (files: UploadedFile[]) => Promise<void>;
+  uploadFiles: (files: File[]) => Promise<UploadedFile[]>;
   clearConversation: () => void;
   
   // Brief actions
   updateBriefField: <K extends keyof BriefState>(field: K, value: BriefState[K]['value']) => Promise<void>;
   updateRoadmapPhase: (phaseId: string, updates: Partial<ProjectRoadmapPhase>) => Promise<void>;
   reorderRoadmapPhases: (newOrder: string[]) => Promise<void>;
+  
+  // File management actions
+  removeFile: (fileId: string) => void;
+  clearAllFiles: () => void;
   
   // AI response actions
   dismissResponse: (responseId: string) => void;
@@ -130,6 +135,13 @@ export const useHybridProjectState = (
   // Brief state management (extracted to separate hook)
   const briefHook = useBriefState({
     enableRoadmapGeneration: fullConfig.enableRealTimeAnalysis
+  });
+
+  // File uploads management (extracted to separate hook)
+  const fileUploadsHook = useFileUploads({
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 10,
+    enableSecurityScanning: true
   });
 
   // Main state (conversation and brief now managed by hooks)
@@ -195,28 +207,38 @@ export const useHybridProjectState = (
   }, [conversationHook, briefHook]);
 
   /**
-   * Handles file uploads and integrates them into analysis
+   * Handles file uploads with security validation and integrates them into analysis
    */
-  const uploadFiles = useCallback(async (files: UploadedFile[]) => {
-    // Add files to brief using brief hook
-    briefHook.addUploadedFiles(files);
+  const uploadFiles = useCallback(async (rawFiles: File[]) => {
+    try {
+      // Upload files with security validation using file uploads hook
+      const uploadedFiles = await fileUploadsHook.uploadFiles(rawFiles);
 
-    // If we have existing conversation, re-analyze with file context
-    if (currentAnalysisRef.current && fullConfig.enableRealTimeAnalysis) {
-      try {
-        const updatedAnalysis = await parserRef.current.analyzeConversation(
-          '', // Empty input since we're just adding files
-          files,
-          currentAnalysisRef.current
-        );
+      // Add successful uploads to brief using brief hook
+      briefHook.addUploadedFiles(uploadedFiles);
 
-        currentAnalysisRef.current = updatedAnalysis;
-        await briefHook.updateBriefFromAnalysis(updatedAnalysis);
-      } catch (error) {
-        console.error('File integration analysis failed:', error);
+      // If we have existing conversation, re-analyze with file context
+      if (currentAnalysisRef.current && fullConfig.enableRealTimeAnalysis && uploadedFiles.length > 0) {
+        try {
+          const updatedAnalysis = await parserRef.current.analyzeConversation(
+            '', // Empty input since we're just adding files
+            uploadedFiles,
+            currentAnalysisRef.current
+          );
+
+          currentAnalysisRef.current = updatedAnalysis;
+          await briefHook.updateBriefFromAnalysis(updatedAnalysis);
+        } catch (error) {
+          console.error('File integration analysis failed:', error);
+        }
       }
+
+      return uploadedFiles;
+    } catch (error) {
+      console.error('File upload failed:', error);
+      throw error;
     }
-  }, [briefHook, fullConfig.enableRealTimeAnalysis]);
+  }, [fileUploadsHook, briefHook, fullConfig.enableRealTimeAnalysis]);
 
   /**
    * Updates a brief field and triggers active response analysis (using brief hook)
@@ -389,15 +411,34 @@ export const useHybridProjectState = (
   }, [conversationHook]);
 
   /**
-   * Resets the entire wizard state (conversation and brief managed by hooks)
+   * Removes a file from the uploaded files list (delegating to file uploads hook)
+   */
+  const removeFile = useCallback((fileId: string) => {
+    fileUploadsHook.removeFile(fileId);
+    // Note: Brief state synchronization is handled through the file upload integration
+    // The brief hook maintains its own file list which gets updated when files are added
+  }, [fileUploadsHook]);
+
+  /**
+   * Clears all uploaded files (delegating to file uploads hook)
+   */
+  const clearAllFiles = useCallback(() => {
+    fileUploadsHook.clearAllFiles();
+    // Note: Brief state synchronization is handled through the file upload integration
+    // The brief hook maintains its own file list which gets reset when wizard resets
+  }, [fileUploadsHook]);
+
+  /**
+   * Resets the entire wizard state (conversation, brief, and files managed by hooks)
    */
   const resetWizard = useCallback(() => {
     conversationHook.clearConversation();
     briefHook.resetBrief();
+    fileUploadsHook.clearAllFiles();
     setState(prev => createInitialState(prev.conversation, prev.brief)); // Keep current states from hooks
     currentAnalysisRef.current = null;
     triggerAnalyzerRef.current.resetSession();
-  }, [conversationHook, briefHook]);
+  }, [conversationHook, briefHook, fileUploadsHook]);
 
   /**
    * Updates wizard configuration
@@ -429,6 +470,8 @@ export const useHybridProjectState = (
     updateBriefField,
     updateRoadmapPhase,
     reorderRoadmapPhases,
+    removeFile,
+    clearAllFiles,
     dismissResponse,
     retryAnalysis,
     createProject,
