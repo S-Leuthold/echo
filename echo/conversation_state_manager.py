@@ -28,6 +28,7 @@ from echo.models import (
     ExpertPersona
 )
 from echo.database_schema import SessionDatabase
+from echo.conversation_serializer import ConversationSerializer
 
 
 class ConversationStateManager:
@@ -89,7 +90,7 @@ class ConversationStateManager:
             return None
         
         # Convert database dict back to ConversationState dataclass
-        return self._dict_to_conversation_state(state_dict)
+        return ConversationSerializer.from_database_record(state_dict)
     
     def save_conversation(self, conversation_state: ConversationState) -> bool:
         """

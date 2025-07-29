@@ -1222,29 +1222,9 @@ async def get_conversation(conversation_id: str):
         if not conversation_state:
             raise HTTPException(status_code=404, detail="Conversation not found")
         
-        # Format response
-        return {
-            "conversation_id": conversation_state.conversation_id,
-            "stage": conversation_state.current_stage.value,
-            "messages": [
-                {
-                    "role": msg.role,
-                    "content": msg.content,
-                    "timestamp": msg.timestamp.isoformat(),
-                    "metadata": msg.metadata
-                }
-                for msg in conversation_state.messages
-            ],
-            "project_summary": conversation_state.project_summary,
-            "extracted_data": conversation_state.extracted_data,
-            "confidence_score": conversation_state.confidence_score,
-            "missing_information": conversation_state.missing_information,
-            "current_persona": conversation_state.current_persona,
-            "domain_detection": conversation_state.domain_detection.to_dict() if conversation_state.domain_detection else None,
-            "total_exchanges": conversation_state.total_exchanges,
-            "created_at": conversation_state.created_at.isoformat(),
-            "updated_at": conversation_state.updated_at.isoformat()
-        }
+        # Format response using serializer
+        from echo.conversation_serializer import serialize_for_api
+        return serialize_for_api(conversation_state, full_history=True)
         
     except HTTPException:
         raise
