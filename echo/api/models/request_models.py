@@ -111,3 +111,112 @@ class SessionCompleteRequest(BaseModel):
 class GetScaffoldRequest(BaseModel):
     """Request model for retrieving a session scaffold"""
     block_id: str = Field(description="ID of the schedule block")
+
+
+# ===== PROJECT REQUEST MODELS =====
+
+class ProjectCreateRequest(BaseModel):
+    """Request model for creating a new project"""
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=2000)
+    type: str = Field(description="ProjectType: software, research, writing, creative, admin, personal")
+    objective: str = Field(min_length=1, max_length=500, description="Primary project objective")
+    estimated_hours: Optional[int] = Field(default=40, ge=1, le=10000)
+    initial_phase: Optional[str] = Field(default="initiation")
+    current_state: Optional[str] = Field(default="Project just created. Ready to begin work.")
+
+
+class ProjectUpdateRequest(BaseModel):
+    """Request model for updating an existing project"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, min_length=1, max_length=2000)
+    type: Optional[str] = None
+    status: Optional[str] = None
+    phase: Optional[str] = None
+    objective: Optional[str] = Field(None, min_length=1, max_length=500)
+    current_state: Optional[str] = Field(None, min_length=1, max_length=1000)
+    progress_percentage: Optional[float] = Field(None, ge=0, le=100)
+    momentum: Optional[str] = None
+    total_estimated_hours: Optional[int] = Field(None, ge=1, le=10000)
+
+
+class ProjectFiltersRequest(BaseModel):
+    """Request model for project filtering and search"""
+    status: Optional[List[str]] = None
+    type: Optional[List[str]] = None
+    phase: Optional[List[str]] = None
+    momentum: Optional[List[str]] = None
+    search: Optional[str] = Field(None, max_length=200)
+    sort_by: Optional[str] = Field(default="updated_date")
+    sort_order: Optional[str] = Field(default="desc", pattern="^(asc|desc)$")
+    limit: Optional[int] = Field(default=50, ge=1, le=200)
+    offset: Optional[int] = Field(default=0, ge=0)
+
+
+# ===== HYBRID WIZARD REQUEST MODELS =====
+
+class ConversationMessage(BaseModel):
+    """Individual message in conversation history"""
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str
+    timestamp: str  # ISO datetime
+    message_id: Optional[str] = None
+
+
+class UploadedFileRef(BaseModel):
+    """Reference to an uploaded file for context"""
+    filename: str
+    content_type: str 
+    file_size: int
+    file_path: str  # Storage path
+    uploaded_at: str  # ISO datetime
+
+
+class ConversationAnalysisRequest(BaseModel):
+    """Request model for analyzing conversation into project structure"""
+    message: str = Field(min_length=1, max_length=5000)
+    conversation_history: List[ConversationMessage] = Field(default_factory=list)
+    uploaded_files: List[UploadedFileRef] = Field(default_factory=list)
+    current_analysis: Optional[Dict[str, Any]] = None  # Previous analysis to build upon
+
+
+class RoadmapGenerationRequest(BaseModel):
+    """Request model for generating AI project roadmap"""
+    project_brief: Dict[str, Any] = Field(description="Current project brief state")
+    project_type: str = Field(description="Type of project for roadmap generation")
+    estimated_duration: Optional[int] = Field(None, ge=1, le=365, description="Estimated duration in days")
+    preferences: Optional[Dict[str, Any]] = Field(default_factory=dict, description="User preferences for roadmap")
+
+
+class HybridProjectCreateRequest(BaseModel):
+    """Request model for creating project from hybrid wizard"""
+    project_brief: Dict[str, Any] = Field(description="Complete project brief from conversation")
+    conversation_history: List[ConversationMessage] = Field(description="Full conversation for context")
+    roadmap: Optional[Dict[str, Any]] = None  # AI-generated roadmap
+    uploaded_files: List[UploadedFileRef] = Field(default_factory=list)
+    user_refinements: Optional[Dict[str, Any]] = Field(default_factory=dict, description="User manual refinements")
+
+
+class FileUploadRequest(BaseModel):
+    """Request model for file upload validation"""
+    filename: str
+    content_type: str
+    file_size: int
+    project_context: Optional[str] = None  # Optional context about how file relates to project
+
+
+# ===== ANALYTICS REQUEST MODELS =====
+
+class ActivityHeatmapRequest(BaseModel):
+    """Request model for generating activity heatmap data"""
+    project_id: str
+    start_date: str  # ISO date
+    end_date: str    # ISO date
+    granularity: str = Field(default="daily", pattern="^(daily|weekly|monthly)$")
+
+
+class WeeklySummaryGenerationRequest(BaseModel):
+    """Request model for generating weekly project summary"""
+    project_id: str
+    week_ending: str  # ISO date (Sunday)
+    force_regenerate: bool = Field(default=False)
