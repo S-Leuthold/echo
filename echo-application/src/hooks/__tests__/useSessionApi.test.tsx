@@ -25,17 +25,19 @@ import {
 // Mock Session API Service
 // ============================================================================
 
+const mockSessionApi = {
+  getScaffold: jest.fn(),
+  startSession: jest.fn(),
+  completeSession: jest.fn(),
+  generateScaffolds: jest.fn(),
+  healthCheck: jest.fn(),
+  cancelRequest: jest.fn(),
+  clearCache: jest.fn(),
+  getCacheStats: jest.fn()
+};
+
 jest.mock('@/services/sessionApiService', () => ({
-  sessionApi: {
-    getScaffold: jest.fn(),
-    startSession: jest.fn(),
-    completeSession: jest.fn(),
-    generateScaffolds: jest.fn(),
-    healthCheck: jest.fn(),
-    cancelRequest: jest.fn(),
-    clearCache: jest.fn(),
-    getCacheStats: jest.fn()
-  },
+  sessionApi: mockSessionApi,
   SessionApiError: class MockSessionApiError extends Error {
     constructor(
       public type: string,
@@ -50,15 +52,13 @@ jest.mock('@/services/sessionApiService', () => ({
   ErrorType: {
     NETWORK_ERROR: 'NETWORK_ERROR',
     TIMEOUT_ERROR: 'TIMEOUT_ERROR',
-    API_ERROR: 'API_ERROR',
-    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    API_ERROR: ErrorType.API_ERROR,
+    VALIDATION_ERROR: ErrorType.VALIDATION_ERROR,
     RATE_LIMIT_ERROR: 'RATE_LIMIT_ERROR',
     AUTHENTICATION_ERROR: 'AUTHENTICATION_ERROR',
     UNKNOWN_ERROR: 'UNKNOWN_ERROR'
   }
 }));
-
-const mockSessionApi = sessionApi as jest.Mocked<typeof sessionApi>;
 
 // ============================================================================
 // Test Data
@@ -212,8 +212,8 @@ describe('useScaffold', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
-      'NETWORK_ERROR',
+    const error = new SessionApiError(
+      ErrorType.NETWORK_ERROR,
       'Network error',
       null,
       true
@@ -234,8 +234,8 @@ describe('useScaffold', () => {
   });
 
   it('should support retry functionality', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
-      'NETWORK_ERROR',
+    const error = new SessionApiError(
+      ErrorType.NETWORK_ERROR,
       'Network error',
       null,
       true
@@ -289,8 +289,8 @@ describe('useScaffold', () => {
   });
 
   it('should clear errors when requested', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
-      'NETWORK_ERROR',
+    const error = new SessionApiError(
+      ErrorType.NETWORK_ERROR,
       'Network error',
       null,
       true
@@ -342,8 +342,8 @@ describe('useSessionStart', () => {
   });
 
   it('should handle session start errors', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
-      'API_ERROR',
+    const error = new SessionApiError(
+      ErrorType.API_ERROR,
       'Server error',
       null,
       true
@@ -409,7 +409,7 @@ describe('useSessionComplete', () => {
   });
 
   it('should handle completion errors', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
+    const error = new SessionApiError(
       'TIMEOUT_ERROR',
       'Request timeout',
       null,
@@ -475,7 +475,7 @@ describe('useSessionFlow', () => {
   });
 
   it('should handle errors in session flow', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
+    const error = new SessionApiError(
       'NETWORK_ERROR',
       'Network error',
       null,
@@ -508,7 +508,7 @@ describe('useSessionFlow', () => {
   });
 
   it('should clear all errors', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
+    const error = new SessionApiError(
       'NETWORK_ERROR',
       'Network error',
       null,
@@ -639,7 +639,7 @@ describe('Hook Integration', () => {
   });
 
   it('should handle API service errors consistently', async () => {
-    const error = new (mockSessionApi as any).SessionApiError(
+    const error = new SessionApiError(
       'NETWORK_ERROR',
       'Network error',
       null,
