@@ -11,8 +11,11 @@ import { useState, useCallback, useRef } from 'react';
 import { 
   BriefState,
   BriefField,
-  ConversationAnalysis 
+  ConversationAnalysis,
+  AcademicDomainInfo,
+  AcademicContext 
 } from '@/types/hybrid-wizard';
+import { AcademicConversationAnalysis } from '@/services/academic-project-parser';
 import { ProjectType, ProjectRoadmap, ProjectRoadmapPhase } from '@/types/projects';
 import { UploadedFile } from '@/components/projects/FileUploadZone';
 import { ProjectRoadmapGenerator } from '@/services/roadmap-generator';
@@ -33,8 +36,8 @@ export interface UseBriefStateReturn {
   brief: BriefState;
   
   // Actions
-  updateBriefField: <K extends keyof BriefState>(field: K, value: BriefState[K]['value']) => Promise<void>;
-  updateBriefFromAnalysis: (analysis: ConversationAnalysis) => Promise<void>;
+  updateBriefField: <K extends keyof BriefState>(field: K, value: BriefState[K] extends BriefField<infer T> ? T : never) => Promise<void>;
+  updateBriefFromAnalysis: (analysis: ConversationAnalysis | AcademicConversationAnalysis) => Promise<void>;
   updateRoadmapPhase: (phaseId: string, updates: Partial<ProjectRoadmapPhase>) => Promise<void>;
   reorderRoadmapPhases: (newOrder: string[]) => Promise<void>;
   addUploadedFiles: (files: UploadedFile[]) => void;
@@ -74,6 +77,8 @@ function createInitialBriefState(): BriefState {
     objective: createBriefField(''),
     key_deliverables: createBriefField<string[]>([]),
     roadmap: createBriefField<ProjectRoadmap | null>(null),
+    academic_domain: undefined,
+    academic_context: undefined,
     overall_confidence: 0.5,
     user_modified: false,
     last_updated: new Date(),
@@ -116,7 +121,10 @@ export const useBriefState = (
   /**
    * Updates brief from AI analysis results
    */
-  const updateBriefFromAnalysis = useCallback(async (analysis: ConversationAnalysis) => {
+  const updateBriefFromAnalysis = useCallback(async (analysis: ConversationAnalysis | AcademicConversationAnalysis) => {
+    // Check if this is an academic analysis with domain information
+    const academicAnalysis = analysis as AcademicConversationAnalysis;
+    
     setBrief(prev => ({
       ...prev,
       name: analysis.project_name 
@@ -130,6 +138,12 @@ export const useBriefState = (
         ? createBriefField(analysis.objective, analysis.confidence)
         : prev.objective,
       key_deliverables: createBriefField(analysis.deliverables, analysis.confidence),
+      academic_domain: academicAnalysis.academic_domain
+        ? createBriefField(academicAnalysis.academic_domain, academicAnalysis.academic_domain.confidence)
+        : prev.academic_domain,
+      academic_context: academicAnalysis.academic_context
+        ? createBriefField(academicAnalysis.academic_context, analysis.confidence)
+        : prev.academic_context,
       overall_confidence: analysis.confidence,
       last_updated: new Date()
     }));

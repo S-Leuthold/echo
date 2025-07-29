@@ -268,6 +268,63 @@ export const LiveProjectBrief: React.FC<LiveProjectBriefProps> = ({
           </div>
         </div>
 
+        {/* Academic Domain Information */}
+        {brief.academic_domain && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-foreground/80 uppercase tracking-wider">Academic Domain</h3>
+            <div className="p-4 rounded-lg border border-border/50 bg-accent/5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-accent" />
+                  <span className="text-sm font-medium text-foreground capitalize">
+                    {brief.academic_domain.value?.domain?.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-accent">
+                  <span>{Math.round((brief.academic_domain.value?.confidence || 0) * 100)}% confidence</span>
+                </div>
+              </div>
+              
+              {brief.academic_domain.value?.description && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  {brief.academic_domain.value.description}
+                </p>
+              )}
+              
+              {brief.academic_domain.value?.reasoning && (
+                <div className="text-xs text-muted-foreground/80 bg-muted/30 rounded p-2">
+                  <strong>Detection reasoning:</strong> {brief.academic_domain.value.reasoning}
+                </div>
+              )}
+              
+              {brief.academic_context?.value && (
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <div className="grid grid-cols-1 gap-2 text-xs">
+                    {brief.academic_context.value.research_stage && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Research Stage:</span>
+                        <span className="text-foreground capitalize">{brief.academic_context.value.research_stage.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                    {brief.academic_context.value.methodology && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Methodology:</span>
+                        <span className="text-foreground">{brief.academic_context.value.methodology}</span>
+                      </div>
+                    )}
+                    {brief.academic_context.value.tools_mentioned && brief.academic_context.value.tools_mentioned.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Tools:</span>
+                        <span className="text-foreground">{brief.academic_context.value.tools_mentioned.join(', ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Project Description */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground/80 uppercase tracking-wider">Description</h3>

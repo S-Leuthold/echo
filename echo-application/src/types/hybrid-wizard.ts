@@ -85,6 +85,12 @@ export interface BriefState {
   /** AI-generated roadmap with phases */
   roadmap: BriefField<ProjectRoadmap | null>;
   
+  // Academic Domain Information
+  /** Academic domain classification with confidence */
+  academic_domain?: BriefField<AcademicDomainInfo>;
+  /** Academic context and metadata */
+  academic_context?: BriefField<AcademicContext>;
+  
   // Metadata
   /** Overall AI confidence in the brief */
   overall_confidence: number;
@@ -277,7 +283,7 @@ export interface LiveProjectBriefProps {
   /** Current brief state */
   brief: BriefState;
   /** Callback when field is edited directly */
-  onFieldEdit: <K extends keyof BriefState>(field: K, value: BriefState[K]['value']) => void;
+  onFieldEdit: <K extends keyof BriefState>(field: K, value: BriefState[K] extends BriefField<infer T> ? T : never) => void;
   /** Callback when roadmap phase is edited */
   onPhaseEdit: (phaseId: string, updates: Partial<ProjectRoadmapPhase>) => void;
   /** Whether brief is read-only */
