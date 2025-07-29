@@ -284,6 +284,73 @@ class SessionDatabase:
             )
         """)
         
+        # Conversation states table (for adaptive expert coaching)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS conversation_states (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                
+                -- Conversation flow management
+                current_stage TEXT NOT NULL DEFAULT 'discovery',  -- discovery, confirmation, expert_coaching
+                messages TEXT NOT NULL DEFAULT '[]',             -- JSON array of ConversationMessage objects
+                stage_transitions TEXT NOT NULL DEFAULT '[]',    -- JSON array of stage transition history
+                
+                -- Project understanding (built incrementally)
+                project_summary TEXT,                            -- AI-generated project summary
+                extracted_data TEXT NOT NULL DEFAULT '{}',       -- JSON object of structured project data
+                confidence_score REAL NOT NULL DEFAULT 0.0,     -- Overall confidence in project understanding (0-1)
+                missing_information TEXT NOT NULL DEFAULT '[]',  -- JSON array of missing info items
+                
+                -- Domain detection and persona management
+                domain_detection TEXT,                           -- JSON object of DomainDetection
+                current_persona TEXT,                            -- Domain identifier for active persona
+                persona_switched_at TIMESTAMP,                   -- When persona was last switched
+                user_corrections TEXT NOT NULL DEFAULT '[]',     -- JSON array of user corrections
+                
+                -- Context building for expert coaching
+                user_expertise_level TEXT,                       -- beginner, intermediate, expert
+                key_constraints TEXT NOT NULL DEFAULT '[]',      -- JSON array of constraints
+                success_criteria TEXT NOT NULL DEFAULT '[]',     -- JSON array of success definitions
+                risk_factors TEXT NOT NULL DEFAULT '[]',         -- JSON array of identified risks
+                
+                -- File context and additional materials
+                uploaded_files TEXT NOT NULL DEFAULT '[]',       -- JSON array of file references
+                external_context TEXT NOT NULL DEFAULT '{}',     -- JSON object of additional context
+                
+                -- Conversation analytics
+                total_exchanges INTEGER NOT NULL DEFAULT 0,      -- Number of user-assistant message pairs
+                avg_response_time REAL NOT NULL DEFAULT 0.0,     -- Average AI response time (seconds)
+                user_satisfaction_indicators TEXT NOT NULL DEFAULT '{}', -- JSON object of engagement metrics
+                
+                -- Final project creation result
+                created_project_id TEXT,                         -- ID of project created from this conversation
+                conversation_completed BOOLEAN DEFAULT FALSE     -- Whether conversation resulted in project creation
+            )
+        """)
+        
+        # Create indexes for conversation states
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_conversation_stage 
+            ON conversation_states (current_stage, updated_at DESC)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_conversation_persona 
+            ON conversation_states (current_persona, persona_switched_at DESC)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_conversation_project 
+            ON conversation_states (created_project_id)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_conversation_updated 
+            ON conversation_states (updated_at DESC)
+        """)
+
         # Create indexes for new tables
         self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_roadmap_project 
@@ -909,6 +976,272 @@ class SessionDatabase:
             print(f"Error linking file to project: {e}")
             return False
     
+    # ===== CONVERSATION STATES =====
+    
+    def create_conversation_state(self, conversation_state) -> bool:
+        """Create a new conversation state record."""
+        try:
+            # Convert ConversationState dataclass to database record
+            if hasattr(conversation_state, 'to_dict'):
+                state_dict = conversation_state.to_dict()
+                conversation_id = conversation_state.conversation_id
+                created_at = conversation_state.created_at.isoformat()
+                updated_at = conversation_state.updated_at.isoformat()
+                current_stage = conversation_state.current_stage.value
+                messages = json.dumps([msg.to_dict() for msg in conversation_state.messages])
+                stage_transitions = json.dumps(conversation_state.stage_transitions)
+                project_summary = conversation_state.project_summary
+                extracted_data = json.dumps(conversation_state.extracted_data)
+                confidence_score = conversation_state.confidence_score
+                missing_information = json.dumps(conversation_state.missing_information)
+                domain_detection = json.dumps(conversation_state.domain_detection.to_dict()) if conversation_state.domain_detection else None
+                current_persona = conversation_state.current_persona
+                persona_switched_at = conversation_state.persona_switched_at.isoformat() if conversation_state.persona_switched_at else None
+                user_corrections = json.dumps(conversation_state.user_corrections)
+                user_expertise_level = conversation_state.user_expertise_level
+                key_constraints = json.dumps(conversation_state.key_constraints)
+                success_criteria = json.dumps(conversation_state.success_criteria)
+                risk_factors = json.dumps(conversation_state.risk_factors)
+                uploaded_files = json.dumps(conversation_state.uploaded_files)
+                external_context = json.dumps(conversation_state.external_context)
+                total_exchanges = conversation_state.total_exchanges
+                avg_response_time = conversation_state.avg_response_time
+                user_satisfaction_indicators = json.dumps(conversation_state.user_satisfaction_indicators)
+            else:
+                # Handle dict input
+                conversation_id = conversation_state['conversation_id']
+                created_at = conversation_state['created_at']
+                updated_at = conversation_state['updated_at']
+                current_stage = conversation_state.get('current_stage', 'discovery')
+                messages = json.dumps(conversation_state.get('messages', []))
+                stage_transitions = json.dumps(conversation_state.get('stage_transitions', []))
+                project_summary = conversation_state.get('project_summary')
+                extracted_data = json.dumps(conversation_state.get('extracted_data', {}))
+                confidence_score = conversation_state.get('confidence_score', 0.0)
+                missing_information = json.dumps(conversation_state.get('missing_information', []))
+                domain_detection = json.dumps(conversation_state['domain_detection']) if conversation_state.get('domain_detection') else None
+                current_persona = conversation_state.get('current_persona')
+                persona_switched_at = conversation_state.get('persona_switched_at')
+                user_corrections = json.dumps(conversation_state.get('user_corrections', []))
+                user_expertise_level = conversation_state.get('user_expertise_level')
+                key_constraints = json.dumps(conversation_state.get('key_constraints', []))
+                success_criteria = json.dumps(conversation_state.get('success_criteria', []))
+                risk_factors = json.dumps(conversation_state.get('risk_factors', []))
+                uploaded_files = json.dumps(conversation_state.get('uploaded_files', []))
+                external_context = json.dumps(conversation_state.get('external_context', {}))
+                total_exchanges = conversation_state.get('total_exchanges', 0)
+                avg_response_time = conversation_state.get('avg_response_time', 0.0)
+                user_satisfaction_indicators = json.dumps(conversation_state.get('user_satisfaction_indicators', {}))
+            
+            record_id = str(uuid.uuid4())
+            
+            self.conn.execute("""
+                INSERT INTO conversation_states 
+                (id, conversation_id, created_at, updated_at, current_stage, messages, stage_transitions,
+                 project_summary, extracted_data, confidence_score, missing_information,
+                 domain_detection, current_persona, persona_switched_at, user_corrections,
+                 user_expertise_level, key_constraints, success_criteria, risk_factors,
+                 uploaded_files, external_context, total_exchanges, avg_response_time,
+                 user_satisfaction_indicators)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                record_id, conversation_id, created_at, updated_at, current_stage, messages, stage_transitions,
+                project_summary, extracted_data, confidence_score, missing_information,
+                domain_detection, current_persona, persona_switched_at, user_corrections,
+                user_expertise_level, key_constraints, success_criteria, risk_factors,
+                uploaded_files, external_context, total_exchanges, avg_response_time,
+                user_satisfaction_indicators
+            ))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error creating conversation state: {e}")
+            return False
+    
+    def get_conversation_state(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+        """Get conversation state by conversation ID."""
+        cursor = self.conn.execute("""
+            SELECT * FROM conversation_states 
+            WHERE conversation_id = ?
+            ORDER BY updated_at DESC LIMIT 1
+        """, (conversation_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            return None
+        
+        return {
+            "id": row['id'],
+            "conversation_id": row['conversation_id'],
+            "created_at": row['created_at'],
+            "updated_at": row['updated_at'],
+            "current_stage": row['current_stage'],
+            "messages": json.loads(row['messages']),
+            "stage_transitions": json.loads(row['stage_transitions']),
+            "project_summary": row['project_summary'],
+            "extracted_data": json.loads(row['extracted_data']),
+            "confidence_score": row['confidence_score'],
+            "missing_information": json.loads(row['missing_information']),
+            "domain_detection": json.loads(row['domain_detection']) if row['domain_detection'] else None,
+            "current_persona": row['current_persona'],
+            "persona_switched_at": row['persona_switched_at'],
+            "user_corrections": json.loads(row['user_corrections']),
+            "user_expertise_level": row['user_expertise_level'],
+            "key_constraints": json.loads(row['key_constraints']),
+            "success_criteria": json.loads(row['success_criteria']),
+            "risk_factors": json.loads(row['risk_factors']),
+            "uploaded_files": json.loads(row['uploaded_files']),
+            "external_context": json.loads(row['external_context']),
+            "total_exchanges": row['total_exchanges'],
+            "avg_response_time": row['avg_response_time'],
+            "user_satisfaction_indicators": json.loads(row['user_satisfaction_indicators']),
+            "created_project_id": row['created_project_id'],
+            "conversation_completed": bool(row['conversation_completed'])
+        }
+    
+    def update_conversation_state(self, conversation_id: str, conversation_state) -> bool:
+        """Update an existing conversation state."""
+        try:
+            # Convert ConversationState dataclass to database record
+            if hasattr(conversation_state, 'to_dict'):
+                updated_at = conversation_state.updated_at.isoformat()
+                current_stage = conversation_state.current_stage.value
+                messages = json.dumps([msg.to_dict() for msg in conversation_state.messages])
+                stage_transitions = json.dumps(conversation_state.stage_transitions)
+                project_summary = conversation_state.project_summary
+                extracted_data = json.dumps(conversation_state.extracted_data)
+                confidence_score = conversation_state.confidence_score
+                missing_information = json.dumps(conversation_state.missing_information)
+                domain_detection = json.dumps(conversation_state.domain_detection.to_dict()) if conversation_state.domain_detection else None
+                current_persona = conversation_state.current_persona
+                persona_switched_at = conversation_state.persona_switched_at.isoformat() if conversation_state.persona_switched_at else None
+                user_corrections = json.dumps(conversation_state.user_corrections)
+                user_expertise_level = conversation_state.user_expertise_level
+                key_constraints = json.dumps(conversation_state.key_constraints)
+                success_criteria = json.dumps(conversation_state.success_criteria)
+                risk_factors = json.dumps(conversation_state.risk_factors)
+                uploaded_files = json.dumps(conversation_state.uploaded_files)
+                external_context = json.dumps(conversation_state.external_context)
+                total_exchanges = conversation_state.total_exchanges
+                avg_response_time = conversation_state.avg_response_time
+                user_satisfaction_indicators = json.dumps(conversation_state.user_satisfaction_indicators)
+            else:
+                # Handle dict input
+                updated_at = conversation_state.get('updated_at', datetime.now().isoformat())
+                current_stage = conversation_state.get('current_stage', 'discovery')
+                messages = json.dumps(conversation_state.get('messages', []))
+                stage_transitions = json.dumps(conversation_state.get('stage_transitions', []))
+                project_summary = conversation_state.get('project_summary')
+                extracted_data = json.dumps(conversation_state.get('extracted_data', {}))
+                confidence_score = conversation_state.get('confidence_score', 0.0)
+                missing_information = json.dumps(conversation_state.get('missing_information', []))
+                domain_detection = json.dumps(conversation_state['domain_detection']) if conversation_state.get('domain_detection') else None
+                current_persona = conversation_state.get('current_persona')
+                persona_switched_at = conversation_state.get('persona_switched_at')
+                user_corrections = json.dumps(conversation_state.get('user_corrections', []))
+                user_expertise_level = conversation_state.get('user_expertise_level')
+                key_constraints = json.dumps(conversation_state.get('key_constraints', []))
+                success_criteria = json.dumps(conversation_state.get('success_criteria', []))
+                risk_factors = json.dumps(conversation_state.get('risk_factors', []))
+                uploaded_files = json.dumps(conversation_state.get('uploaded_files', []))
+                external_context = json.dumps(conversation_state.get('external_context', {}))
+                total_exchanges = conversation_state.get('total_exchanges', 0)
+                avg_response_time = conversation_state.get('avg_response_time', 0.0)
+                user_satisfaction_indicators = json.dumps(conversation_state.get('user_satisfaction_indicators', {}))
+            
+            self.conn.execute("""
+                UPDATE conversation_states 
+                SET updated_at = ?, current_stage = ?, messages = ?, stage_transitions = ?,
+                    project_summary = ?, extracted_data = ?, confidence_score = ?, missing_information = ?,
+                    domain_detection = ?, current_persona = ?, persona_switched_at = ?, user_corrections = ?,
+                    user_expertise_level = ?, key_constraints = ?, success_criteria = ?, risk_factors = ?,
+                    uploaded_files = ?, external_context = ?, total_exchanges = ?, avg_response_time = ?,
+                    user_satisfaction_indicators = ?
+                WHERE conversation_id = ?
+            """, (
+                updated_at, current_stage, messages, stage_transitions,
+                project_summary, extracted_data, confidence_score, missing_information,
+                domain_detection, current_persona, persona_switched_at, user_corrections,
+                user_expertise_level, key_constraints, success_criteria, risk_factors,
+                uploaded_files, external_context, total_exchanges, avg_response_time,
+                user_satisfaction_indicators, conversation_id
+            ))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error updating conversation state: {e}")
+            return False
+    
+    def mark_conversation_completed(self, conversation_id: str, created_project_id: str) -> bool:
+        """Mark a conversation as completed with the created project ID."""
+        try:
+            self.conn.execute("""
+                UPDATE conversation_states 
+                SET conversation_completed = TRUE, created_project_id = ?, updated_at = ?
+                WHERE conversation_id = ?
+            """, (created_project_id, datetime.now().isoformat(), conversation_id))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error marking conversation completed: {e}")
+            return False
+    
+    def get_active_conversations(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get active (incomplete) conversations ordered by most recent."""
+        cursor = self.conn.execute("""
+            SELECT * FROM conversation_states 
+            WHERE conversation_completed = FALSE
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """, (limit,))
+        
+        conversations = []
+        for row in cursor.fetchall():
+            conversations.append({
+                "conversation_id": row['conversation_id'],
+                "current_stage": row['current_stage'],
+                "project_summary": row['project_summary'],
+                "confidence_score": row['confidence_score'],
+                "current_persona": row['current_persona'],
+                "total_exchanges": row['total_exchanges'],
+                "created_at": row['created_at'],
+                "updated_at": row['updated_at']
+            })
+        return conversations
+    
+    def get_conversations_by_stage(self, stage: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversations in a specific stage."""
+        cursor = self.conn.execute("""
+            SELECT * FROM conversation_states 
+            WHERE current_stage = ?
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """, (stage, limit))
+        
+        conversations = []
+        for row in cursor.fetchall():
+            conversations.append({
+                "conversation_id": row['conversation_id'],
+                "current_stage": row['current_stage'],
+                "project_summary": row['project_summary'],
+                "confidence_score": row['confidence_score'],
+                "current_persona": row['current_persona'],
+                "total_exchanges": row['total_exchanges'],
+                "created_at": row['created_at'],
+                "updated_at": row['updated_at']
+            })
+        return conversations
+    
+    def delete_conversation_state(self, conversation_id: str) -> bool:
+        """Delete a conversation state (for cleanup/privacy)."""
+        try:
+            self.conn.execute("DELETE FROM conversation_states WHERE conversation_id = ?", (conversation_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error deleting conversation state: {e}")
+            return False
+    
     # ===== UTILITY METHODS =====
     
     def get_database_stats(self) -> Dict[str, int]:
@@ -939,6 +1272,16 @@ class SessionDatabase:
         
         cursor = self.conn.execute("SELECT COUNT(*) as count FROM projects WHERE priority IN ('high', 'critical')")
         stats['high_priority_projects'] = cursor.fetchone()['count']
+        
+        # Count conversation states
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM conversation_states")
+        stats['total_conversations'] = cursor.fetchone()['count']
+        
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM conversation_states WHERE conversation_completed = FALSE")
+        stats['active_conversations'] = cursor.fetchone()['count']
+        
+        cursor = self.conn.execute("SELECT COUNT(*) as count FROM conversation_states WHERE current_stage = 'expert_coaching'")
+        stats['expert_coaching_conversations'] = cursor.fetchone()['count']
         
         return stats
     
