@@ -263,10 +263,12 @@ Your response:`;
         },
         signal: this.abortController?.signal,
         body: JSON.stringify({
+          message: prompt,
           conversation_history: [
             {
               role: 'user',
-              content: prompt
+              content: prompt,
+              timestamp: new Date().toISOString()
             }
           ]
         }),
