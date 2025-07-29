@@ -31,10 +31,10 @@ import { useProjects } from './useProjects';
 import { useConversation } from './useConversation';
 import { useBriefState } from './useBriefState';
 import { useFileUploads } from './useFileUploads';
+import { useWizardFlow, WizardFlowState } from './useWizardFlow';
 
 // Service imports
 import { HybridProjectParser } from '@/services/hybrid-project-parser';
-import { ResponseTriggerAnalyzer } from '@/services/response-trigger-analyzer';
 
 /**
  * Configuration for the hybrid wizard behavior
@@ -98,16 +98,16 @@ interface UseHybridProjectStateReturn {
 // Conversation state creation moved to useConversation hook
 
 /**
- * Creates initial hybrid wizard state (conversation and brief now managed by hooks)
+ * Creates initial hybrid wizard state (conversation, brief, and flow now managed by hooks)
  */
-function createInitialState(conversation: ConversationState, brief: BriefState): HybridWizardState {
+function createInitialState(conversation: ConversationState, brief: BriefState, flowState: WizardFlowState): HybridWizardState {
   return {
     conversation,
     brief,
-    ai_responses: [],
-    phase: 'gathering',
-    can_create_project: false,
-    error: null
+    ai_responses: flowState.ai_responses,
+    phase: flowState.phase,
+    can_create_project: flowState.can_create_project,
+    error: flowState.error
   };
 }
 
@@ -144,20 +144,22 @@ export const useHybridProjectState = (
     enableSecurityScanning: true
   });
 
-  // Main state (conversation and brief now managed by hooks)
+  // Wizard flow management (extracted to separate hook)
+  const wizardFlowHook = useWizardFlow({
+    enableActiveResponses: fullConfig.enableActiveResponses,
+    analysisDebounceDelay: fullConfig.analysisDebounceDelay,
+    maxResponsesPerSession: fullConfig.maxResponsesPerSession
+  });
+
+  // Main state (conversation, brief, and flow now managed by hooks)
   const [state, setState] = useState<HybridWizardState>(
-    () => createInitialState(conversationHook.conversation, briefHook.brief)
+    () => createInitialState(conversationHook.conversation, briefHook.brief, wizardFlowHook.flowState)
   );
 
   // Service instances (using refs to maintain identity across renders)
   const parserRef = useRef(new HybridProjectParser({
     debounce_delay: fullConfig.analysisDebounceDelay,
     include_file_context: true
-  }));
-  
-  const triggerAnalyzerRef = useRef(new ResponseTriggerAnalyzer({
-    debounceDelay: fullConfig.analysisDebounceDelay,
-    maxResponsesPerSession: fullConfig.maxResponsesPerSession
   }));
 
   // Sync conversation state from the conversation hook
@@ -176,6 +178,17 @@ export const useHybridProjectState = (
     }));
   }, [briefHook.brief]);
 
+  // Sync wizard flow state from the wizard flow hook
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      ai_responses: wizardFlowHook.flowState.ai_responses,
+      phase: wizardFlowHook.flowState.phase,
+      can_create_project: wizardFlowHook.flowState.can_create_project,
+      error: wizardFlowHook.flowState.error
+    }));
+  }, [wizardFlowHook.flowState]);
+
   /**
    * Submits a new message and triggers AI analysis (using conversation hook)
    */
@@ -193,12 +206,9 @@ export const useHybridProjectState = (
         // Update brief fields based on analysis using brief hook
         await briefHook.updateBriefFromAnalysis(analysis);
 
-        // Update wizard phase and project readiness
-        setState(prev => ({
-          ...prev,
-          phase: determineWizardPhase(analysis, briefHook.brief),
-          can_create_project: canCreateProject(analysis)
-        }));
+        // Update wizard phase and project readiness using wizard flow hook
+        wizardFlowHook.updatePhase(analysis, briefHook.brief);
+        wizardFlowHook.updateProjectReadiness(analysis);
       }
     } catch (error) {
       console.error('Message submission failed:', error);
@@ -255,7 +265,8 @@ export const useHybridProjectState = (
     // Analyze for active response if enabled
     if (fullConfig.enableActiveResponses) {
       try {
-        const trigger = await triggerAnalyzerRef.current.analyzeChange(
+        const triggerAnalyzer = wizardFlowHook.getTriggerAnalyzer();
+        const trigger = await triggerAnalyzer.analyzeChange(
           briefHook.brief,
           field
         );
@@ -275,10 +286,8 @@ export const useHybridProjectState = (
           // Add AI response to conversation using conversation hook
           conversationHook.addAIMessage(responseMessage, 0.8, true);
 
-          setState(prev => ({
-            ...prev,
-            ai_responses: [...prev.ai_responses, aiResponse]
-          }));
+          // Add AI response to wizard flow using wizard flow hook
+          wizardFlowHook.addAIResponse(aiResponse);
         }
       } catch (error) {
         console.error('Active response analysis failed:', error);
@@ -304,21 +313,11 @@ export const useHybridProjectState = (
   }, [briefHook]);
 
   /**
-   * Dismisses an AI response and learns from the dismissal
+   * Dismisses an AI response and learns from the dismissal (delegating to wizard flow hook)
    */
   const dismissResponse = useCallback((responseId: string) => {
-    const response = state.ai_responses.find(r => r.id === responseId);
-    if (response) {
-      triggerAnalyzerRef.current.learnFromDismissal(response);
-      
-      setState(prev => ({
-        ...prev,
-        ai_responses: prev.ai_responses.map(r => 
-          r.id === responseId ? { ...r, dismissed: true } : r
-        )
-      }));
-    }
-  }, [state.ai_responses]);
+    wizardFlowHook.dismissResponse(responseId);
+  }, [wizardFlowHook]);
 
   /**
    * Retries analysis if it failed
@@ -358,7 +357,7 @@ export const useHybridProjectState = (
   }, [state.conversation.messages, submitMessage]);
 
   /**
-   * Creates the project using the current brief state
+   * Creates the project using the current brief state (delegating to wizard flow hook for phase management)
    */
   const createProject = useCallback(async (): Promise<string | null> => {
     if (!briefHook.isReadyForCreation()) {
@@ -366,7 +365,7 @@ export const useHybridProjectState = (
     }
 
     try {
-      setState(prev => ({ ...prev, phase: 'finalizing' }));
+      wizardFlowHook.setPhase('finalizing');
 
       const projectData = {
         ...briefHook.getProjectData(),
@@ -389,18 +388,15 @@ export const useHybridProjectState = (
         console.log('Deliverables to be saved:', briefHook.brief.key_deliverables.value);
       }
 
-      setState(prev => ({ ...prev, phase: 'complete' }));
+      wizardFlowHook.setPhase('complete');
       return project.id;
     } catch (error) {
       console.error('Project creation failed:', error);
-      setState(prev => ({
-        ...prev,
-        error: 'Failed to create project. Please try again.',
-        phase: 'refining'
-      }));
+      wizardFlowHook.setError('Failed to create project. Please try again.');
+      wizardFlowHook.setPhase('refining');
       return null;
     }
-  }, [briefHook, createProjectAPI]);
+  }, [briefHook, createProjectAPI, wizardFlowHook]);
 
   /**
    * Clears conversation history (using conversation hook)
@@ -429,38 +425,34 @@ export const useHybridProjectState = (
   }, [fileUploadsHook]);
 
   /**
-   * Resets the entire wizard state (conversation, brief, and files managed by hooks)
+   * Resets the entire wizard state (conversation, brief, files, and flow managed by hooks)
    */
   const resetWizard = useCallback(() => {
     conversationHook.clearConversation();
     briefHook.resetBrief();
     fileUploadsHook.clearAllFiles();
-    setState(prev => createInitialState(prev.conversation, prev.brief)); // Keep current states from hooks
+    wizardFlowHook.resetFlow();
+    setState(prev => createInitialState(prev.conversation, prev.brief, wizardFlowHook.flowState)); // Keep current states from hooks
     currentAnalysisRef.current = null;
-    triggerAnalyzerRef.current.resetSession();
-  }, [conversationHook, briefHook, fileUploadsHook]);
+  }, [conversationHook, briefHook, fileUploadsHook, wizardFlowHook]);
 
   /**
-   * Updates wizard configuration
+   * Updates wizard configuration (delegating to wizard flow hook)
    */
   const updateConfig = useCallback((newConfig: Partial<HybridWizardConfig>) => {
     Object.assign(fullConfig, newConfig);
     
-    // Update service configurations
-    triggerAnalyzerRef.current.updateConfig({
+    // Update wizard flow configuration
+    wizardFlowHook.updateConfig({
+      enableActiveResponses: newConfig.enableActiveResponses,
       maxResponsesPerSession: newConfig.maxResponsesPerSession,
-      debounceDelay: newConfig.analysisDebounceDelay
+      analysisDebounceDelay: newConfig.analysisDebounceDelay
     });
-  }, [fullConfig]);
+  }, [fullConfig, wizardFlowHook]);
 
   // updateBriefFromAnalysis moved to useBriefState hook
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      triggerAnalyzerRef.current.resetSession();
-    };
-  }, []);
+  // Cleanup moved to useWizardFlow hook
 
   return {
     state,
@@ -481,30 +473,8 @@ export const useHybridProjectState = (
 };
 
 /**
- * Utility functions
+ * Utility functions moved to respective hooks:
+ * - generateAnalysisConfirmation moved to useConversation hook
+ * - determineWizardPhase moved to useWizardFlow hook
+ * - canCreateProject moved to useWizardFlow hook
  */
-// generateAnalysisConfirmation moved to useConversation hook
-
-function determineWizardPhase(
-  analysis: ConversationAnalysis, 
-  brief: BriefState
-): HybridWizardState['phase'] {
-  if (analysis.confidence > 0.8 && analysis.project_name && analysis.objective) {
-    return 'refining';
-  }
-  
-  if (brief.user_modified) {
-    return 'finalizing';
-  }
-  
-  return 'gathering';
-}
-
-function canCreateProject(analysis: ConversationAnalysis): boolean {
-  return !!(
-    analysis.project_name &&
-    analysis.project_type &&
-    analysis.objective &&
-    analysis.confidence > 0.6
-  );
-}
