@@ -34,7 +34,7 @@ import { useFileUploads } from './useFileUploads';
 import { useWizardFlow, WizardFlowState } from './useWizardFlow';
 
 // Service imports
-import { HybridProjectParser } from '@/services/hybrid-project-parser';
+import { WizardOrchestrationService } from '@/services/wizard-orchestration-service';
 
 /**
  * Configuration for the hybrid wizard behavior
@@ -120,16 +120,13 @@ export const useHybridProjectState = (
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
   const { createProject: createProjectAPI } = useProjects();
 
-  // Current analysis cache (to build upon previous analysis)
-  const currentAnalysisRef = useRef<ConversationAnalysis | null>(null);
-
   // Conversation management (extracted to separate hook)
   const conversationHook = useConversation(
     {
       enableRealTimeAnalysis: fullConfig.enableRealTimeAnalysis,
       analysisDebounceDelay: fullConfig.analysisDebounceDelay
     },
-    currentAnalysisRef.current
+    null // Analysis now managed by orchestration service
   );
 
   // Brief state management (extracted to separate hook)
@@ -156,10 +153,11 @@ export const useHybridProjectState = (
     () => createInitialState(conversationHook.conversation, briefHook.brief, wizardFlowHook.flowState)
   );
 
-  // Service instances (using refs to maintain identity across renders)
-  const parserRef = useRef(new HybridProjectParser({
-    debounce_delay: fullConfig.analysisDebounceDelay,
-    include_file_context: true
+  // Orchestration service (using ref to maintain identity across renders)
+  const orchestrationServiceRef = useRef(new WizardOrchestrationService({
+    enableRealTimeAnalysis: fullConfig.enableRealTimeAnalysis,
+    analysisDebounceDelay: fullConfig.analysisDebounceDelay,
+    includeFileContext: true
   }));
 
   // Sync conversation state from the conversation hook
@@ -190,23 +188,21 @@ export const useHybridProjectState = (
   }, [wizardFlowHook.flowState]);
 
   /**
-   * Submits a new message and triggers AI analysis (using conversation hook)
+   * Submits a new message and orchestrates analysis across hooks
    */
   const submitMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
 
     try {
-      // Use conversation hook to submit message and get analysis
+      // Submit message to conversation hook
       const analysis = await conversationHook.submitMessage(message, briefHook.brief.uploaded_files);
 
       if (analysis) {
-        // Update current analysis cache
-        currentAnalysisRef.current = analysis;
+        // Update orchestration service cache
+        orchestrationServiceRef.current.setCurrentAnalysis(analysis);
 
-        // Update brief fields based on analysis using brief hook
+        // Coordinate updates across hooks
         await briefHook.updateBriefFromAnalysis(analysis);
-
-        // Update wizard phase and project readiness using wizard flow hook
         wizardFlowHook.updatePhase(analysis, briefHook.brief);
         wizardFlowHook.updateProjectReadiness(analysis);
       }
@@ -214,32 +210,25 @@ export const useHybridProjectState = (
       console.error('Message submission failed:', error);
       conversationHook.setError('Failed to process your message. Please try again.');
     }
-  }, [conversationHook, briefHook]);
+  }, [conversationHook, briefHook, wizardFlowHook]);
 
   /**
-   * Handles file uploads with security validation and integrates them into analysis
+   * Handles file uploads and orchestrates analysis integration
    */
   const uploadFiles = useCallback(async (rawFiles: File[]) => {
     try {
-      // Upload files with security validation using file uploads hook
+      // Upload files with security validation
       const uploadedFiles = await fileUploadsHook.uploadFiles(rawFiles);
 
-      // Add successful uploads to brief using brief hook
+      // Add to brief state
       briefHook.addUploadedFiles(uploadedFiles);
 
-      // If we have existing conversation, re-analyze with file context
-      if (currentAnalysisRef.current && fullConfig.enableRealTimeAnalysis && uploadedFiles.length > 0) {
-        try {
-          const updatedAnalysis = await parserRef.current.analyzeConversation(
-            '', // Empty input since we're just adding files
-            uploadedFiles,
-            currentAnalysisRef.current
-          );
-
-          currentAnalysisRef.current = updatedAnalysis;
-          await briefHook.updateBriefFromAnalysis(updatedAnalysis);
-        } catch (error) {
-          console.error('File integration analysis failed:', error);
+      // Orchestrate file analysis integration
+      if (uploadedFiles.length > 0) {
+        const result = await orchestrationServiceRef.current.analyzeFileUpload(uploadedFiles);
+        
+        if (result.success) {
+          await briefHook.updateBriefFromAnalysis(result.analysis);
         }
       }
 
@@ -248,52 +237,34 @@ export const useHybridProjectState = (
       console.error('File upload failed:', error);
       throw error;
     }
-  }, [fileUploadsHook, briefHook, fullConfig.enableRealTimeAnalysis]);
+  }, [fileUploadsHook, briefHook]);
 
   /**
-   * Updates a brief field and triggers active response analysis (using brief hook)
+   * Updates a brief field and orchestrates active response analysis
    */
   const updateBriefField = useCallback(async <K extends keyof BriefState>(
     field: K,
     value: BriefState[K]['value']
   ) => {
-    const previousBrief = { ...briefHook.brief };
-
-    // Update field using brief hook
+    // Update field through brief hook
     await briefHook.updateBriefField(field, value);
 
-    // Analyze for active response if enabled
+    // Orchestrate active response if enabled
     if (fullConfig.enableActiveResponses) {
-      try {
-        const triggerAnalyzer = wizardFlowHook.getTriggerAnalyzer();
-        const trigger = await triggerAnalyzer.analyzeChange(
-          briefHook.brief,
-          field
-        );
+      const triggerAnalyzer = wizardFlowHook.getTriggerAnalyzer();
+      const result = await orchestrationServiceRef.current.generateActiveResponse(
+        briefHook.brief,
+        field,
+        triggerAnalyzer
+      );
 
-        if (trigger) {
-          const responseMessage = await parserRef.current.generateActiveResponse(trigger);
-          
-          const aiResponse: AIResponse = {
-            id: `response-${Date.now()}`,
-            trigger,
-            message: responseMessage,
-            dismissed: false,
-            created_at: new Date(),
-            suggestions: [] // Could be populated based on trigger type
-          };
-
-          // Add AI response to conversation using conversation hook
-          conversationHook.addAIMessage(responseMessage, 0.8, true);
-
-          // Add AI response to wizard flow using wizard flow hook
-          wizardFlowHook.addAIResponse(aiResponse);
-        }
-      } catch (error) {
-        console.error('Active response analysis failed:', error);
+      if (result) {
+        // Coordinate response across hooks
+        conversationHook.addAIMessage(result.message, 0.8, true);
+        wizardFlowHook.addAIResponse(result.response);
       }
     }
-  }, [briefHook, fullConfig.enableActiveResponses, conversationHook]);
+  }, [briefHook, fullConfig.enableActiveResponses, conversationHook, wizardFlowHook]);
 
   /**
    * Updates a roadmap phase (delegating to brief hook)
@@ -425,27 +396,37 @@ export const useHybridProjectState = (
   }, [fileUploadsHook]);
 
   /**
-   * Resets the entire wizard state (conversation, brief, files, and flow managed by hooks)
+   * Resets the entire wizard state - pure coordination
    */
   const resetWizard = useCallback(() => {
+    // Reset all hooks
     conversationHook.clearConversation();
     briefHook.resetBrief();
     fileUploadsHook.clearAllFiles();
     wizardFlowHook.resetFlow();
-    setState(prev => createInitialState(prev.conversation, prev.brief, wizardFlowHook.flowState)); // Keep current states from hooks
-    currentAnalysisRef.current = null;
+    
+    // Reset orchestration service
+    orchestrationServiceRef.current.reset();
+    
+    // Update main state
+    setState(prev => createInitialState(prev.conversation, prev.brief, wizardFlowHook.flowState));
   }, [conversationHook, briefHook, fileUploadsHook, wizardFlowHook]);
 
   /**
-   * Updates wizard configuration (delegating to wizard flow hook)
+   * Updates wizard configuration - pure coordination
    */
   const updateConfig = useCallback((newConfig: Partial<HybridWizardConfig>) => {
     Object.assign(fullConfig, newConfig);
     
-    // Update wizard flow configuration
+    // Coordinate configuration updates across services
     wizardFlowHook.updateConfig({
       enableActiveResponses: newConfig.enableActiveResponses,
       maxResponsesPerSession: newConfig.maxResponsesPerSession,
+      analysisDebounceDelay: newConfig.analysisDebounceDelay
+    });
+
+    orchestrationServiceRef.current.updateConfig({
+      enableRealTimeAnalysis: newConfig.enableRealTimeAnalysis,
       analysisDebounceDelay: newConfig.analysisDebounceDelay
     });
   }, [fullConfig, wizardFlowHook]);
