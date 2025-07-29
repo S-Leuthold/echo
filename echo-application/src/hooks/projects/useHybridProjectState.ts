@@ -29,10 +29,10 @@ import { ProjectType, ProjectRoadmap, ProjectRoadmapPhase } from '@/types/projec
 import { UploadedFile } from '@/components/projects/FileUploadZone';
 import { useProjects } from './useProjects';
 import { useConversation } from './useConversation';
+import { useBriefState } from './useBriefState';
 
 // Service imports
 import { HybridProjectParser } from '@/services/hybrid-project-parser';
-import { ProjectRoadmapGenerator } from '@/services/roadmap-generator';
 import { ResponseTriggerAnalyzer } from '@/services/response-trigger-analyzer';
 
 /**
@@ -88,46 +88,17 @@ interface UseHybridProjectStateReturn {
   updateConfig: (config: Partial<HybridWizardConfig>) => void;
 }
 
-/**
- * Creates an initial brief field with metadata
- */
-function createBriefField<T>(value: T, confidence: number = 0.5): BriefField<T> {
-  return {
-    value,
-    confidence,
-    source: 'ai-generated',
-    is_updating: false,
-    is_valid: true
-  };
-}
-
-/**
- * Creates initial brief state
- */
-function createInitialBriefState(): BriefState {
-  return {
-    name: createBriefField(''),
-    type: createBriefField<ProjectType>('personal'),
-    description: createBriefField(''),
-    objective: createBriefField(''),
-    key_deliverables: createBriefField<string[]>([]),
-    roadmap: createBriefField<ProjectRoadmap | null>(null),
-    overall_confidence: 0.5,
-    user_modified: false,
-    last_updated: new Date(),
-    uploaded_files: []
-  };
-}
+// Brief state creation moved to useBriefState hook
 
 // Conversation state creation moved to useConversation hook
 
 /**
- * Creates initial hybrid wizard state (conversation now managed by useConversation)
+ * Creates initial hybrid wizard state (conversation and brief now managed by hooks)
  */
-function createInitialState(conversation: ConversationState): HybridWizardState {
+function createInitialState(conversation: ConversationState, brief: BriefState): HybridWizardState {
   return {
     conversation,
-    brief: createInitialBriefState(),
+    brief,
     ai_responses: [],
     phase: 'gathering',
     can_create_project: false,
@@ -156,9 +127,14 @@ export const useHybridProjectState = (
     currentAnalysisRef.current
   );
 
-  // Main state (conversation now managed by useConversation)
+  // Brief state management (extracted to separate hook)
+  const briefHook = useBriefState({
+    enableRoadmapGeneration: fullConfig.enableRealTimeAnalysis
+  });
+
+  // Main state (conversation and brief now managed by hooks)
   const [state, setState] = useState<HybridWizardState>(
-    () => createInitialState(conversationHook.conversation)
+    () => createInitialState(conversationHook.conversation, briefHook.brief)
   );
 
   // Service instances (using refs to maintain identity across renders)
@@ -166,8 +142,6 @@ export const useHybridProjectState = (
     debounce_delay: fullConfig.analysisDebounceDelay,
     include_file_context: true
   }));
-
-  const roadmapGeneratorRef = useRef(new ProjectRoadmapGenerator());
   
   const triggerAnalyzerRef = useRef(new ResponseTriggerAnalyzer({
     debounceDelay: fullConfig.analysisDebounceDelay,
@@ -182,6 +156,14 @@ export const useHybridProjectState = (
     }));
   }, [conversationHook.conversation]);
 
+  // Sync brief state from the brief hook
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      brief: briefHook.brief
+    }));
+  }, [briefHook.brief]);
+
   /**
    * Submits a new message and triggers AI analysis (using conversation hook)
    */
@@ -190,35 +172,19 @@ export const useHybridProjectState = (
 
     try {
       // Use conversation hook to submit message and get analysis
-      const analysis = await conversationHook.submitMessage(message, state.brief.uploaded_files);
+      const analysis = await conversationHook.submitMessage(message, briefHook.brief.uploaded_files);
 
       if (analysis) {
         // Update current analysis cache
         currentAnalysisRef.current = analysis;
 
-        // Update brief fields based on analysis
-        await updateBriefFromAnalysis(analysis);
-
-        // Generate roadmap if we have enough information
-        if (analysis.project_type && analysis.objective) {
-          const roadmap = await roadmapGeneratorRef.current.generateRoadmap(
-            analysis,
-            analysis.project_type
-          );
-
-          setState(prev => ({
-            ...prev,
-            brief: {
-              ...prev.brief,
-              roadmap: createBriefField(roadmap, analysis.confidence)
-            }
-          }));
-        }
+        // Update brief fields based on analysis using brief hook
+        await briefHook.updateBriefFromAnalysis(analysis);
 
         // Update wizard phase and project readiness
         setState(prev => ({
           ...prev,
-          phase: determineWizardPhase(analysis, prev.brief),
+          phase: determineWizardPhase(analysis, briefHook.brief),
           can_create_project: canCreateProject(analysis)
         }));
       }
@@ -226,19 +192,14 @@ export const useHybridProjectState = (
       console.error('Message submission failed:', error);
       conversationHook.setError('Failed to process your message. Please try again.');
     }
-  }, [conversationHook, state.brief.uploaded_files]);
+  }, [conversationHook, briefHook]);
 
   /**
    * Handles file uploads and integrates them into analysis
    */
   const uploadFiles = useCallback(async (files: UploadedFile[]) => {
-    setState(prev => ({
-      ...prev,
-      brief: {
-        ...prev.brief,
-        uploaded_files: [...prev.brief.uploaded_files, ...files]
-      }
-    }));
+    // Add files to brief using brief hook
+    briefHook.addUploadedFiles(files);
 
     // If we have existing conversation, re-analyze with file context
     if (currentAnalysisRef.current && fullConfig.enableRealTimeAnalysis) {
@@ -250,43 +211,30 @@ export const useHybridProjectState = (
         );
 
         currentAnalysisRef.current = updatedAnalysis;
-        await updateBriefFromAnalysis(updatedAnalysis);
+        await briefHook.updateBriefFromAnalysis(updatedAnalysis);
       } catch (error) {
         console.error('File integration analysis failed:', error);
       }
     }
-  }, [fullConfig.enableRealTimeAnalysis]);
+  }, [briefHook, fullConfig.enableRealTimeAnalysis]);
 
   /**
-   * Updates a brief field and triggers active response analysis
+   * Updates a brief field and triggers active response analysis (using brief hook)
    */
   const updateBriefField = useCallback(async <K extends keyof BriefState>(
     field: K,
     value: BriefState[K]['value']
   ) => {
-    const previousBrief = { ...state.brief };
+    const previousBrief = { ...briefHook.brief };
 
-    // Update field with user-edited source
-    setState(prev => ({
-      ...prev,
-      brief: {
-        ...prev.brief,
-        [field]: {
-          ...prev.brief[field],
-          value,
-          source: 'user-edited',
-          is_updating: false
-        },
-        user_modified: true,
-        last_updated: new Date()
-      }
-    }));
+    // Update field using brief hook
+    await briefHook.updateBriefField(field, value);
 
     // Analyze for active response if enabled
     if (fullConfig.enableActiveResponses) {
       try {
         const trigger = await triggerAnalyzerRef.current.analyzeChange(
-          state.brief,
+          briefHook.brief,
           field
         );
 
@@ -314,54 +262,24 @@ export const useHybridProjectState = (
         console.error('Active response analysis failed:', error);
       }
     }
-  }, [state.brief, fullConfig.enableActiveResponses]);
+  }, [briefHook, fullConfig.enableActiveResponses, conversationHook]);
 
   /**
-   * Updates a roadmap phase
+   * Updates a roadmap phase (delegating to brief hook)
    */
   const updateRoadmapPhase = useCallback(async (
     phaseId: string,
     updates: Partial<ProjectRoadmapPhase>
   ) => {
-    if (!state.brief.roadmap.value) return;
-
-    const updatedRoadmap = await roadmapGeneratorRef.current.modifyRoadmap(
-      state.brief.roadmap.value,
-      'update',
-      { id: phaseId, ...updates }
-    );
-
-    setState(prev => ({
-      ...prev,
-      brief: {
-        ...prev.brief,
-        roadmap: createBriefField(updatedRoadmap, prev.brief.roadmap.confidence),
-        user_modified: true
-      }
-    }));
-  }, [state.brief.roadmap.value]);
+    await briefHook.updateRoadmapPhase(phaseId, updates);
+  }, [briefHook]);
 
   /**
-   * Reorders roadmap phases
+   * Reorders roadmap phases (delegating to brief hook)
    */
   const reorderRoadmapPhases = useCallback(async (newOrder: string[]) => {
-    if (!state.brief.roadmap.value) return;
-
-    const updatedRoadmap = await roadmapGeneratorRef.current.modifyRoadmap(
-      state.brief.roadmap.value,
-      'reorder',
-      { newOrder }
-    );
-
-    setState(prev => ({
-      ...prev,
-      brief: {
-        ...prev.brief,
-        roadmap: createBriefField(updatedRoadmap, prev.brief.roadmap.confidence),
-        user_modified: true
-      }
-    }));
-  }, [state.brief.roadmap.value]);
+    await briefHook.reorderRoadmapPhases(newOrder);
+  }, [briefHook]);
 
   /**
    * Dismisses an AI response and learns from the dismissal
@@ -421,7 +339,7 @@ export const useHybridProjectState = (
    * Creates the project using the current brief state
    */
   const createProject = useCallback(async (): Promise<string | null> => {
-    if (!state.can_create_project) {
+    if (!briefHook.isReadyForCreation()) {
       throw new Error('Project is not ready for creation');
     }
 
@@ -429,10 +347,7 @@ export const useHybridProjectState = (
       setState(prev => ({ ...prev, phase: 'finalizing' }));
 
       const projectData = {
-        name: state.brief.name.value,
-        description: state.brief.description.value,
-        type: state.brief.type.value,
-        objective: state.brief.objective.value,
+        ...briefHook.getProjectData(),
         // Convert brief state to ProjectFormData format
         estimated_hours: 40, // Default estimate
         initial_phase: 'initiation' as const
@@ -442,14 +357,14 @@ export const useHybridProjectState = (
 
       // Update project with roadmap and deliverables if available
       // This would be done through API in real implementation
-      if (state.brief.roadmap.value) {
+      if (briefHook.brief.roadmap.value) {
         // Store roadmap in project
-        console.log('Roadmap to be saved:', state.brief.roadmap.value);
+        console.log('Roadmap to be saved:', briefHook.brief.roadmap.value);
       }
 
-      if (state.brief.key_deliverables.value.length > 0) {
+      if (briefHook.brief.key_deliverables.value.length > 0) {
         // Store deliverables in project
-        console.log('Deliverables to be saved:', state.brief.key_deliverables.value);
+        console.log('Deliverables to be saved:', briefHook.brief.key_deliverables.value);
       }
 
       setState(prev => ({ ...prev, phase: 'complete' }));
@@ -463,7 +378,7 @@ export const useHybridProjectState = (
       }));
       return null;
     }
-  }, [state.can_create_project, state.brief, createProjectAPI]);
+  }, [briefHook, createProjectAPI]);
 
   /**
    * Clears conversation history (using conversation hook)
@@ -474,14 +389,15 @@ export const useHybridProjectState = (
   }, [conversationHook]);
 
   /**
-   * Resets the entire wizard state (conversation managed by hook)
+   * Resets the entire wizard state (conversation and brief managed by hooks)
    */
   const resetWizard = useCallback(() => {
     conversationHook.clearConversation();
-    setState(prev => createInitialState(prev.conversation)); // Keep current conversation from hook
+    briefHook.resetBrief();
+    setState(prev => createInitialState(prev.conversation, prev.brief)); // Keep current states from hooks
     currentAnalysisRef.current = null;
     triggerAnalyzerRef.current.resetSession();
-  }, [conversationHook]);
+  }, [conversationHook, briefHook]);
 
   /**
    * Updates wizard configuration
@@ -496,30 +412,7 @@ export const useHybridProjectState = (
     });
   }, [fullConfig]);
 
-  /**
-   * Helper function to update brief from AI analysis
-   */
-  const updateBriefFromAnalysis = useCallback(async (analysis: ConversationAnalysis) => {
-    setState(prev => ({
-      ...prev,
-      brief: {
-        ...prev.brief,
-        name: analysis.project_name 
-          ? createBriefField(analysis.project_name, analysis.confidence)
-          : prev.brief.name,
-        type: analysis.project_type
-          ? createBriefField(analysis.project_type, analysis.confidence)
-          : prev.brief.type,
-        description: createBriefField(analysis.description, analysis.confidence),
-        objective: analysis.objective
-          ? createBriefField(analysis.objective, analysis.confidence)
-          : prev.brief.objective,
-        key_deliverables: createBriefField(analysis.deliverables, analysis.confidence),
-        overall_confidence: analysis.confidence,
-        last_updated: new Date()
-      }
-    }));
-  }, []);
+  // updateBriefFromAnalysis moved to useBriefState hook
 
   // Cleanup on unmount
   useEffect(() => {
