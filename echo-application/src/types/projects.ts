@@ -395,6 +395,7 @@ export interface ProjectListProps {
   onProjectSelect?: (project: Project) => void;
   onProjectEdit?: (project: Project) => void;
   onProjectDelete?: (project: Project) => void;
+  onCreateProject?: () => void;
   emptyStateMessage?: string;
 }
 

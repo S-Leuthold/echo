@@ -266,6 +266,7 @@ export default function ProjectsPage() {
           onProjectSelect={handleProjectSelect}
           onProjectEdit={handleProjectEdit}
           onProjectDelete={handleProjectDelete}
+          onCreateProject={() => setIsWizardOpen(true)}
         />
 
         {/* Project Creation Wizard */}

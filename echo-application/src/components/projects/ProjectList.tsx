@@ -46,7 +46,15 @@ const ProjectCardSkeleton = () => (
 );
 
 // Empty State Component
-const EmptyState = ({ message, showCreateButton }: { message: string; showCreateButton?: boolean }) => (
+const EmptyState = ({ 
+  message, 
+  showCreateButton, 
+  onCreateProject 
+}: { 
+  message: string; 
+  showCreateButton?: boolean;
+  onCreateProject?: () => void;
+}) => (
   <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
     <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
       <FolderPlus className="w-8 h-8 text-muted-foreground" />
@@ -57,8 +65,11 @@ const EmptyState = ({ message, showCreateButton }: { message: string; showCreate
         {message}
       </p>
     </div>
-    {showCreateButton && (
-      <button className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent/90 transition-colors">
+    {showCreateButton && onCreateProject && (
+      <button 
+        onClick={onCreateProject}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent/90 transition-colors"
+      >
         <FolderPlus className="w-4 h-4" />
         Create Your First Project
       </button>
@@ -133,6 +144,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   onProjectSelect,
   onProjectEdit,
   onProjectDelete,
+  onCreateProject,
   emptyStateMessage = "Start by creating your first project to organize your work and track progress."
 }) => {
   // State for accordion sections - initially all expanded
@@ -205,7 +217,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
   // Empty State
   if (!loading && !hasAnyProjects) {
-    return <EmptyState message={emptyStateMessage} showCreateButton />;
+    return <EmptyState 
+      message={emptyStateMessage} 
+      showCreateButton 
+      onCreateProject={onCreateProject}
+    />;
   }
 
   // Render Projects by Status Groups
