@@ -66,9 +66,10 @@ from echo.api.utils import (
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Add the reflection router to the existing app
-from echo.api.routers import reflection
+# Add modular routers to the existing app
+from echo.api.routers import reflection, projects
 app.include_router(reflection.router, tags=["reflection"])
+app.include_router(projects.router, tags=["projects"])
 
 # ============================================================================== 
 # REMAINING COMPLEX ENDPOINTS - To be modularized in future phases
