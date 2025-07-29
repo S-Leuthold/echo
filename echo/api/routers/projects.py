@@ -939,3 +939,269 @@ async def create_hybrid_project(request: HybridProjectCreateRequest):
     except Exception as e:
         logger.error(f"Error creating hybrid project: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== ADAPTIVE EXPERT COACHING CONVERSATION ENDPOINTS =====
+
+@router.post("/conversations/start")
+async def start_conversation(user_id: Optional[str] = None):
+    """
+    Start a new adaptive expert coaching conversation.
+    
+    Returns:
+        Conversation ID and initial state for project creation workflow
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        
+        manager = create_conversation_manager()
+        conversation_state = manager.start_conversation(user_id=user_id)
+        
+        logger.info(f"Started new conversation: {conversation_state.conversation_id}")
+        
+        return {
+            "conversation_id": conversation_state.conversation_id,
+            "stage": conversation_state.current_stage.value,
+            "message": "Hi! I'm here to help you create a strategic project plan. Tell me about what you'd like to work on, and I'll guide you through developing a comprehensive project strategy.",
+            "created_at": conversation_state.created_at.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error starting conversation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/conversations/{conversation_id}/message")
+async def send_message(conversation_id: str, request: dict):
+    """
+    Send a message in the adaptive expert coaching conversation.
+    
+    Args:
+        conversation_id: Unique conversation identifier
+        request: Message request with user input
+        
+    Returns:
+        AI response with updated conversation state
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        from echo.adaptive_coaching_service import AdaptiveCoachingService
+        
+        user_message = request.get("message", "")
+        if not user_message.strip():
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        # Get conversation manager and coaching service
+        manager = create_conversation_manager()
+        coaching_service = AdaptiveCoachingService()
+        
+        # Add user message to conversation
+        conversation_state = manager.add_user_message(
+            conversation_id, 
+            user_message,
+            metadata=request.get("metadata", {})
+        )
+        
+        if not conversation_state:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Process message through adaptive coaching service
+        coaching_response = await coaching_service.process_user_message(
+            conversation_id,
+            user_message
+        )
+        
+        # Add assistant response to conversation
+        manager.add_assistant_message(
+            conversation_id,
+            coaching_response.message,
+            metadata={
+                "stage": coaching_response.stage.value if coaching_response.stage else None,
+                "confidence": coaching_response.confidence,
+                "detected_domain": coaching_response.detected_domain,
+                "reasoning": getattr(coaching_response, 'reasoning', None)
+            }
+        )
+        
+        logger.info(f"Processed message in conversation {conversation_id}")
+        
+        return {
+            "message": coaching_response.message,
+            "stage": coaching_response.stage.value if coaching_response.stage else conversation_state.current_stage.value,
+            "confidence": coaching_response.confidence,
+            "detected_domain": coaching_response.detected_domain,
+            "project_summary": conversation_state.project_summary,
+            "missing_information": conversation_state.missing_information,
+            "conversation_id": conversation_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing message in conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    """
+    Get conversation state and history.
+    
+    Args:
+        conversation_id: Unique conversation identifier
+        
+    Returns:
+        Complete conversation state with message history
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        
+        manager = create_conversation_manager()
+        conversation_state = manager.get_conversation(conversation_id)
+        
+        if not conversation_state:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Format response
+        return {
+            "conversation_id": conversation_state.conversation_id,
+            "stage": conversation_state.current_stage.value,
+            "messages": [
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp.isoformat(),
+                    "metadata": msg.metadata
+                }
+                for msg in conversation_state.messages
+            ],
+            "project_summary": conversation_state.project_summary,
+            "extracted_data": conversation_state.extracted_data,
+            "confidence_score": conversation_state.confidence_score,
+            "missing_information": conversation_state.missing_information,
+            "current_persona": conversation_state.current_persona,
+            "domain_detection": conversation_state.domain_detection.to_dict() if conversation_state.domain_detection else None,
+            "total_exchanges": conversation_state.total_exchanges,
+            "created_at": conversation_state.created_at.isoformat(),
+            "updated_at": conversation_state.updated_at.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/conversations/{conversation_id}/complete")
+async def complete_conversation(conversation_id: str, request: dict):
+    """
+    Complete conversation and create project from extracted data.
+    
+    Args:
+        conversation_id: Unique conversation identifier
+        request: Final project data and any user corrections
+        
+    Returns:
+        Created project information
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        
+        manager = create_conversation_manager()
+        conversation_state = manager.get_conversation(conversation_id)
+        
+        if not conversation_state:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Extract project data from conversation
+        project_data = conversation_state.extracted_data
+        
+        # Apply any final user corrections
+        if request.get("corrections"):
+            project_data.update(request["corrections"])
+        
+        # Create project using existing project creation logic
+        project_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        final_project_data = {
+            "id": project_id,
+            "name": project_data.get("project_name", "Untitled Project"),
+            "description": project_data.get("description", "Project created through adaptive coaching"),
+            "type": project_data.get("project_type", "personal"),
+            "status": "active",
+            "phase": "initiation",
+            "priority": "medium",
+            "category": project_data.get("project_type", "personal"),
+            "objective": project_data.get("objective", "Complete project successfully"),
+            "current_state": project_data.get("current_state", "Project ready to begin"),
+            "current_focus": f"Getting started with {project_data.get('project_name', 'the project')}",
+            "progress_percentage": 0.0,
+            "momentum": "medium",
+            "total_estimated_hours": project_data.get("estimated_hours", 40),
+            "total_actual_hours": 0,
+            "hours_this_week": 0.0,
+            "hours_last_week": 0.0,
+            "total_sessions": 0,
+            "sessions_this_week": 0,
+            "created_date": now.date().isoformat(),
+            "updated_date": now.date().isoformat(),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "key_deliverables": project_data.get("key_deliverables", []),
+            "success_criteria": project_data.get("success_criteria", []),
+            "risks_and_blockers": project_data.get("risk_factors", []),
+            "tags": [conversation_state.current_persona] if conversation_state.current_persona else [],
+            "metadata": {
+                "created_via": "adaptive_coaching",
+                "conversation_id": conversation_id,
+                "domain": conversation_state.current_persona,
+                "confidence_score": conversation_state.confidence_score
+            }
+        }
+        
+        # Save project to database
+        db = get_database()
+        success = db.create_project(final_project_data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to create project")
+        
+        # Mark conversation as completed
+        manager.complete_conversation(conversation_id, project_id)
+        
+        logger.info(f"Completed conversation {conversation_id} and created project {project_id}")
+        
+        return {
+            "project_id": project_id,
+            "project_name": final_project_data["name"],
+            "conversation_completed": True,
+            "message": f"🎉 Successfully created your project '{final_project_data['name']}'! Your strategic planning session has been completed."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error completing conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversations/analytics")
+async def get_conversation_analytics():
+    """
+    Get analytics data about adaptive coaching conversations.
+    
+    Returns:
+        Analytics data including completion rates, stage distribution, etc.
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        
+        manager = create_conversation_manager()
+        analytics = manager.get_conversation_analytics()
+        
+        return analytics
+        
+    except Exception as e:
+        logger.error(f"Error getting conversation analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
