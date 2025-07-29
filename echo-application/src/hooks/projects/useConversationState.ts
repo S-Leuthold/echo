@@ -1,19 +1,19 @@
 /**
  * useConversationState Hook
  * 
- * React hook for managing adaptive expert coaching conversation state.
+ * React hook for managing adaptive expert intelligence conversation state.
  * Provides real-time conversation management with Server-Sent Events streaming,
- * stage progression tracking, and integration with the backend coaching system.
+ * stage progression tracking, and integration with the backend intelligence system.
  * 
- * Part of the adaptive expert coaching system implementation.
+ * Part of the adaptive expert intelligence system implementation.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 /**
- * Conversation stages for the adaptive coaching system
+ * Conversation stages for the adaptive intelligence system
  */
-export type ConversationStage = 'discovery' | 'confirmation' | 'expert_coaching';
+export type ConversationStage = 'discovery' | 'confirmation' | 'expert_guidance';
 
 /**
  * Message in the conversation
@@ -361,7 +361,7 @@ export const useConversationState = (
         },
         expert: {
           domain: data.detected_domain,
-          isActive: data.stage === 'expert_coaching'
+          isActive: data.stage === 'expert_guidance'
         },
         analytics: {
           ...prev.analytics,
@@ -655,7 +655,7 @@ export const useConversationState = (
         expert: {
           domain: data.current_persona,
           detection: data.domain_detection,
-          isActive: data.stage === 'expert_coaching'
+          isActive: data.stage === 'expert_guidance'
         },
         analytics: {
           exchanges: data.total_exchanges,
@@ -667,7 +667,7 @@ export const useConversationState = (
         ui: {
           showStageIndicator: true,
           showConfidenceScore: data.confidence_score > 0,
-          showDomainSwitch: data.stage === 'expert_coaching',
+          showDomainSwitch: data.stage === 'expert_guidance',
           showProjectSummary: data.project_summary !== null,
           canComplete: data.confidence_score > 0.7 && data.missing_information.length <= 2
         },

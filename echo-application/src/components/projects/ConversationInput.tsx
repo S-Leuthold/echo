@@ -1,10 +1,10 @@
 /**
  * ConversationInput Component
  * 
- * Input interface for the adaptive expert coaching conversation system.
+ * Input interface for the adaptive expert intelligence conversation system.
  * Supports text input, file uploads, and stage-aware interaction patterns.
  * 
- * Part of the adaptive expert coaching system UI components.
+ * Part of the adaptive expert intelligence system UI components.
  */
 
 import React, { useState, useRef, useCallback } from 'react';
@@ -232,7 +232,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".txt,.md,.pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    accept=".txt,.md,.pdf,.doc,.docx,.odt,.rtf,.pages,.ppt,.pptx,.key,.tex,.bib,.r,.rmd,.qmd,.py,.ipynb,.csv,.xlsx,.dta,.sav,.png,.jpg,.jpeg,.tiff,.svg"
                     onChange={handleFileSelect}
                     className="hidden"
                   />

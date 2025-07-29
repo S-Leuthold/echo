@@ -2,9 +2,9 @@
  * ConversationMessageList Component
  * 
  * Displays conversation messages with typing indicators, confidence scores,
- * and stage-aware styling for the adaptive expert coaching system.
+ * and stage-aware styling for the adaptive expert intelligence system.
  * 
- * Part of the adaptive expert coaching system UI components.
+ * Part of the adaptive expert intelligence system UI components.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -53,7 +53,7 @@ const MessageBubble: React.FC<{
           assistant: 'bg-amber-50 border-amber-200 text-amber-900',
           user: 'bg-amber-600 text-white'
         };
-      case 'expert_coaching':
+      case 'expert_guidance':
         return {
           assistant: 'bg-purple-50 border-purple-200 text-purple-900',
           user: 'bg-purple-600 text-white'
@@ -201,7 +201,7 @@ const StageTransitionIndicator: React.FC<{
   const stageLabels = {
     discovery: 'Discovery Phase',
     confirmation: 'Confirmation Phase',
-    expert_coaching: 'Expert Coaching Phase'
+    expert_guidance: 'Expert Guidance Phase'
   };
   
   return (

@@ -1,10 +1,10 @@
 /**
  * ConversationProgressTracker Component
  * 
- * Comprehensive progress tracking for adaptive expert coaching conversations.
+ * Comprehensive progress tracking for adaptive expert intelligence conversations.
  * Shows detailed metrics, stage transitions, confidence scores, and conversation analytics.
  * 
- * Part of the adaptive expert coaching system UI components.
+ * Part of the adaptive expert intelligence system UI components.
  */
 
 import React from 'react';

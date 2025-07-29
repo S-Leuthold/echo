@@ -32,12 +32,12 @@ export { MetadataField } from './MetadataField';
 // Error Boundaries (when created)
 // export { ProjectErrorBoundary } from './ProjectErrorBoundary';
 
-// Adaptive Expert Coaching Components
+// Adaptive Expert Intelligence Components
 export { ConversationStageIndicator } from './ConversationStageIndicator';
 export { ConversationProgressTracker } from './ConversationProgressTracker';
 export { ConversationMessageList } from './ConversationMessageList';
 export { ConversationInput } from './ConversationInput';
-export { AdaptiveCoachingInterface } from './AdaptiveCoachingInterface';
+export { AdaptiveIntelligenceInterface } from './AdaptiveIntelligenceInterface';
 
 // Re-export project hooks for convenience
 export { 

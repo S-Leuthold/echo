@@ -1,10 +1,10 @@
 /**
  * ConversationStageIndicator Component
  * 
- * Visual indicator for the three-stage conversation flow in the adaptive expert coaching system.
+ * Visual indicator for the three-stage conversation flow in the adaptive expert intelligence system.
  * Shows current stage, progress, and transition states with smooth animations.
  * 
- * Part of the adaptive expert coaching system UI components.
+ * Part of the adaptive expert intelligence system UI components.
  */
 
 import React from 'react';
@@ -62,9 +62,9 @@ const STAGE_CONFIGS: StageConfig[] = [
     }
   },
   {
-    id: 'expert_coaching',
-    label: 'Expert Coaching',
-    description: 'Receiving specialized guidance for your project',
+    id: 'expert_guidance',
+    label: 'Expert Guidance',
+    description: 'Receiving specialized assistance for your project',
     icon: Brain,
     color: {
       inactive: 'text-gray-400 border-gray-200',
@@ -82,7 +82,7 @@ function getStageState(
   currentStage: ConversationStage,
   canTransition: boolean
 ): 'inactive' | 'active' | 'completed' {
-  const stageOrder: ConversationStage[] = ['discovery', 'confirmation', 'expert_coaching'];
+  const stageOrder: ConversationStage[] = ['discovery', 'confirmation', 'expert_guidance'];
   const currentIndex = stageOrder.indexOf(currentStage);
   const stageIndex = stageOrder.indexOf(stageId);
   
