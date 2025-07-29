@@ -13,6 +13,7 @@
 #   messages and generates appropriate responses based on conversation stage.
 # ==============================================================================
 
+import asyncio
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -93,6 +94,9 @@ class AdaptiveCoachingService:
         Returns:
             CoachingResponse with discovery stage response
         """
+        # Simulate realistic processing time for discovery stage
+        await asyncio.sleep(0.8)  # Simulate Claude API processing time
+        
         # Placeholder implementation - will be replaced with full Claude integration
         responses = [
             "That sounds interesting! Can you tell me more about the specific goals you have in mind?",
@@ -173,6 +177,9 @@ class AdaptiveCoachingService:
         Returns:
             CoachingResponse with confirmation stage response
         """
+        # Simulate realistic processing time for confirmation stage
+        await asyncio.sleep(0.6)
+        
         # Placeholder confirmation logic
         if "yes" in user_message.lower() or "correct" in user_message.lower() or "proceed" in user_message.lower():
             # User confirmed - transition to expert coaching
@@ -220,6 +227,9 @@ class AdaptiveCoachingService:
         Returns:
             CoachingResponse with expert coaching response
         """
+        # Simulate realistic processing time for expert coaching stage
+        await asyncio.sleep(1.0)  # Expert responses take longer
+        
         # Placeholder expert coaching responses
         expert_responses = [
             "Based on my experience with similar projects, I'd recommend starting with a clear scope definition. Have you considered the core deliverables?",

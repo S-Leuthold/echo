@@ -7,10 +7,13 @@ hybrid wizard integration, and analytics support.
 
 import logging
 import uuid
+import json
+import asyncio
 from datetime import datetime, date, timedelta
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
 from echo.database_schema import SessionDatabase
@@ -1042,6 +1045,163 @@ async def send_message(conversation_id: str, request: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/conversations/{conversation_id}/stream")
+async def stream_message(conversation_id: str, request: dict):
+    """
+    Send a message with streaming response for real-time conversation experience.
+    
+    Args:
+        conversation_id: Unique conversation identifier
+        request: Message request with user input
+        
+    Returns:
+        Server-Sent Events stream with real-time AI response
+    """
+    try:
+        from echo.conversation_state_manager import create_conversation_manager
+        from echo.adaptive_coaching_service import AdaptiveCoachingService
+        
+        user_message = request.get("message", "")
+        if not user_message.strip():
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        # Get conversation manager and coaching service
+        manager = create_conversation_manager()
+        coaching_service = AdaptiveCoachingService()
+        
+        # Add user message to conversation
+        conversation_state = manager.add_user_message(
+            conversation_id, 
+            user_message,
+            metadata=request.get("metadata", {})
+        )
+        
+        if not conversation_state:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Create streaming response generator
+        async def generate_stream():
+            """Generate Server-Sent Events for streaming response."""
+            
+            # Send initial acknowledgment
+            yield f"data: {json.dumps({
+                'type': 'message_received',
+                'conversation_id': conversation_id,
+                'user_message': user_message,
+                'timestamp': datetime.now().isoformat()
+            })}\n\n"
+            
+            # Send thinking indicator
+            yield f"data: {json.dumps({
+                'type': 'thinking',
+                'message': 'Analyzing your message...',
+                'timestamp': datetime.now().isoformat()
+            })}\n\n"
+            
+            # Simulate processing delay (in real implementation, this would be Claude API time)
+            await asyncio.sleep(0.5)
+            
+            try:
+                # Process message through adaptive coaching service
+                coaching_response = await coaching_service.process_user_message(
+                    conversation_id,
+                    user_message
+                )
+                
+                # Send stage update if changed
+                if coaching_response.should_transition:
+                    yield f"data: {json.dumps({
+                        'type': 'stage_transition',
+                        'new_stage': coaching_response.stage.value if coaching_response.stage else None,
+                        'reason': 'Conversation progressed to next stage',
+                        'timestamp': datetime.now().isoformat()
+                    })}\n\n"
+                
+                # Send domain detection if available
+                if coaching_response.detected_domain:
+                    yield f"data: {json.dumps({
+                        'type': 'domain_detected',
+                        'domain': coaching_response.detected_domain,
+                        'confidence': coaching_response.confidence,
+                        'timestamp': datetime.now().isoformat()
+                    })}\n\n"
+                
+                # Stream the response message (simulate typing effect)
+                response_words = coaching_response.message.split()
+                current_message = ""
+                
+                for i, word in enumerate(response_words):
+                    current_message += word + " "
+                    
+                    # Send partial message every few words
+                    if i % 3 == 0 or i == len(response_words) - 1:
+                        yield f"data: {json.dumps({
+                            'type': 'partial_response',
+                            'message': current_message.strip(),
+                            'is_complete': i == len(response_words) - 1,
+                            'timestamp': datetime.now().isoformat()
+                        })}\n\n"
+                        
+                        # Small delay for typing effect
+                        if i < len(response_words) - 1:
+                            await asyncio.sleep(0.1)
+                
+                # Add assistant message to conversation
+                manager.add_assistant_message(
+                    conversation_id,
+                    coaching_response.message,
+                    metadata={
+                        "stage": coaching_response.stage.value if coaching_response.stage else None,
+                        "confidence": coaching_response.confidence,
+                        "detected_domain": coaching_response.detected_domain,
+                        "reasoning": getattr(coaching_response, 'reasoning', None)
+                    }
+                )
+                
+                # Send final completion event
+                updated_state = manager.get_conversation(conversation_id)
+                yield f"data: {json.dumps({
+                    'type': 'response_complete',
+                    'conversation_id': conversation_id,
+                    'stage': coaching_response.stage.value if coaching_response.stage else updated_state.current_stage.value,
+                    'confidence': coaching_response.confidence,
+                    'detected_domain': coaching_response.detected_domain,
+                    'project_summary': updated_state.project_summary,
+                    'missing_information': updated_state.missing_information,
+                    'total_exchanges': updated_state.total_exchanges,
+                    'timestamp': datetime.now().isoformat()
+                })}\n\n"
+                
+                logger.info(f"Completed streaming response for conversation {conversation_id}")
+                
+            except Exception as e:
+                # Send error event
+                yield f"data: {json.dumps({
+                    'type': 'error',
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                })}\n\n"
+                
+                logger.error(f"Error in streaming response: {e}")
+        
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting up streaming for conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/conversations/{conversation_id}")
 async def get_conversation(conversation_id: str):
     """
@@ -1205,3 +1365,53 @@ async def get_conversation_analytics():
     except Exception as e:
         logger.error(f"Error getting conversation analytics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversations/test-stream")
+async def test_streaming():
+    """
+    Test endpoint for Server-Sent Events streaming functionality.
+    Useful for debugging and frontend development.
+    """
+    async def generate_test_stream():
+        """Generate test events for streaming validation."""
+        
+        # Send connection established
+        yield f"data: {json.dumps({
+            'type': 'connection_established',
+            'message': 'Stream connection successful',
+            'timestamp': datetime.now().isoformat()
+        })}\n\n"
+        
+        # Send a series of test events
+        test_events = [
+            {'type': 'thinking', 'message': 'Processing your request...'},
+            {'type': 'partial_response', 'message': 'This is a test', 'is_complete': False},
+            {'type': 'partial_response', 'message': 'This is a test streaming', 'is_complete': False},
+            {'type': 'partial_response', 'message': 'This is a test streaming response.', 'is_complete': True},
+            {'type': 'response_complete', 'message': 'Stream test completed successfully'}
+        ]
+        
+        for i, event in enumerate(test_events):
+            await asyncio.sleep(0.5)  # Simulate processing time
+            
+            event_data = {
+                **event,
+                'sequence': i + 1,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            yield f"data: {json.dumps(event_data)}\n\n"
+        
+        logger.info("Completed test streaming response")
+    
+    return StreamingResponse(
+        generate_test_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )
