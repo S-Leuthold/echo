@@ -15,7 +15,7 @@
  * Follows React hooks best practices with proper dependency management.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useMemo } from 'react';
 import { 
   HybridWizardState,
   ConversationState,
@@ -98,20 +98,6 @@ interface UseHybridProjectStateReturn {
 // Conversation state creation moved to useConversation hook
 
 /**
- * Creates initial hybrid wizard state (conversation, brief, and flow now managed by hooks)
- */
-function createInitialState(conversation: ConversationState, brief: BriefState, flowState: WizardFlowState): HybridWizardState {
-  return {
-    conversation,
-    brief,
-    ai_responses: flowState.ai_responses,
-    phase: flowState.phase,
-    can_create_project: flowState.can_create_project,
-    error: flowState.error
-  };
-}
-
-/**
  * Main hook for hybrid project creation wizard state management
  */
 export const useHybridProjectState = (
@@ -148,11 +134,6 @@ export const useHybridProjectState = (
     maxResponsesPerSession: fullConfig.maxResponsesPerSession
   });
 
-  // Main state (conversation, brief, and flow now managed by hooks)
-  const [state, setState] = useState<HybridWizardState>(
-    () => createInitialState(conversationHook.conversation, briefHook.brief, wizardFlowHook.flowState)
-  );
-
   // Orchestration service (using ref to maintain identity across renders)
   const orchestrationServiceRef = useRef(new WizardOrchestrationService({
     enableRealTimeAnalysis: fullConfig.enableRealTimeAnalysis,
@@ -160,32 +141,19 @@ export const useHybridProjectState = (
     includeFileContext: true
   }));
 
-  // Sync conversation state from the conversation hook
-  useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      conversation: conversationHook.conversation
-    }));
-  }, [conversationHook.conversation]);
-
-  // Sync brief state from the brief hook
-  useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      brief: briefHook.brief
-    }));
-  }, [briefHook.brief]);
-
-  // Sync wizard flow state from the wizard flow hook
-  useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      ai_responses: wizardFlowHook.flowState.ai_responses,
-      phase: wizardFlowHook.flowState.phase,
-      can_create_project: wizardFlowHook.flowState.can_create_project,
-      error: wizardFlowHook.flowState.error
-    }));
-  }, [wizardFlowHook.flowState]);
+  // Compose state from child hooks with memoization to prevent unnecessary re-renders
+  const state: HybridWizardState = useMemo(() => ({
+    conversation: conversationHook.conversation,
+    brief: briefHook.brief,
+    ai_responses: wizardFlowHook.flowState.ai_responses,
+    phase: wizardFlowHook.flowState.phase,
+    can_create_project: wizardFlowHook.flowState.can_create_project,
+    error: wizardFlowHook.flowState.error
+  }), [
+    conversationHook.conversation,
+    briefHook.brief,
+    wizardFlowHook.flowState
+  ]);
 
   /**
    * Submits a new message and orchestrates analysis across hooks
@@ -288,23 +256,15 @@ export const useHybridProjectState = (
    */
   const dismissResponse = useCallback((responseId: string) => {
     wizardFlowHook.dismissResponse(responseId);
-  }, [wizardFlowHook]);
+  }, [wizardFlowHook.dismissResponse]);
 
   /**
    * Retries analysis if it failed
    */
   const retryAnalysis = useCallback(async () => {
-    if (!currentAnalysisRef.current) return;
-
     try {
-      setState(prev => ({
-        ...prev,
-        conversation: {
-          ...prev.conversation,
-          is_processing: true,
-          error: null
-        }
-      }));
+      conversationHook.setProcessingState(true);
+      conversationHook.setError(null);
 
       // Re-run analysis with current data
       const lastUserMessage = state.conversation.messages
@@ -316,16 +276,10 @@ export const useHybridProjectState = (
       }
     } catch (error) {
       console.error('Retry analysis failed:', error);
-      setState(prev => ({
-        ...prev,
-        conversation: {
-          ...prev.conversation,
-          is_processing: false,
-          error: 'Analysis retry failed. Please try again.'
-        }
-      }));
+      conversationHook.setProcessingState(false);
+      conversationHook.setError('Analysis retry failed. Please try again.');
     }
-  }, [state.conversation.messages, submitMessage]);
+  }, [state.conversation.messages, submitMessage, conversationHook]);
 
   /**
    * Creates the project using the current brief state (delegating to wizard flow hook for phase management)
@@ -374,8 +328,7 @@ export const useHybridProjectState = (
    */
   const clearConversation = useCallback(() => {
     conversationHook.clearConversation();
-    currentAnalysisRef.current = null;
-  }, [conversationHook]);
+  }, [conversationHook.clearConversation]);
 
   /**
    * Removes a file from the uploaded files list (delegating to file uploads hook)
@@ -384,7 +337,7 @@ export const useHybridProjectState = (
     fileUploadsHook.removeFile(fileId);
     // Note: Brief state synchronization is handled through the file upload integration
     // The brief hook maintains its own file list which gets updated when files are added
-  }, [fileUploadsHook]);
+  }, [fileUploadsHook.removeFile]);
 
   /**
    * Clears all uploaded files (delegating to file uploads hook)
@@ -393,7 +346,7 @@ export const useHybridProjectState = (
     fileUploadsHook.clearAllFiles();
     // Note: Brief state synchronization is handled through the file upload integration
     // The brief hook maintains its own file list which gets reset when wizard resets
-  }, [fileUploadsHook]);
+  }, [fileUploadsHook.clearAllFiles]);
 
   /**
    * Resets the entire wizard state - pure coordination
@@ -407,10 +360,12 @@ export const useHybridProjectState = (
     
     // Reset orchestration service
     orchestrationServiceRef.current.reset();
-    
-    // Update main state
-    setState(prev => createInitialState(prev.conversation, prev.brief, wizardFlowHook.flowState));
-  }, [conversationHook, briefHook, fileUploadsHook, wizardFlowHook]);
+  }, [
+    conversationHook.clearConversation,
+    briefHook.resetBrief,
+    fileUploadsHook.clearAllFiles,
+    wizardFlowHook.resetFlow
+  ]);
 
   /**
    * Updates wizard configuration - pure coordination

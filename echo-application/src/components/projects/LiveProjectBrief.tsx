@@ -23,9 +23,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LiveProjectBriefProps } from '@/types/hybrid-wizard';
 import { ProjectType } from '@/types/projects';
 import { ProjectRoadmapVisualization } from './ProjectRoadmapVisualization';
+import { EditableField } from './EditableField';
 import { 
   Target,
   FileText,
@@ -34,7 +36,9 @@ import {
   Edit,
   CheckCircle,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Plus,
+  X
 } from 'lucide-react';
 
 /**
@@ -47,6 +51,8 @@ export const LiveProjectBrief: React.FC<LiveProjectBriefProps> = ({
   readOnly = false
 }) => {
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingDeliverable, setEditingDeliverable] = useState<number | null>(null);
+  const [newDeliverable, setNewDeliverable] = useState('');
 
   // Handle field editing with visual feedback
   const handleFieldEdit = async (field: keyof typeof brief, value: any) => {
@@ -188,14 +194,71 @@ export const LiveProjectBrief: React.FC<LiveProjectBriefProps> = ({
         
         {/* Project Name as Document Title */}
         <div className="border-b border-border/20 pb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-2 cursor-text hover:bg-muted/20 rounded p-2 -m-2 transition-colors">
-            {brief.name.value || 'Untitled Project'}
-          </h1>
+          {editingField === 'name' ? (
+            <div className="space-y-2">
+              <Input
+                value={brief.name.value as string || ''}
+                onChange={(e) => onFieldEdit('name', e.target.value)}
+                placeholder="Enter project name..."
+                className="text-2xl font-bold h-auto py-2"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditingField(null)}
+                className="h-8"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <h1 
+              className="text-2xl font-bold text-foreground mb-2 cursor-text hover:bg-muted/20 rounded p-2 -m-2 transition-colors"
+              onClick={() => !readOnly && setEditingField('name')}
+            >
+              {brief.name.value || 'Untitled Project'}
+            </h1>
+          )}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent rounded-sm text-xs font-medium">
-              <Zap className="w-3 h-3" />
-              {brief.type.value || 'Project Type'}
-            </span>
+            {editingField === 'type' ? (
+              <div className="flex gap-2">
+                <Select 
+                  value={brief.type.value as string || 'personal'}
+                  onValueChange={(value) => {
+                    onFieldEdit('type', value);
+                    setEditingField(null);
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personal">Personal</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="learning">Learning</SelectItem>
+                    <SelectItem value="community">Community</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingField(null)}
+                  className="h-7 px-2"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <span 
+                className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent rounded-sm text-xs font-medium cursor-pointer hover:bg-accent/20 transition-colors"
+                onClick={() => !readOnly && setEditingField('type')}
+              >
+                <Zap className="w-3 h-3" />
+                {brief.type.value || 'Project Type'}
+              </span>
+            )}
             {brief.name.source === 'ai-generated' && (
               <span className="inline-flex items-center gap-1 text-xs">
                 <Sparkles className="w-3 h-3 text-accent" />
@@ -208,54 +271,202 @@ export const LiveProjectBrief: React.FC<LiveProjectBriefProps> = ({
         {/* Project Description */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground/80 uppercase tracking-wider">Description</h3>
-          <div className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors min-h-[2.5rem]">
-            {brief.description.value ? (
-              <p className="text-sm text-foreground leading-relaxed">
-                {brief.description.value}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground/50 italic">
-                Click to add project description...
-              </p>
-            )}
-          </div>
+          {editingField === 'description' ? (
+            <div className="space-y-2">
+              <Textarea
+                value={brief.description.value as string || ''}
+                onChange={(e) => onFieldEdit('description', e.target.value)}
+                placeholder="Enter project description..."
+                disabled={readOnly}
+                rows={3}
+                className="resize-none"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingField(null)}
+                  className="h-8"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors min-h-[2.5rem]"
+              onClick={() => !readOnly && setEditingField('description')}
+            >
+              {brief.description.value ? (
+                <p className="text-sm text-foreground leading-relaxed">
+                  {brief.description.value}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground/50 italic">
+                  Click to add project description...
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Primary Objective */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground/80 uppercase tracking-wider">Primary Objective</h3>
-          <div className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors min-h-[2.5rem]">
-            {brief.objective.value ? (
-              <p className="text-sm text-foreground leading-relaxed">
-                {brief.objective.value}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground/50 italic">
-                Click to define the main goal of this project...
-              </p>
-            )}
-          </div>
+          {editingField === 'objective' ? (
+            <div className="space-y-2">
+              <Textarea
+                value={brief.objective.value as string || ''}
+                onChange={(e) => onFieldEdit('objective', e.target.value)}
+                placeholder="Enter primary objective..."
+                disabled={readOnly}
+                rows={2}
+                className="resize-none"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingField(null)}
+                  className="h-8"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors min-h-[2.5rem]"
+              onClick={() => !readOnly && setEditingField('objective')}
+            >
+              {brief.objective.value ? (
+                <p className="text-sm text-foreground leading-relaxed">
+                  {brief.objective.value}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground/50 italic">
+                  Click to define the main goal of this project...
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Key Deliverables */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground/80 uppercase tracking-wider">Key Deliverables</h3>
           <div className="space-y-2">
-            {brief.key_deliverables.value && (brief.key_deliverables.value as string[]).length > 0 ? (
+            {brief.key_deliverables.value && (brief.key_deliverables.value as string[]).length > 0 && (
               (brief.key_deliverables.value as string[]).map((deliverable, index) => (
                 <div 
                   key={index}
-                  className="flex items-start gap-2 p-2 hover:bg-muted/10 rounded transition-colors cursor-text"
+                  className="group flex items-start gap-2 p-2 hover:bg-muted/10 rounded transition-colors"
                 >
                   <CheckCircle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-foreground">{deliverable}</span>
+                  {editingDeliverable === index ? (
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={deliverable}
+                        onChange={(e) => {
+                          const newDeliverables = [...(brief.key_deliverables.value as string[])];
+                          newDeliverables[index] = e.target.value;
+                          onFieldEdit('key_deliverables', newDeliverables);
+                        }}
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingDeliverable(null)}
+                          className="h-6 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const newDeliverables = (brief.key_deliverables.value as string[]).filter((_, i) => i !== index);
+                            onFieldEdit('key_deliverables', newDeliverables);
+                            setEditingDeliverable(null);
+                          }}
+                          className="h-6 text-xs text-destructive hover:text-destructive"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span 
+                      className="flex-1 text-sm text-foreground cursor-text"
+                      onClick={() => !readOnly && setEditingDeliverable(index)}
+                    >
+                      {deliverable}
+                    </span>
+                  )}
+                  {!readOnly && editingDeliverable !== index && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      onClick={() => setEditingDeliverable(index)}
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               ))
+            )}
+            
+            {/* Add new deliverable */}
+            {editingField === 'new_deliverable' ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={newDeliverable}
+                    onChange={(e) => setNewDeliverable(e.target.value)}
+                    placeholder="Enter new deliverable..."
+                    className="flex-1 h-8 text-sm"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newDeliverable.trim()) {
+                        const currentDeliverables = (brief.key_deliverables.value as string[]) || [];
+                        onFieldEdit('key_deliverables', [...currentDeliverables, newDeliverable.trim()]);
+                        setNewDeliverable('');
+                        setEditingField(null);
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingField(null);
+                      setNewDeliverable('');
+                    }}
+                    className="h-8"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <div className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors">
-                <p className="text-sm text-muted-foreground/50 italic">
-                  Click to add key deliverables for this project...
-                </p>
+              <div 
+                className="cursor-text hover:bg-muted/10 rounded p-3 -m-3 transition-colors flex items-center gap-2 text-sm"
+                onClick={() => !readOnly && setEditingField('new_deliverable')}
+              >
+                <Plus className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground/70">
+                  {(!brief.key_deliverables.value || (brief.key_deliverables.value as string[]).length === 0) 
+                    ? "Click to add key deliverables for this project..."
+                    : "Add another deliverable..."}
+                </span>
               </div>
             )}
           </div>

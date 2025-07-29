@@ -46,7 +46,7 @@ export const ConversationPane: React.FC<ConversationPaneProps> = ({
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation.messages]);
+  }, [conversation.messages.length]); // Only depend on length, not the array reference
 
   // Focus textarea when not disabled
   useEffect(() => {

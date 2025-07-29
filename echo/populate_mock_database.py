@@ -40,6 +40,7 @@ def populate_database():
             category=mock_session.category.value,
             generated_log_markdown=mock_session.generated_log_markdown,
             ai_insights=mock_session.ai_insights,
+            ai_keywords=[],  # Add empty keywords list
             created_at=mock_session.created_at
         )
         

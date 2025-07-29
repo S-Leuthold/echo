@@ -535,9 +535,17 @@ class SessionDatabase:
                 project_id = project_data.id
                 name = project_data.name
                 description = project_data.description
+                # Map category to type for new schema
+                project_type = project_data.category  # Use category as type for compatibility
                 status = project_data.status.value if hasattr(project_data.status, 'value') else str(project_data.status)
+                # Set phase based on status for now
+                phase = "execution" if status == "active" else "planning" if status == "planning" else "completed" if status == "completed" else "initiation"
                 priority = project_data.priority.value if hasattr(project_data.priority, 'value') else str(project_data.priority)
                 category = project_data.category
+                # Extract objective from description or use first success criteria
+                objective = project_data.success_criteria[0] if hasattr(project_data, 'success_criteria') and project_data.success_criteria else "Complete project successfully"
+                # Use current_focus as current_state
+                current_state = project_data.current_focus
                 current_focus = project_data.current_focus
                 progress_percentage = project_data.progress_percentage
                 momentum = project_data.momentum
@@ -552,9 +560,13 @@ class SessionDatabase:
                 project_id = project_data['id']
                 name = project_data['name']
                 description = project_data['description']
+                project_type = project_data.get('type', project_data.get('category', 'development'))
                 status = project_data['status']
+                phase = project_data.get('phase', "execution" if status == "active" else "planning")
                 priority = project_data['priority']
                 category = project_data['category']
+                objective = project_data.get('objective', 'Complete project successfully')
+                current_state = project_data.get('current_state', project_data.get('current_focus', 'In progress'))
                 current_focus = project_data['current_focus']
                 progress_percentage = project_data['progress_percentage']
                 momentum = project_data['momentum']
@@ -566,14 +578,15 @@ class SessionDatabase:
             
             self.conn.execute("""
                 INSERT INTO projects 
-                (id, name, description, status, priority, category, current_focus, 
-                 progress_percentage, momentum, total_estimated_hours, total_actual_hours,
-                 created_date, project_data, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, name, description, type, status, phase, priority, category, objective, current_state,
+                 current_focus, progress_percentage, momentum, total_estimated_hours, total_actual_hours,
+                 created_date, updated_date, project_data, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                project_id, name, description, status, priority, category, current_focus,
-                progress_percentage, momentum, total_estimated_hours, total_actual_hours,
-                created_date, json.dumps(project_dict), created_at, updated_at
+                project_id, name, description, project_type, status, phase, priority, category, 
+                objective, current_state, current_focus, progress_percentage, momentum, 
+                total_estimated_hours, total_actual_hours, created_date, updated_at[:10], 
+                json.dumps(project_dict), created_at, updated_at
             ))
             self.conn.commit()
             return True

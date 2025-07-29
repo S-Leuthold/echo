@@ -7,7 +7,7 @@
  * Phase 2 of hybrid wizard refactoring - single responsibility principle.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { 
   ConversationState,
   ConversationMessage,
@@ -80,6 +80,10 @@ export const useConversation = (
     include_file_context: true
   }));
 
+  // Extract primitive values to prevent infinite loops
+  const isProcessing = conversation.is_processing;
+  const enableRealTimeAnalysis = config.enableRealTimeAnalysis;
+
   /**
    * Submits a new message and triggers AI analysis
    */
@@ -87,7 +91,7 @@ export const useConversation = (
     message: string, 
     uploadedFiles: UploadedFile[] = []
   ): Promise<ConversationAnalysis | null> => {
-    if (!message.trim() || conversation.is_processing) {
+    if (!message.trim() || isProcessing) {
       return null;
     }
 
@@ -152,7 +156,7 @@ export const useConversation = (
       }));
       return null;
     }
-  }, [conversation.is_processing, config.enableRealTimeAnalysis, currentAnalysis]);
+  }, [isProcessing, enableRealTimeAnalysis, currentAnalysis]);
 
   /**
    * Clears conversation history and resets to initial state
