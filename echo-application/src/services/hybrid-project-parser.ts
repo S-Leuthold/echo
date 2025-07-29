@@ -309,21 +309,90 @@ Your response:`;
 
       const parsed = JSON.parse(jsonMatch[0]);
       
-      // Validate required fields
+      // Extract values from structured backend response format {value, confidence, reasoning}
+      const extractValue = (field: any) => {
+        if (field && typeof field === 'object' && 'value' in field) {
+          return field.value;
+        }
+        return field;
+      };
+
+      // Map backend field names to frontend expected names and validate required fields
       return {
-        project_name: parsed.project_name || undefined,
-        project_type: this.validateProjectType(parsed.project_type),
-        description: parsed.description || '',
-        objective: parsed.objective || undefined,
-        deliverables: Array.isArray(parsed.deliverables) ? parsed.deliverables : [],
-        suggested_phases: Array.isArray(parsed.suggested_phases) ? parsed.suggested_phases : [],
-        confidence: Math.min(Math.max(parsed.confidence || 0.5, 0), 1),
-        missing_information: Array.isArray(parsed.missing_information) ? parsed.missing_information : []
+        project_name: extractValue(parsed.project_name) || undefined,
+        project_type: this.validateProjectType(extractValue(parsed.project_type)),
+        description: extractValue(parsed.description) || '',
+        objective: extractValue(parsed.objective) || undefined,
+        // Backend returns 'key_deliverables', frontend expects 'deliverables'
+        deliverables: Array.isArray(extractValue(parsed.key_deliverables || parsed.deliverables)) 
+          ? extractValue(parsed.key_deliverables || parsed.deliverables) : [],
+        // Backend returns 'next_steps', frontend expects 'suggested_phases' - convert format
+        suggested_phases: this.convertNextStepsToPhases(extractValue(parsed.next_steps) || []),
+        // Backend returns 'overall_confidence', frontend expects 'confidence'
+        confidence: Math.min(Math.max(extractValue(parsed.overall_confidence || parsed.confidence) || 0.5, 0), 1),
+        // Use current_state as missing_information indicator
+        missing_information: this.determineMissingInfo(parsed)
       };
     } catch (error) {
       console.error('Failed to parse structured response:', error);
       throw new Error('Invalid response format from LLM');
     }
+  }
+
+  /**
+   * Converts next_steps array from backend to suggested_phases format expected by frontend
+   */
+  private convertNextStepsToPhases(nextSteps: any[]): any[] {
+    if (!Array.isArray(nextSteps)) {
+      return [];
+    }
+
+    return nextSteps.map((step, index) => {
+      if (typeof step === 'string') {
+        return {
+          title: `Phase ${index + 1}`,
+          goal: step,
+          estimated_days: 14 // Default estimate
+        };
+      } else if (step && typeof step === 'object') {
+        return {
+          title: step.title || `Phase ${index + 1}`,
+          goal: step.goal || step.description || String(step),
+          estimated_days: step.estimated_days || 14
+        };
+      }
+      return {
+        title: `Phase ${index + 1}`,
+        goal: String(step),
+        estimated_days: 14
+      };
+    });
+  }
+
+  /**
+   * Determines missing information based on backend response
+   */
+  private determineMissingInfo(parsed: any): string[] {
+    const missing: string[] = [];
+    
+    // Check if critical fields have low confidence
+    const extractValue = (field: any) => field && typeof field === 'object' && 'value' in field ? field.value : field;
+    const getConfidence = (field: any) => field && typeof field === 'object' && 'confidence' in field ? field.confidence : 1;
+
+    if (!extractValue(parsed.project_name) || getConfidence(parsed.project_name) < 0.5) {
+      missing.push('Project name or title');
+    }
+    
+    if (!extractValue(parsed.objective) || getConfidence(parsed.objective) < 0.5) {
+      missing.push('Clear project objective');
+    }
+
+    const deliverables = extractValue(parsed.key_deliverables || parsed.deliverables);
+    if (!Array.isArray(deliverables) || deliverables.length === 0) {
+      missing.push('Specific deliverables or features');
+    }
+
+    return missing;
   }
 
   /**
