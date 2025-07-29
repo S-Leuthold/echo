@@ -14,8 +14,10 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import ValidationError
 
 from echo.database_schema import SessionDatabase
+from echo.claude_client import get_claude_client
 from echo.api.models.request_models import (
-    ProjectCreateRequest, ProjectUpdateRequest, ProjectFiltersRequest
+    ProjectCreateRequest, ProjectUpdateRequest, ProjectFiltersRequest,
+    ConversationAnalysisRequest, RoadmapGenerationRequest, HybridProjectCreateRequest
 )
 from echo.api.models.response_models import (
     ProjectResponse, ProjectsListResponse, ProjectStatsResponse,
@@ -413,4 +415,527 @@ async def get_project_stats():
         
     except Exception as e:
         logger.error(f"Error getting project stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== HYBRID WIZARD ENDPOINTS =====
+
+@router.post("/projects/analyze-conversation")
+async def analyze_conversation(request: ConversationAnalysisRequest):
+    """
+    Analyze user conversation and extract structured project data using Claude Sonnet.
+    This endpoint provides real-time analysis as the user describes their project.
+    """
+    try:
+        logger.info(f"Analyzing conversation message: {request.message[:100]}...")
+        
+        # Get Claude client configured for structured processing
+        claude_client = get_claude_client()
+        if not claude_client:
+            raise HTTPException(status_code=500, detail="Claude client not available")
+        
+        # Build conversation context
+        conversation_context = ""
+        for msg in request.conversation_history[-5:]:  # Last 5 messages for context
+            conversation_context += f"{msg.role}: {msg.content}\n"
+        
+        # Add current message
+        conversation_context += f"user: {request.message}\n"
+        
+        # Build file context if files uploaded
+        file_context = ""
+        if request.uploaded_files:
+            file_context = "\n\nUploaded files context:\n"
+            for file in request.uploaded_files:
+                file_context += f"- {file.filename} ({file.content_type}): {file.project_context or 'No description'}\n"
+        
+        # Create structured analysis prompt
+        analysis_prompt = f"""
+You are an AI project consultant helping to analyze a user's conversation about their project idea. Based on the conversation, extract structured project information with confidence scores.
+
+Conversation history:
+{conversation_context}
+{file_context}
+
+Current analysis (if any): {request.current_analysis}
+
+Please analyze this conversation and return structured JSON with the following format:
+
+{{
+    "project_name": {{
+        "value": "extracted project name or null",
+        "confidence": 0.0-1.0,
+        "reasoning": "why this name was chosen"
+    }},
+    "project_type": {{
+        "value": "software|research|writing|creative|admin|personal or null",
+        "confidence": 0.0-1.0,
+        "reasoning": "why this type was chosen"
+    }},
+    "description": {{
+        "value": "brief description or null",
+        "confidence": 0.0-1.0,
+        "reasoning": "description extraction rationale"
+    }},
+    "objective": {{
+        "value": "main objective or null", 
+        "confidence": 0.0-1.0,
+        "reasoning": "objective extraction rationale"
+    }},
+    "current_state": {{
+        "value": "current project state or null",
+        "confidence": 0.0-1.0,
+        "reasoning": "state assessment rationale"
+    }},
+    "key_deliverables": {{
+        "value": ["list", "of", "deliverables"] or [],
+        "confidence": 0.0-1.0,
+        "reasoning": "deliverables extraction rationale"
+    }},
+    "estimated_duration": {{
+        "value": "estimated duration in days or null",
+        "confidence": 0.0-1.0,
+        "reasoning": "duration estimation rationale"
+    }},
+    "next_steps": {{
+        "value": ["immediate", "next", "steps"] or [],
+        "confidence": 0.0-1.0,
+        "reasoning": "next steps identification rationale"
+    }},
+    "response_trigger": {{
+        "should_respond": true/false,
+        "trigger_type": "clarification|encouragement|summary|none",
+        "response_focus": "what to focus the AI response on"
+    }},
+    "overall_confidence": 0.0-1.0
+}}
+
+Guidelines:
+- Only extract information that is clearly mentioned or strongly implied
+- Use null for fields that cannot be confidently determined
+- Confidence scores should reflect how certain you are about each extraction
+- Be conservative with confidence scores - better to underestimate than overestimate
+- For response_trigger, determine if the AI should respond and what type of response would be helpful
+- Extract deliverables as concrete, actionable items
+- Estimate duration based on scope and complexity mentioned
+"""
+
+        # Call Claude Sonnet for structured analysis
+        message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",  # Sonnet for structured processing
+            max_tokens=2000,
+            temperature=0.3,  # Lower temperature for consistent parsing
+            messages=[{
+                "role": "user",
+                "content": analysis_prompt
+            }]
+        )
+        
+        if not message.content or len(message.content) == 0:
+            raise ValueError("Empty response from Claude")
+        
+        response_text = message.content[0].text.strip()
+        logger.info(f"Claude analysis response received ({len(response_text)} chars)")
+        
+        # Parse JSON response
+        try:
+            # Extract JSON from response
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                # Look for JSON object in the response
+                json_start = response_text.find("{")
+                if json_start == -1:
+                    raise ValueError("No JSON found in Claude response")
+                
+                # Find the end of the JSON object by counting braces
+                brace_count = 0
+                json_end = json_start
+                for i, char in enumerate(response_text[json_start:], json_start):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_end = i + 1
+                            break
+                
+                json_text = response_text[json_start:json_end]
+            
+            import json
+            analysis_result = json.loads(json_text)
+            
+            # Validate required structure
+            required_fields = ['project_name', 'project_type', 'description', 'objective', 'overall_confidence']
+            for field in required_fields:
+                if field not in analysis_result:
+                    analysis_result[field] = {"value": None, "confidence": 0.0, "reasoning": "Not found"}
+            
+            logger.info(f"Successfully analyzed conversation with {analysis_result.get('overall_confidence', 0):.2f} confidence")
+            return analysis_result
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse Claude analysis response: {e}")
+            logger.error(f"Raw response: {response_text[:500]}...")
+            
+            # Return fallback analysis
+            return {
+                "project_name": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "project_type": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "description": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "objective": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "current_state": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "key_deliverables": {"value": [], "confidence": 0.0, "reasoning": "Analysis failed"},
+                "estimated_duration": {"value": None, "confidence": 0.0, "reasoning": "Analysis failed"},
+                "next_steps": {"value": [], "confidence": 0.0, "reasoning": "Analysis failed"},
+                "response_trigger": {"should_respond": True, "trigger_type": "encouragement", "response_focus": "general project discussion"},
+                "overall_confidence": 0.0,
+                "error": "Failed to parse AI response"
+            }
+        
+    except Exception as e:
+        logger.error(f"Error in conversation analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/projects/generate-roadmap")
+async def generate_roadmap(request: RoadmapGenerationRequest):
+    """
+    Generate AI project roadmap using Claude Sonnet for structured generation,
+    then Claude Opus for strategic review and refinement.
+    """
+    try:
+        logger.info(f"Generating roadmap for {request.project_brief.get('project_name', {}).get('value', 'unnamed project')}")
+        
+        # Get Claude client
+        claude_client = get_claude_client()
+        if not claude_client:
+            raise HTTPException(status_code=500, detail="Claude client not available")
+        
+        # Extract key information from project brief
+        project_name = request.project_brief.get('project_name', {}).get('value', 'Untitled Project')
+        project_type = request.project_brief.get('project_type', {}).get('value', 'software')
+        description = request.project_brief.get('description', {}).get('value', '')
+        objective = request.project_brief.get('objective', {}).get('value', '')
+        deliverables = request.project_brief.get('key_deliverables', {}).get('value', [])
+        estimated_duration = request.estimated_duration or 90  # Default 90 days
+        
+        # Phase 1: Generate structured roadmap with Sonnet
+        roadmap_prompt = f"""
+You are an expert project manager creating a detailed roadmap for a {project_type} project.
+
+Project Details:
+- Name: {project_name}
+- Type: {project_type}
+- Description: {description}
+- Objective: {objective}
+- Key Deliverables: {', '.join(deliverables) if deliverables else 'Not specified'}
+- Estimated Duration: {estimated_duration} days
+
+Please create a detailed project roadmap with 4-7 phases. Return structured JSON:
+
+{{
+    "phases": [
+        {{
+            "id": "unique_phase_id",
+            "title": "Phase Name",
+            "goal": "One sentence describing what this phase achieves",
+            "order": 0,
+            "is_current": true,
+            "estimated_days": 15,
+            "due_date": null,
+            "key_activities": ["activity1", "activity2"],
+            "deliverables": ["deliverable1", "deliverable2"],
+            "success_criteria": ["criteria1", "criteria2"]
+        }}
+    ],
+    "total_duration_days": {estimated_duration},
+    "critical_path": ["phase_id1", "phase_id2"],
+    "risk_factors": ["risk1", "risk2"],
+    "success_metrics": ["metric1", "metric2"]
+}}
+
+Guidelines:
+- Create logical, sequential phases appropriate for {project_type} projects
+- Distribute the {estimated_duration} days across phases realistically
+- Only mark the first phase as current (is_current: true)
+- Each phase should have 2-4 key activities and deliverables
+- Phases should build upon each other logically
+- Include realistic success criteria for each phase
+"""
+
+        # Call Sonnet for structured roadmap generation
+        sonnet_message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=3000,
+            temperature=0.4,
+            messages=[{"role": "user", "content": roadmap_prompt}]
+        )
+        
+        if not sonnet_message.content:
+            raise ValueError("Empty response from Claude Sonnet")
+        
+        sonnet_response = sonnet_message.content[0].text.strip()
+        
+        # Parse Sonnet's structured roadmap
+        try:
+            if "```json" in sonnet_response:
+                json_start = sonnet_response.find("```json") + 7
+                json_end = sonnet_response.find("```", json_start)
+                json_text = sonnet_response[json_start:json_end].strip()
+            else:
+                json_start = sonnet_response.find("{")
+                if json_start == -1:
+                    raise ValueError("No JSON found in Sonnet response")
+                
+                brace_count = 0
+                json_end = json_start
+                for i, char in enumerate(sonnet_response[json_start:], json_start):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_end = i + 1
+                            break
+                
+                json_text = sonnet_response[json_start:json_end]
+            
+            import json
+            roadmap_data = json.loads(json_text)
+            
+            # Phase 2: Strategic review with Opus
+            opus_review_prompt = f"""
+You are a senior strategic advisor reviewing a project roadmap for quality and strategic alignment.
+
+Project: {project_name} ({project_type})
+Objective: {objective}
+
+Generated Roadmap:
+{json.dumps(roadmap_data, indent=2)}
+
+Please review this roadmap strategically and provide:
+
+1. Strategic Assessment: Is this roadmap aligned with the project objective?
+2. Phase Quality: Are the phases logical, well-scoped, and buildable?
+3. Risk Analysis: What are the key risks and how should they be mitigated?
+4. Optimization Suggestions: How can this roadmap be improved?
+
+Provide your response as JSON:
+
+{{
+    "strategic_assessment": {{
+        "alignment_score": 0.0-1.0,
+        "strengths": ["strength1", "strength2"],
+        "concerns": ["concern1", "concern2"]
+    }},
+    "phase_quality": {{
+        "quality_score": 0.0-1.0,
+        "well_structured_phases": ["phase_id1"],
+        "needs_improvement": ["phase_id2"],
+        "suggestions": ["suggestion1", "suggestion2"]
+    }},
+    "risk_analysis": {{
+        "critical_risks": ["risk1", "risk2"],
+        "mitigation_strategies": ["strategy1", "strategy2"],
+        "risk_score": 0.0-1.0
+    }},
+    "optimizations": {{
+        "recommended_changes": ["change1", "change2"],
+        "alternative_approaches": ["approach1", "approach2"]
+    }},
+    "overall_confidence": 0.0-1.0,
+    "recommendation": "approve|revise|reject"
+}}
+"""
+
+            # Call Opus for strategic review
+            opus_message = claude_client.messages.create(
+                model="claude-opus-4-20250514",  # Opus for strategic analysis
+                max_tokens=2000,
+                temperature=0.3,
+                messages=[{"role": "user", "content": opus_review_prompt}]
+            )
+            
+            opus_response = opus_message.content[0].text.strip()
+            
+            # Parse Opus review (optional - for metadata)
+            strategic_review = {}
+            try:
+                if "```json" in opus_response:
+                    json_start = opus_response.find("```json") + 7
+                    json_end = opus_response.find("```", json_start)
+                    review_json = opus_response[json_start:json_end].strip()
+                    strategic_review = json.loads(review_json)
+            except:
+                logger.warning("Could not parse Opus strategic review, continuing with Sonnet roadmap")
+            
+            # Generate unique IDs for phases if not present
+            for i, phase in enumerate(roadmap_data.get('phases', [])):
+                if 'id' not in phase:
+                    phase['id'] = f"phase_{i+1}_{uuid.uuid4().hex[:8]}"
+            
+            # Combine results
+            final_roadmap = {
+                "phases": roadmap_data.get('phases', []),
+                "current_phase_id": roadmap_data.get('phases', [{}])[0].get('id') if roadmap_data.get('phases') else None,
+                "ai_confidence": strategic_review.get('overall_confidence', 0.85),
+                "generated_at": datetime.now().isoformat(),
+                "user_modified": False,
+                "metadata": {
+                    "total_duration_days": roadmap_data.get('total_duration_days', estimated_duration),
+                    "critical_path": roadmap_data.get('critical_path', []),
+                    "risk_factors": roadmap_data.get('risk_factors', []),
+                    "success_metrics": roadmap_data.get('success_metrics', []),
+                    "strategic_review": strategic_review
+                }
+            }
+            
+            logger.info(f"Generated roadmap with {len(final_roadmap['phases'])} phases and {final_roadmap['ai_confidence']:.2f} confidence")
+            return final_roadmap
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse roadmap generation response: {e}")
+            
+            # Return fallback roadmap
+            fallback_phases = [
+                {
+                    "id": f"phase_1_{uuid.uuid4().hex[:8]}",
+                    "title": "Project Initiation",
+                    "goal": "Set up project foundation and planning",
+                    "order": 0,
+                    "is_current": True,
+                    "estimated_days": estimated_duration // 4,
+                    "due_date": None
+                },
+                {
+                    "id": f"phase_2_{uuid.uuid4().hex[:8]}",
+                    "title": "Development/Execution",
+                    "goal": "Main project work and implementation",
+                    "order": 1,
+                    "is_current": False,
+                    "estimated_days": estimated_duration // 2,
+                    "due_date": None
+                },
+                {
+                    "id": f"phase_3_{uuid.uuid4().hex[:8]}",
+                    "title": "Completion and Review",
+                    "goal": "Finalize deliverables and conduct review",
+                    "order": 2,
+                    "is_current": False,
+                    "estimated_days": estimated_duration // 4,
+                    "due_date": None
+                }
+            ]
+            
+            return {
+                "phases": fallback_phases,
+                "current_phase_id": fallback_phases[0]["id"],
+                "ai_confidence": 0.6,
+                "generated_at": datetime.now().isoformat(),
+                "user_modified": False,
+                "error": "Used fallback roadmap due to parsing error"
+            }
+        
+    except Exception as e:
+        logger.error(f"Error generating roadmap: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/projects/create-hybrid", response_model=ProjectResponse)
+async def create_hybrid_project(request: HybridProjectCreateRequest):
+    """
+    Create a new project from hybrid wizard conversation with AI-generated roadmap.
+    This is the final step that combines conversation analysis and roadmap into a complete project.
+    """
+    try:
+        logger.info("Creating hybrid project from conversation analysis")
+        
+        db = get_database()
+        project_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        # Extract project details from brief
+        brief = request.project_brief
+        project_name = brief.get('project_name', {}).get('value') or 'Untitled Project'
+        project_type = brief.get('project_type', {}).get('value') or 'software'
+        description = brief.get('description', {}).get('value') or 'Project created via AI conversation'
+        objective = brief.get('objective', {}).get('value') or 'Complete project objectives'
+        current_state = brief.get('current_state', {}).get('value') or 'Project created via hybrid wizard'
+        key_deliverables = brief.get('key_deliverables', {}).get('value', [])
+        
+        # Create comprehensive project data
+        project_data = {
+            "id": project_id,
+            "name": project_name,
+            "description": description,
+            "type": project_type,
+            "status": "active",
+            "phase": "initiation",
+            "priority": "high",  # Hybrid projects get high priority by default
+            "category": project_type,  # Map type to category for compatibility
+            "objective": objective,
+            "current_state": current_state,
+            "current_focus": f"Getting started with {project_name}",
+            "progress_percentage": 0.0,
+            "momentum": "high",  # New projects start with high momentum
+            "total_estimated_hours": brief.get('estimated_duration', {}).get('value', 90) * 8 or 320,  # Convert days to hours
+            "total_actual_hours": 0,
+            "hours_this_week": 0.0,
+            "hours_last_week": 0.0,
+            "total_sessions": 0,
+            "sessions_this_week": 0,
+            "created_date": now.date().isoformat(),
+            "updated_date": now.date().isoformat(),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "milestones": [],  # Could convert roadmap phases to milestones
+            "key_stakeholders": ["Project Creator"],
+            "success_criteria": key_deliverables[:3] if key_deliverables else ["Complete project successfully"],
+            "risks_and_blockers": [],
+            "recent_wins": ["Project created via AI conversation"],
+            "tags": ["ai-generated", "hybrid-wizard", project_type],
+            "deliverables": key_deliverables,
+            "metadata": {
+                "created_via": "hybrid_wizard",
+                "conversation_id": str(uuid.uuid4()),
+                "ai_confidence": brief.get('overall_confidence', 0.8),
+                "conversation_length": len(request.conversation_history),
+                "files_uploaded": len(request.uploaded_files),
+                "user_refinements": request.user_refinements
+            }
+        }
+        
+        # Save project to database
+        success = db.create_project(project_data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to create hybrid project")
+        
+        # Save roadmap if provided
+        if request.roadmap:
+            roadmap_success = db.create_project_roadmap(
+                project_id=project_id,
+                phases_data=request.roadmap.get('phases', []),
+                ai_confidence=request.roadmap.get('ai_confidence', 0.8)
+            )
+            if roadmap_success:
+                logger.info(f"Saved roadmap for hybrid project {project_id}")
+        
+        # Link uploaded files to project
+        for file_ref in request.uploaded_files:
+            db.link_file_to_project(
+                file_id=file_ref.filename,  # Using filename as temporary ID
+                project_id=project_id,
+                project_context=file_ref.project_context or "Uploaded during project creation"
+            )
+        
+        logger.info(f"Created hybrid project: {project_id} - {project_name}")
+        
+        # Return the project in the expected format
+        return convert_mock_to_project_response(project_data)
+        
+    except Exception as e:
+        logger.error(f"Error creating hybrid project: {e}")
         raise HTTPException(status_code=500, detail=str(e))
