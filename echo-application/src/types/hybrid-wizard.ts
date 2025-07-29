@@ -166,6 +166,36 @@ export interface HybridWizardState {
 
 // LLM Integration Types
 /**
+ * Academic domain information for project classification
+ */
+export interface AcademicDomainInfo {
+  /** Primary academic domain */
+  domain: string;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Human-readable description */
+  description: string;
+  /** AI reasoning for domain classification */
+  reasoning: string;
+  /** Alternative domains with confidence scores */
+  alternative_domains?: Array<[string, number]>;
+}
+
+/**
+ * Academic context extracted from conversation
+ */
+export interface AcademicContext {
+  /** Research methodology if mentioned */
+  methodology?: string;
+  /** Academic tools referenced */
+  tools_mentioned?: string[];
+  /** File types detected from uploads */
+  file_types_detected?: string[];
+  /** Current research stage */
+  research_stage?: 'planning' | 'data-collection' | 'analysis' | 'writing' | 'review';
+}
+
+/**
  * Structured data extracted from user conversation
  */
 export interface ConversationAnalysis {
@@ -189,6 +219,10 @@ export interface ConversationAnalysis {
   confidence: number;
   /** What additional information AI needs */
   missing_information?: string[];
+  /** Academic domain classification (for academic projects) */
+  academic_domain?: AcademicDomainInfo;
+  /** Academic context and metadata */
+  academic_context?: AcademicContext;
 }
 
 /**

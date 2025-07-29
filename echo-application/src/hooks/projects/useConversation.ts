@@ -14,7 +14,7 @@ import {
   ConversationAnalysis 
 } from '@/types/hybrid-wizard';
 import { UploadedFile } from '@/components/projects/FileUploadZone';
-import { HybridProjectParser } from '@/services/hybrid-project-parser';
+import { AcademicProjectParser } from '@/services/academic-project-parser';
 
 /**
  * Configuration for conversation behavior
@@ -75,7 +75,7 @@ export const useConversation = (
   );
 
   // AI parser service (using ref to maintain identity across renders)
-  const parserRef = useRef(new HybridProjectParser({
+  const parserRef = useRef(new AcademicProjectParser({
     debounce_delay: config.analysisDebounceDelay,
     include_file_context: true
   }));

@@ -7,7 +7,7 @@
  * Phase 6 of hybrid wizard refactoring - service layer abstraction.
  */
 
-import { HybridProjectParser } from './hybrid-project-parser';
+import { AcademicProjectParser } from './academic-project-parser';
 import { ConversationAnalysis, BriefState } from '@/types/hybrid-wizard';
 import { UploadedFile } from '@/components/projects/FileUploadZone';
 
@@ -41,11 +41,11 @@ export interface AnalysisResult {
  * Coordinates complex AI analysis workflows between hooks
  */
 export class WizardOrchestrationService {
-  private parser: HybridProjectParser;
+  private parser: AcademicProjectParser;
   private currentAnalysis: ConversationAnalysis | null = null;
 
   constructor(private config: OrchestrationConfig) {
-    this.parser = new HybridProjectParser({
+    this.parser = new AcademicProjectParser({
       debounce_delay: config.analysisDebounceDelay,
       include_file_context: config.includeFileContext
     });
@@ -198,7 +198,7 @@ export class WizardOrchestrationService {
     
     // Update parser configuration if needed
     if (newConfig.analysisDebounceDelay) {
-      this.parser = new HybridProjectParser({
+      this.parser = new AcademicProjectParser({
         debounce_delay: newConfig.analysisDebounceDelay,
         include_file_context: this.config.includeFileContext
       });
