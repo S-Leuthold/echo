@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { PlanStatusProvider } from "@/contexts/PlanStatusContext";
 import { PlanningProvider } from "@/contexts/PlanningContext";
+import { DevPanel } from "@/components/dev/DevPanel";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -30,6 +31,7 @@ export default function RootLayout({
               <main className="flex-1 overflow-y-auto">
                 {children}
               </main>
+              <DevPanel />
             </div>
           </PlanningProvider>
         </PlanStatusProvider>

@@ -117,4 +117,83 @@
   .text-writing-active { color: #2F7439; }
   .text-social-active { color: #CBC4FF; }
   .text-rest-active { color: #8590A0; }
+  
+  /* Horizontal scroll container styling */
+  .horizontal-scroll-container {
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--color-muted);
+    border-radius: 3px;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent);
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .horizontal-scroll-container {
+      scroll-behavior: auto;
+    }
+  }
+  
+  /* Scroll indicator container */
+  .scroll-indicator-container {
+    position: relative;
+  }
+  
+  /* Left scroll indicator */
+  .scroll-indicator-container::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, var(--color-background), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  /* Right scroll indicator */
+  .scroll-indicator-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to left, var(--color-background), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+  }
+  
+  /* Show left indicator when scrolled */
+  .scroll-indicator-container.scrolled-left::before {
+    opacity: 1;
+  }
+  
+  /* Hide right indicator when at end */
+  .scroll-indicator-container.scrolled-right::after {
+    opacity: 0;
+  }
 }

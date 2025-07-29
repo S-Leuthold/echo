@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { IconResolutionService } from "@/lib/icon-resolution";
 import { PlanTimeline } from "@/components/shared/PlanTimeline";
-import { PlanningModeDemo } from "@/components/shared/PlanningModeDemo";
 import { DynamicText, TimeAwareText, PlanningModeBadge, TimeContextDisplay, ConditionalPlanningContent, PlanningModeToggle } from "@/components/ui/dynamic-text";
 import { usePlanning } from "@/contexts/PlanningContext";
 import { ToastProvider, useToast } from "@/contexts/ToastContext";
@@ -198,7 +197,7 @@ const setSessionData = (key: string, data: unknown): void => {
   }
 };
 
-const getSessionData = <T>(key: string): T | null => {
+const getSessionData = <T,>(key: string): T | null => {
   try {
     const data = sessionStorage.getItem(key);
     return data ? JSON.parse(data) : null;
@@ -1533,7 +1532,7 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
   const [loading, setLoading] = useState(true);
   const [planSaved, setPlanSaved] = useState(false);
   const { showSuccess, showError, showInfo } = useToast();
-  const { planningMode, timeContext } = usePlanning();
+  const { planningMode, timeContext, canPlanToday } = usePlanning();
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentComplete, setEnrichmentComplete] = useState(false);
   const [enrichmentResults, setEnrichmentResults] = useState<any>(null);
@@ -2010,6 +2009,14 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                 <Button 
                   onClick={async () => {
                     try {
+                      // Calculate target date for storage
+                      const today = new Date();
+                      const targetDate = new Date(today);
+                      if (planningMode === 'tomorrow') {
+                        targetDate.setDate(targetDate.getDate() + 1);
+                      }
+                      const targetDateStr = targetDate.toISOString().split('T')[0];
+                      
                       // Save the plan data
                       const planData = {
                         timestamp: new Date().toISOString(),
@@ -2017,12 +2024,15 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                         narrative: plan?.narrative || {},
                         metadata: {
                           generated_at: new Date().toISOString(),
-                          wizard_completed: true
+                          wizard_completed: true,
+                          target_date: targetDateStr,
+                          planning_mode: planningMode
                         }
                       };
                       
-                      // Store in localStorage for now (could be enhanced to save to server)
-                      localStorage.setItem('echo_current_plan', JSON.stringify(planData));
+                      // Store in localStorage with date-specific key
+                      const planKey = `echo_plan_${targetDateStr}`;
+                      localStorage.setItem(planKey, JSON.stringify(planData));
                       
                       // Mark plan as saved
                       setPlanSaved(true);
@@ -2075,24 +2085,44 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
                 </Button>
               </div>
               
-              {/* Early next-day planning link - only show if we're viewing an existing plan */}
+              {/* Planning mode switch - only show if we're viewing an existing plan */}
               {isExistingPlan && (
                 <div className="flex justify-center pt-2">
-                  <button
-                    onClick={() => {
-                      // Clear existing plan state and restart wizard for tomorrow
-                      setShouldSkipToCommandCenter(false);
-                      setExistingPlan(null);
-                      setPlanningMode('tomorrow', 'user_choice');
-                      setWizardState({
-                        currentStep: 'welcome',
-                        data: {}
-                      });
-                    }}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
-                  >
-                    Plan tomorrow instead
-                  </button>
+                  {planningMode === 'today' ? (
+                    <button
+                      onClick={() => {
+                        // Clear existing plan state and restart wizard for tomorrow
+                        setShouldSkipToCommandCenter(false);
+                        setExistingPlan(null);
+                        setPlanningMode('tomorrow', 'user_choice');
+                        setWizardState({
+                          currentStep: 'welcome',
+                          data: {}
+                        });
+                      }}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
+                    >
+                      Plan tomorrow instead
+                    </button>
+                  ) : (
+                    canPlanToday && (
+                      <button
+                        onClick={() => {
+                          // Clear existing plan state and restart wizard for today
+                          setShouldSkipToCommandCenter(false);
+                          setExistingPlan(null);
+                          setPlanningMode('today', 'user_choice');
+                          setWizardState({
+                            currentStep: 'welcome',
+                            data: {}
+                          });
+                        }}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-dotted hover:decoration-solid"
+                      >
+                        Plan today instead
+                      </button>
+                    )
+                  )}
                 </div>
               )}
             </section>
@@ -2136,7 +2166,6 @@ function GeneratedPlanStep({ planningData, onRefine, onPrevious, wizardData, exi
 // ==============================================================================
 
 export default function PlanningWizard() {
-  const [showDemo, setShowDemo] = useState(false);
   const { planningMode, setPlanningMode } = usePlanning();
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: 'welcome',
@@ -2160,25 +2189,32 @@ export default function PlanningWizard() {
     const checkExistingPlan = async () => {
       try {
         const currentHour = new Date().getHours();
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        const today = new Date();
         
-        // Check if it's before 6 PM (18:00)
+        // Calculate target date based on planning mode
+        const targetDate = new Date(today);
+        if (planningMode === 'tomorrow') {
+          targetDate.setDate(targetDate.getDate() + 1);
+        }
+        const targetDateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Check if it's before 6 PM (18:00) - only relevant for today planning
         const isBeforeEvening = currentHour < 18;
         
-        if (!isBeforeEvening) {
-          return; // After 6 PM, use normal planning flow
+        if (planningMode === 'today' && !isBeforeEvening) {
+          return; // After 6 PM for today planning, use normal planning flow
         }
         
-        // Check for saved plan in localStorage
-        const savedPlan = localStorage.getItem('echo_current_plan');
+        // Check for saved plan in localStorage with date-specific key
+        const planKey = `echo_plan_${targetDateStr}`;
+        const savedPlan = localStorage.getItem(planKey);
         if (savedPlan) {
           try {
             const planData = JSON.parse(savedPlan);
-            const planDate = new Date(planData.timestamp).toISOString().split('T')[0];
             
-            // If there's a plan for today, skip to Command Center
-            if (planDate === today && planData.blocks && planData.blocks.length > 0) {
-              console.log('Found existing plan for today, skipping to Command Center');
+            // Check if plan has blocks (is valid)
+            if (planData.blocks && planData.blocks.length > 0) {
+              console.log(`Found existing plan for ${targetDateStr}, skipping to Command Center`);
               setExistingPlan(planData);
               setShouldSkipToCommandCenter(true);
               
@@ -2222,10 +2258,11 @@ export default function PlanningWizard() {
                 priority: 'medium',
                 energy_requirement: 'medium'
               })),
-              narrative: {
-                summary: "Your existing schedule has been loaded. You can review it below and make any adjustments needed.",
-                questions: []
+              narrative: todayData.narrative || {
+                summary: todayData.summary || "Your existing schedule has been loaded. You can review it below and make any adjustments needed.",
+                questions: todayData.questions || []
               },
+              reasoning: todayData.reasoning || null,
               timestamp: new Date().toISOString()
             };
             
@@ -2253,7 +2290,7 @@ export default function PlanningWizard() {
     };
     
     checkExistingPlan();
-  }, []);
+  }, [planningMode]);
 
   // Define step flows based on planning mode
   const getStepFlow = (mode: 'today' | 'tomorrow'): WizardStep[] => {
@@ -2340,30 +2377,9 @@ export default function PlanningWizard() {
     }
   };
 
-  // Show demo if requested
-  if (showDemo) {
-    return (
-      <div className="relative">
-        <div className="fixed top-4 right-4 z-50">
-          <Button onClick={() => setShowDemo(false)} variant="outline">
-            ← Back to Planning
-          </Button>
-        </div>
-        <PlanningModeDemo />
-      </div>
-    );
-  }
-
   return (
     <ToastProvider>
       <div className="relative">
-        {/* Demo Toggle - Remove this in production */}
-        <div className="fixed top-4 right-4 z-50">
-          <Button onClick={() => setShowDemo(true)} variant="outline" size="sm">
-            🧪 Demo Planning Context
-          </Button>
-        </div>
-        
         {/* Wizard Steps */}
         <div className="transition-all duration-500 ease-in-out">
           {renderCurrentStep()}

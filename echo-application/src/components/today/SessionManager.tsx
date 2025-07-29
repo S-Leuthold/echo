@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SessionHistoryItem } from "@/types/sessionApi";
+import { IconResolutionService } from "@/lib/icon-resolution";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,18 +27,20 @@ import {
   Circle,
   FileText,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from "lucide-react";
 
-// Category color mapping
+// Category color mapping for original styling
 const getCategoryColor = (category: string) => {
   switch (category) {
-    case 'DEEP_WORK': return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'MEETINGS': return 'bg-purple-100 text-purple-800 border-purple-200';
-    case 'ADMIN': return 'bg-gray-100 text-gray-800 border-gray-200';
-    case 'RESEARCH': return 'bg-green-100 text-green-800 border-green-200';
-    case 'PERSONAL': return 'bg-orange-100 text-orange-800 border-orange-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    case "DEEP_WORK": return "text-deep-work border-deep-work/20 bg-deep-work/10";
+    case "MEETINGS": return "text-meetings border-meetings/20 bg-meetings/10";
+    case "PERSONAL": return "text-personal border-personal/20 bg-personal/10";
+    case "HEALTH": return "text-health border-health/20 bg-health/10";
+    case "RESEARCH": return "text-research border-research/20 bg-research/10";
+    case "PLANNING": return "text-planning border-planning/20 bg-planning/10";
+    default: return "text-muted-foreground border-border bg-muted/20";
   }
 };
 
@@ -56,175 +59,163 @@ const SessionNoteReview: React.FC<SessionNoteReviewProps> = ({
   error,
   onSessionClick
 }) => {
-  const [showAllRecent, setShowAllRecent] = useState(false);
-  const [showAllRelated, setShowAllRelated] = useState(false);
-
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-            <div className="space-y-2">
-              <div className="h-3 bg-muted rounded"></div>
-              <div className="h-3 bg-muted rounded w-5/6"></div>
-              <div className="h-3 bg-muted rounded w-4/6"></div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="w-full border-red-200">
-        <CardContent className="p-6">
-          <div className="text-red-600 text-sm">
-            Failed to load session history: {error}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const hasRecentSessions = recentSessions.length > 0;
-  const hasRelatedSessions = relatedSessions.length > 0;
-
-  if (!hasRecentSessions && !hasRelatedSessions) {
-    return (
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="text-muted-foreground text-sm text-center">
-            No session history available yet.
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const displayedRecent = showAllRecent ? recentSessions : recentSessions.slice(0, 3);
-  const displayedRelated = showAllRelated ? relatedSessions : relatedSessions.slice(0, 2);
-
   return (
-    <div className="space-y-6">
-      {hasRecentSessions && (
-        <Card className="w-full">
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-foreground">Recent Sessions</h3>
-              <Clock className="w-4 h-4 text-muted-foreground" />
-            </div>
-
-            <div className="space-y-3">
-              {displayedRecent.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => onSessionClick(session)}
-                  className="group p-3 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 cursor-pointer transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-foreground group-hover:text-accent-foreground line-clamp-1">
-                      {session.title}
-                    </h4>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ml-2 flex-shrink-0 ${getCategoryColor(session.timeCategory)}`}
-                    >
-                      {session.timeCategory.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                    {session.summary}
-                  </p>
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(session.timestamp).toLocaleDateString()}</span>
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+    <div className="space-y-8">
+      {/* Related Sessions - Database View - Only show if we have related sessions */}
+      {relatedSessions.length > 0 && (
+        <Card className="bg-muted/20 border-border/50">
+          <CardContent className="px-3 py-1">
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="space-y-3">
+                <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                  RELATED SESSIONS
                 </div>
-              ))}
+                
+                {loading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground pl-3">
+                    <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading related sessions...</span>
+                  </div>
+                ) : error ? (
+                  <div className="flex items-center gap-2 text-destructive pl-3">
+                    <AlertCircle className="w-3 h-3" />
+                    <span className="text-sm">{error}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pl-3">
+                    {relatedSessions.map((session) => (
+                      <div key={session.id} className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 flex-1">
+                          <span className="text-base mt-0.5">{session.emoji}</span>
+                          <div className="flex-1">
+                            <div className="text-sm text-foreground font-medium leading-relaxed">
+                              {session.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground/80 mt-1">
+                              {new Date(session.date).toLocaleDateString("en-US", { 
+                                month: "short", 
+                                day: "numeric" 
+                              })} • {session.timeRange}
+                              {session.attendees && (
+                                <span> • {session.attendees.length} attendees</span>
+                              )}
+                            </div>
+                            {session.snippet && (
+                              <div className="text-sm text-muted-foreground leading-relaxed mt-2 line-clamp-2">
+                                {session.snippet}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={`text-xs px-2 py-0.5 border ${getCategoryColor(session.timeCategory)}`}>
+                            {session.timeCategory.replace('_', ' ').toLowerCase()}
+                          </Badge>
+                          {session.totalTasks > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {session.tasksCompleted}/{session.totalTasks}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {recentSessions.length > 3 && (
-              <Collapsible open={showAllRecent} onOpenChange={setShowAllRecent}>
-                <CollipsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-center">
-                    <span className="text-xs">
-                      {showAllRecent ? 'Show Less' : `Show ${recentSessions.length - 3} More`}
-                    </span>
-                    {showAllRecent ? (
-                      <ChevronUp className="ml-1 h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="ml-1 h-3 w-3" />
-                    )}
-                  </Button>
-                </CollipsibleTrigger>
-              </Collapsible>
-            )}
           </CardContent>
         </Card>
       )}
-
-      {hasRelatedSessions && (
-        <Card className="w-full">
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-foreground">Related to Current Work</h3>
-              <Target className="w-4 h-4 text-muted-foreground" />
-            </div>
-
+      
+      {/* Recent Sessions - Echo Insights Style */}
+      <Card className="bg-muted/20 border-border/50">
+        <CardContent className="px-3 py-1">
+          <div className="space-y-8">
+            {/* Header */}
             <div className="space-y-3">
-              {displayedRelated.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => onSessionClick(session)}
-                  className="group p-3 rounded-lg border border-border hover:border-accent/50 hover:bg-accent/5 cursor-pointer transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-foreground group-hover:text-accent-foreground line-clamp-1">
-                      {session.title}
-                    </h4>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ml-2 flex-shrink-0 ${getCategoryColor(session.timeCategory)}`}
-                    >
-                      {session.timeCategory.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                    {session.summary}
-                  </p>
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(session.timestamp).toLocaleDateString()}</span>
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+              <div className="text-xs font-normal text-muted-foreground/70 uppercase tracking-widest">
+                RECENT SESSIONS
+              </div>
+              
+              {loading ? (
+                <div className="flex items-center gap-2 text-muted-foreground pl-3">
+                  <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm">Loading recent sessions...</span>
                 </div>
-              ))}
+              ) : error ? (
+                <div className="flex items-center gap-2 text-destructive pl-3">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              ) : recentSessions.length === 0 ? (
+                <div className="text-sm text-muted-foreground pl-3">
+                  No recent sessions found
+                </div>
+              ) : (
+                <div className="space-y-2 pl-3">
+                  {recentSessions.map((session) => {
+                    // Get Lucide icon for session (remove emojis)
+                    const { icon: SessionIcon } = IconResolutionService.resolveIcon(
+                      session.title, 
+                      session.timeCategory.toLowerCase()
+                    );
+                    
+                    // Format relative date
+                    const sessionDate = new Date(session.date);
+                    const today = new Date();
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    let relativeDate;
+                    if (sessionDate.toDateString() === today.toDateString()) {
+                      relativeDate = "Today";
+                    } else if (sessionDate.toDateString() === yesterday.toDateString()) {
+                      relativeDate = "Yesterday";
+                    } else {
+                      relativeDate = sessionDate.toLocaleDateString("en-US", { 
+                        month: "short", 
+                        day: "numeric" 
+                      });
+                    }
+                    
+                    return (
+                      <div 
+                        key={session.id} 
+                        onClick={() => onSessionClick(session)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <SessionIcon className="w-4 h-4 text-muted-foreground" />
+                          <div className="flex-1">
+                            <div className="text-sm text-foreground font-medium">
+                              {session.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground/80 mt-0.5">
+                              {relativeDate} • {session.timeRange} • {session.duration}m
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Session stats */}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {session.totalTasks > 0 && (
+                            <div className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>{session.tasksCompleted}/{session.totalTasks}</span>
+                            </div>
+                          )}
+                          <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-
-            {relatedSessions.length > 2 && (
-              <Collapsible open={showAllRelated} onOpenChange={setShowAllRelated}>
-                <CollipsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-center">
-                    <span className="text-xs">
-                      {showAllRelated ? 'Show Less' : `Show ${relatedSessions.length - 2} More`}
-                    </span>
-                    {showAllRelated ? (
-                      <ChevronUp className="ml-1 h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="ml-1 h-3 w-3" />
-                    )}
-                  </Button>
-                </CollipsibleTrigger>
-              </Collapsible>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -286,33 +277,46 @@ export const SessionManager: React.FC<SessionManagerProps> = ({
           <div className="space-y-4">
             {selectedSession && (
               <>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Date:</span>
-                    <span className="ml-2">{new Date(selectedSession.timestamp).toLocaleDateString()}</span>
+                {/* Session Metadata */}
+                <div className="bg-muted/20 border border-border/30 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span><strong>Date:</strong> {selectedSession.date}</span>
+                    <span><strong>Time:</strong> {selectedSession.timeRange}</span>
+                    <span><strong>Duration:</strong> {selectedSession.duration}m</span>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Category:</span>
-                    <Badge 
-                      variant="outline" 
-                      className={`ml-2 text-xs ${getCategoryColor(selectedSession.timeCategory)}`}
-                    >
-                      {selectedSession.timeCategory.replace('_', ' ')}
-                    </Badge>
+                  {selectedSession.project && (
+                    <div className="text-sm text-muted-foreground">
+                      <strong>Project:</strong> {selectedSession.project}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Session Content */}
+                <div className="border border-border/30 rounded-lg p-6 bg-card/30 min-h-[400px]">
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                      {selectedSession.content || "No session notes available."}
+                    </pre>
                   </div>
                 </div>
                 
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Summary</h4>
-                  <p className="text-sm text-muted-foreground">{selectedSession.summary}</p>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Session Log</h4>
-                  <div className="bg-muted/50 rounded-lg p-4 text-sm font-mono whitespace-pre-wrap">
-                    {selectedSession.content || 'No detailed log available for this session.'}
+                {/* Session Stats */}
+                {selectedSession.totalTasks > 0 && (
+                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Task Completion</span>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedSession.tasksCompleted} of {selectedSession.totalTasks} completed
+                      </span>
+                    </div>
+                    <div className="mt-2 w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent transition-all"
+                        style={{ width: `${(selectedSession.tasksCompleted / selectedSession.totalTasks) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>
