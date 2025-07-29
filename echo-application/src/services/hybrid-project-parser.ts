@@ -254,19 +254,43 @@ Your response:`;
    * Following Echo's established Claude Sonnet 4 integration patterns
    */
   private async callClaudeAPI(prompt: string, maxTokens: number): Promise<string> {
-    // Mock implementation for now - in real implementation this would call Claude API
-    // Following the same patterns as Echo's existing LLM integration
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Check if request was aborted
-    if (this.abortController?.signal.aborted) {
-      throw new Error('Request aborted');
-    }
+    // Real implementation calling our backend Claude integration
+    try {
+      const response = await fetch('http://localhost:8000/projects/analyze-conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: this.abortController?.signal,
+        body: JSON.stringify({
+          conversation_history: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        }),
+      });
 
-    // Mock response based on prompt analysis
-    return this.generateMockClaudeResponse(prompt);
+      if (!response.ok) {
+        throw new Error(`Claude API call failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Successfully called Claude API via backend:', data);
+      
+      // Return the AI analysis as formatted JSON string
+      return JSON.stringify(data.analysis || data);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw error;
+      }
+      
+      console.error('Claude API call failed, falling back to mock:', error);
+      // Fallback to mock response if API fails
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return this.generateMockClaudeResponse(prompt);
+    }
   }
 
   /**

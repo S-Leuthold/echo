@@ -26,9 +26,9 @@ export interface DevModeConfig {
 
 // Default development configuration
 const DEFAULT_DEV_CONFIG: DevModeConfig = {
-  // Default to mock data in development
-  useMockData: true,
-  useRealAPI: false,
+  // Default to real API since backend is now ready
+  useMockData: false,
+  useRealAPI: true,
   
   // Phase 1 features enabled, Phase 2 features controlled
   enableProjectWizard: true, // Wizard is now ready

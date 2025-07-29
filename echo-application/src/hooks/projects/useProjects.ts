@@ -127,23 +127,31 @@ export const useProjects = (): UseProjectsReturn => {
         await simulateApiDelay(600);
         setProjects(mockProjects);
       } else if (config.useRealAPI) {
-        // Real API path (TODO: implement when backend is ready)
-        await simulateApiDelay(800);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/projects');
-        // const projects = await response.json();
-        // setProjects(projects);
+        // Real API path - call our backend
+        const response = await fetch('http://localhost:8000/projects', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         
-        // For now, fallback to mock data
-        setProjects(mockProjects);
-        console.warn('Real API not implemented yet, using mock data');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch projects: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        // The API returns an array of projects directly
+        setProjects(Array.isArray(data) ? data : []);
+        console.log('✅ Successfully loaded projects from API:', data.length);
       } else {
         // No data source configured
         setProjects([]);
       }
     } catch (err) {
-      setError('Failed to load projects');
+      setError('Failed to load projects from API');
       console.error('Error loading projects:', err);
+      // Fallback to mock data on API error
+      setProjects(mockProjects);
     } finally {
       setLoading(false);
     }
@@ -155,43 +163,76 @@ export const useProjects = (): UseProjectsReturn => {
       setLoading(true);
       setError(null);
 
-      // Simulate API delay
-      await simulateApiDelay(400);
+      if (config.useMockData) {
+        // Mock data path
+        await simulateApiDelay(400);
 
-      // Create new project object
-      const newProject: Project = {
-        id: `project-${Date.now()}`,
-        name: data.name,
-        description: data.description,
-        type: data.type,
-        status: 'active',
-        phase: data.initial_phase || 'initiation',
-        objective: data.objective,
-        current_state: 'Project just created. Ready to begin work.',
-        total_estimated_hours: data.estimated_hours || 40,
-        total_actual_hours: 0,
-        hours_this_week: 0,
-        hours_last_week: 0,
-        progress_percentage: 0,
-        momentum: 'medium',
-        created_date: new Date().toISOString().split('T')[0],
-        updated_date: new Date().toISOString().split('T')[0],
-        weekly_summaries: [],
-        total_sessions: 0,
-        sessions_this_week: 0
-      };
+        // Create new project object
+        const newProject: Project = {
+          id: `project-${Date.now()}`,
+          name: data.name,
+          description: data.description,
+          type: data.type,
+          status: 'active',
+          phase: data.initial_phase || 'initiation',
+          objective: data.objective,
+          current_state: 'Project just created. Ready to begin work.',
+          total_estimated_hours: data.estimated_hours || 40,
+          total_actual_hours: 0,
+          hours_this_week: 0,
+          hours_last_week: 0,
+          progress_percentage: 0,
+          momentum: 'medium',
+          created_date: new Date().toISOString().split('T')[0],
+          updated_date: new Date().toISOString().split('T')[0],
+          weekly_summaries: [],
+          total_sessions: 0,
+          sessions_this_week: 0
+        };
 
-      // Add to projects list
-      setProjects(prev => [newProject, ...prev]);
-      
-      return newProject;
+        // Add to projects list
+        setProjects(prev => [newProject, ...prev]);
+        
+        return newProject;
+      } else if (config.useRealAPI) {
+        // Real API path - call our backend
+        const response = await fetch('http://localhost:8000/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: data.name,
+            description: data.description,
+            type: data.type,
+            priority: 'medium', // Default priority
+            objective: data.objective,
+            estimated_hours: data.estimated_hours || 40,
+            initial_phase: data.initial_phase || 'initiation'
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create project: ${response.status} ${response.statusText}`);
+        }
+
+        const newProject = await response.json();
+        console.log('✅ Successfully created project via API:', newProject.id);
+        
+        // Add to projects list
+        setProjects(prev => [newProject, ...prev]);
+        
+        return newProject;
+      } else {
+        throw new Error('No data source configured');
+      }
     } catch (err) {
       setError('Failed to create project');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [config.useMockData, config.useRealAPI]);
 
   // Update Project
   const updateProject = useCallback(async (id: string, updates: Partial<Project>): Promise<Project> => {
@@ -199,31 +240,59 @@ export const useProjects = (): UseProjectsReturn => {
       setLoading(true);
       setError(null);
 
-      await simulateApiDelay(300);
+      if (config.useMockData) {
+        // Mock data path
+        await simulateApiDelay(300);
 
-      setProjects(prev => prev.map(project => 
-        project.id === id 
-          ? { 
-              ...project, 
-              ...updates, 
-              updated_date: new Date().toISOString().split('T')[0] 
-            }
-          : project
-      ));
+        setProjects(prev => prev.map(project => 
+          project.id === id 
+            ? { 
+                ...project, 
+                ...updates, 
+                updated_date: new Date().toISOString().split('T')[0] 
+              }
+            : project
+        ));
 
-      const updatedProject = projects.find(p => p.id === id);
-      if (!updatedProject) {
-        throw new Error('Project not found');
+        const updatedProject = projects.find(p => p.id === id);
+        if (!updatedProject) {
+          throw new Error('Project not found');
+        }
+
+        return { ...updatedProject, ...updates };
+      } else if (config.useRealAPI) {
+        // Real API path - call our backend
+        const response = await fetch(`http://localhost:8000/projects/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update project: ${response.status} ${response.statusText}`);
+        }
+
+        const updatedProject = await response.json();
+        console.log('✅ Successfully updated project via API:', updatedProject.id);
+        
+        // Update projects list
+        setProjects(prev => prev.map(project => 
+          project.id === id ? updatedProject : project
+        ));
+        
+        return updatedProject;
+      } else {
+        throw new Error('No data source configured');
       }
-
-      return { ...updatedProject, ...updates };
     } catch (err) {
       setError('Failed to update project');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [projects]);
+  }, [projects, config.useMockData, config.useRealAPI]);
 
   // Delete Project
   const deleteProject = useCallback(async (id: string): Promise<void> => {
@@ -231,16 +300,37 @@ export const useProjects = (): UseProjectsReturn => {
       setLoading(true);
       setError(null);
 
-      await simulateApiDelay(300);
+      if (config.useMockData) {
+        // Mock data path
+        await simulateApiDelay(300);
+        setProjects(prev => prev.filter(project => project.id !== id));
+      } else if (config.useRealAPI) {
+        // Real API path - call our backend
+        const response = await fetch(`http://localhost:8000/projects/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      setProjects(prev => prev.filter(project => project.id !== id));
+        if (!response.ok) {
+          throw new Error(`Failed to delete project: ${response.status} ${response.statusText}`);
+        }
+
+        console.log('✅ Successfully deleted project via API:', id);
+        
+        // Remove from projects list
+        setProjects(prev => prev.filter(project => project.id !== id));
+      } else {
+        throw new Error('No data source configured');
+      }
     } catch (err) {
       setError('Failed to delete project');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [config.useMockData, config.useRealAPI]);
 
   // Refresh Projects
   const refreshProjects = useCallback(async (): Promise<void> => {
