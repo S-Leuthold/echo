@@ -32,10 +32,18 @@ export { MetadataField } from './MetadataField';
 // Error Boundaries (when created)
 // export { ProjectErrorBoundary } from './ProjectErrorBoundary';
 
+// Adaptive Expert Coaching Components
+export { ConversationStageIndicator } from './ConversationStageIndicator';
+export { ConversationProgressTracker } from './ConversationProgressTracker';
+export { ConversationMessageList } from './ConversationMessageList';
+export { ConversationInput } from './ConversationInput';
+export { AdaptiveCoachingInterface } from './AdaptiveCoachingInterface';
+
 // Re-export project hooks for convenience
 export { 
   useProjects, 
   useProjectForm, 
   useProjectWizard,
-  useProjectTemplates 
+  useProjectTemplates,
+  useConversationState
 } from '@/hooks/projects';
