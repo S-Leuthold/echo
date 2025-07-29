@@ -62,6 +62,7 @@ async def get_today_schedule():
         
         # Load and validate plan file once, reuse for both blocks and notes
         plan_data = None
+        narrative_data = None
         
         if not plan_file.exists():
             # Return empty blocks if no plan exists - don't auto-generate
@@ -71,6 +72,11 @@ async def get_today_schedule():
                 # Use validated plan file parsing with async I/O
                 async with aiofiles.open(plan_file, 'r') as f:
                     file_content = await f.read()
+                
+                # Parse the full JSON to get narrative data
+                import json
+                full_plan_json = json.loads(file_content)
+                narrative_data = full_plan_json.get('narrative', {})
                 
                 plan_data = safe_parse_plan_file(file_content)
                 blocks = []
@@ -230,7 +236,8 @@ async def get_today_schedule():
             blocks=block_responses,
             email_summary=email_context,
             planning_stats=planning_stats,
-            time_context=time_context
+            time_context=time_context,
+            narrative=narrative_data
         )
         
     except Exception as e:

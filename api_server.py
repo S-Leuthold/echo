@@ -260,24 +260,32 @@ async def create_plan_v2(request: PlanningRequest):
             raise HTTPException(status_code=500, detail="Failed to parse Claude response")
         
         # Save plan to persistent storage
-        today_str = today.strftime("%Y-%m-%d")
+        # Determine target date based on planning mode
+        target_date = today
+        if planning_mode == 'tomorrow':
+            target_date = today + timedelta(days=1)
+        
+        target_date_str = target_date.strftime("%Y-%m-%d")
+        logger.info(f"📅 Saving plan for {target_date_str} (planning_mode: {planning_mode})")
         
         # Use configurable plans directory with fallback
         plans_base_dir = os.getenv("ECHO_PLANS_DIR", "plans")
         plans_dir = Path(plans_base_dir).resolve()
         plans_dir.mkdir(parents=True, exist_ok=True)
         
-        plan_file = plans_dir / f"{today_str}-enhanced-plan.json"
+        plan_file = plans_dir / f"{target_date_str}-enhanced-plan.json"
         
         # Create backup if plan already exists
         if plan_file.exists():
-            backup_file = plans_dir / f"{today_str}-enhanced-plan-backup-{int(time_module.time())}.json"
+            backup_file = plans_dir / f"{target_date_str}-enhanced-plan-backup-{int(time_module.time())}.json"
             plan_file.rename(backup_file)
             logger.info(f"📁 Existing plan backed up to {backup_file}")
         
         # Add metadata to plan
         plan_response["metadata"] = {
             "generated_at": datetime.now().isoformat(),
+            "target_date": target_date_str,
+            "planning_mode": planning_mode,
             "model": "claude-opus-4-20250514",
             "prompt_version": "unified_v2",
             "request_id": f"plan_{int(time_module.time())}"

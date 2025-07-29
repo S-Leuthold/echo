@@ -62,6 +62,7 @@ class TodayResponse(BaseModel):
     email_summary: Dict[str, Any]
     planning_stats: Dict[str, Any]
     time_context: Dict[str, Any] = Field(default_factory=dict, description="Time context for same-day planning decisions")
+    narrative: Optional[Dict[str, Any]] = Field(default=None, description="AI-generated narrative summary from the plan")
 
 
 class PlanRefinementResponse(BaseModel):
