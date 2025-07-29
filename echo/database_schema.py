@@ -159,21 +159,31 @@ class SessionDatabase:
             ON weekly_syncs (project_name, week_ending)
         """)
         
-        # Projects table (for project portfolio management)
+        # Projects table (enhanced for comprehensive project management)
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT NOT NULL,
-                status TEXT NOT NULL,
+                type TEXT NOT NULL,                     -- software, research, writing, etc.
+                status TEXT NOT NULL,                   -- active, on_hold, completed, etc.
+                phase TEXT NOT NULL,                    -- initiation, planning, execution, etc.
                 priority TEXT NOT NULL,
-                category TEXT NOT NULL,
+                category TEXT NOT NULL,                 -- legacy field, maps to 'type'
+                objective TEXT NOT NULL,                -- primary project objective
+                current_state TEXT NOT NULL,            -- current project state description
                 current_focus TEXT NOT NULL,
                 progress_percentage REAL NOT NULL,
-                momentum TEXT NOT NULL,
+                momentum TEXT NOT NULL,                 -- high, medium, low, stalled
                 total_estimated_hours INTEGER NOT NULL,
                 total_actual_hours INTEGER NOT NULL,
+                hours_this_week REAL DEFAULT 0,         -- hours worked this week
+                hours_last_week REAL DEFAULT 0,         -- hours worked last week
+                total_sessions INTEGER DEFAULT 0,       -- total work sessions
+                sessions_this_week INTEGER DEFAULT 0,   -- sessions this week
                 created_date DATE NOT NULL,
+                updated_date DATE NOT NULL,
+                last_session_date DATE,                 -- date of last work session
                 project_data TEXT NOT NULL,             -- Full project data as JSON
                 created_at TIMESTAMP NOT NULL,
                 updated_at TIMESTAMP NOT NULL
@@ -189,6 +199,115 @@ class SessionDatabase:
         self.conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_project_category 
             ON projects (category)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_project_type_status 
+            ON projects (type, status)
+        """)
+        
+        # Project roadmaps table (for hybrid wizard AI-generated roadmaps)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS project_roadmaps (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                phases_data TEXT NOT NULL,              -- JSON array of roadmap phases
+                current_phase_id TEXT,                  -- ID of currently active phase
+                ai_confidence REAL NOT NULL,           -- AI confidence score (0-1)
+                generated_at TIMESTAMP NOT NULL,       -- when roadmap was generated
+                user_modified BOOLEAN DEFAULT FALSE,   -- whether user has modified
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Daily activities table (for activity heatmaps and analytics)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_activities (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                date DATE NOT NULL,
+                hours REAL NOT NULL DEFAULT 0,          -- hours worked on this day
+                sessions_count INTEGER NOT NULL DEFAULT 0, -- number of sessions
+                intensity INTEGER NOT NULL DEFAULT 0,   -- calculated intensity (0-4)
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                UNIQUE(project_id, date)  -- one record per project per day
+            )
+        """)
+        
+        # Weekly summaries table (AI-generated weekly project summaries)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS weekly_summaries (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                week_ending DATE NOT NULL,              -- Sunday date ending the week
+                hours_invested REAL NOT NULL DEFAULT 0,
+                sessions_count INTEGER NOT NULL DEFAULT 0,
+                summary TEXT NOT NULL,                  -- AI-generated narrative summary
+                key_accomplishments TEXT NOT NULL,      -- JSON array of accomplishments
+                decisions_made TEXT NOT NULL,           -- JSON array of decisions  
+                blockers_encountered TEXT NOT NULL,     -- JSON array of blockers
+                next_week_focus TEXT NOT NULL,          -- focus for next week
+                tasks_completed INTEGER NOT NULL DEFAULT 0,
+                ai_confidence REAL NOT NULL,           -- AI confidence score (0-1)
+                generated_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                UNIQUE(project_id, week_ending)  -- one summary per project per week
+            )
+        """)
+        
+        # Uploaded files table (for hybrid wizard file context)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS uploaded_files (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,                        -- nullable for files not yet linked to project
+                filename TEXT NOT NULL,
+                original_filename TEXT NOT NULL,        -- user's original filename
+                content_type TEXT NOT NULL,
+                file_size INTEGER NOT NULL,             -- size in bytes
+                file_path TEXT NOT NULL,                -- storage path on disk
+                file_hash TEXT,                         -- SHA-256 hash for deduplication
+                project_context TEXT,                   -- user description of how file relates
+                processed BOOLEAN DEFAULT FALSE,        -- whether file has been processed for context
+                uploaded_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+            )
+        """)
+        
+        # Create indexes for new tables
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_roadmap_project 
+            ON project_roadmaps (project_id)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_daily_activity_project_date 
+            ON daily_activities (project_id, date DESC)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_weekly_summary_project_week 
+            ON weekly_summaries (project_id, week_ending DESC)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_uploaded_files_project 
+            ON uploaded_files (project_id, uploaded_at DESC)
+        """)
+        
+        self.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_uploaded_files_hash 
+            ON uploaded_files (file_hash)
         """)
         
         self.conn.commit()
@@ -535,6 +654,246 @@ class SessionDatabase:
             return True
         except sqlite3.Error as e:
             print(f"Error updating project: {e}")
+            return False
+    
+    # ===== PROJECT ROADMAPS =====
+    
+    def create_project_roadmap(self, project_id: str, phases_data: List[Dict], ai_confidence: float) -> str:
+        """Create a new project roadmap."""
+        try:
+            roadmap_id = str(uuid.uuid4())
+            now = datetime.now()
+            
+            self.conn.execute("""
+                INSERT INTO project_roadmaps
+                (id, project_id, phases_data, ai_confidence, generated_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                roadmap_id, project_id, json.dumps(phases_data), ai_confidence,
+                now.isoformat(), now.isoformat(), now.isoformat()
+            ))
+            self.conn.commit()
+            return roadmap_id
+        except sqlite3.Error as e:
+            print(f"Error creating project roadmap: {e}")
+            return ""
+    
+    def get_project_roadmap(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get roadmap for a project."""
+        cursor = self.conn.execute("""
+            SELECT * FROM project_roadmaps WHERE project_id = ?
+            ORDER BY created_at DESC LIMIT 1
+        """, (project_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            return None
+            
+        return {
+            "id": row['id'],
+            "project_id": row['project_id'],
+            "phases": json.loads(row['phases_data']),
+            "current_phase_id": row['current_phase_id'],
+            "ai_confidence": row['ai_confidence'],
+            "generated_at": row['generated_at'],
+            "user_modified": bool(row['user_modified']),
+            "created_at": row['created_at'],
+            "updated_at": row['updated_at']
+        }
+    
+    def update_project_roadmap(self, roadmap_id: str, phases_data: List[Dict], current_phase_id: str = None) -> bool:
+        """Update an existing roadmap."""
+        try:
+            self.conn.execute("""
+                UPDATE project_roadmaps 
+                SET phases_data = ?, current_phase_id = ?, user_modified = TRUE, 
+                    updated_at = ?
+                WHERE id = ?
+            """, (json.dumps(phases_data), current_phase_id, datetime.now().isoformat(), roadmap_id))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error updating roadmap: {e}")
+            return False
+    
+    # ===== DAILY ACTIVITIES =====
+    
+    def update_daily_activity(self, project_id: str, date: date, hours: float, sessions_count: int) -> bool:
+        """Update or create daily activity record."""
+        try:
+            # Calculate intensity based on hours and sessions (0-4 scale)
+            intensity = min(4, int((hours * 0.5) + (sessions_count * 0.3)))
+            now = datetime.now()
+            
+            self.conn.execute("""
+                INSERT OR REPLACE INTO daily_activities
+                (id, project_id, date, hours, sessions_count, intensity, created_at, updated_at)
+                VALUES (
+                    COALESCE((SELECT id FROM daily_activities WHERE project_id = ? AND date = ?), ?),
+                    ?, ?, ?, ?, ?, 
+                    COALESCE((SELECT created_at FROM daily_activities WHERE project_id = ? AND date = ?), ?),
+                    ?
+                )
+            """, (
+                project_id, date.isoformat(), str(uuid.uuid4()),  # for COALESCE id
+                project_id, date.isoformat(), hours, sessions_count, intensity,
+                project_id, date.isoformat(), now.isoformat(),  # for COALESCE created_at
+                now.isoformat()  # updated_at
+            ))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error updating daily activity: {e}")
+            return False
+    
+    def get_daily_activities(self, project_id: str, start_date: date, end_date: date) -> List[Dict[str, Any]]:
+        """Get daily activities for a project within date range."""
+        cursor = self.conn.execute("""
+            SELECT * FROM daily_activities 
+            WHERE project_id = ? AND date BETWEEN ? AND ?
+            ORDER BY date ASC
+        """, (project_id, start_date.isoformat(), end_date.isoformat()))
+        
+        activities = []
+        for row in cursor.fetchall():
+            activities.append({
+                "date": row['date'],
+                "hours": row['hours'],
+                "sessions": row['sessions_count'],
+                "intensity": row['intensity']
+            })
+        return activities
+    
+    # ===== WEEKLY SUMMARIES =====
+    
+    def create_weekly_summary(self, project_id: str, week_ending: date, summary_data: Dict[str, Any]) -> str:
+        """Create a new weekly summary."""
+        try:
+            summary_id = str(uuid.uuid4())
+            now = datetime.now()
+            
+            self.conn.execute("""
+                INSERT INTO weekly_summaries
+                (id, project_id, week_ending, hours_invested, sessions_count, summary,
+                 key_accomplishments, decisions_made, blockers_encountered, next_week_focus,
+                 tasks_completed, ai_confidence, generated_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                summary_id, project_id, week_ending.isoformat(),
+                summary_data.get('hours_invested', 0),
+                summary_data.get('sessions_count', 0),
+                summary_data.get('summary', ''),
+                json.dumps(summary_data.get('key_accomplishments', [])),
+                json.dumps(summary_data.get('decisions_made', [])),
+                json.dumps(summary_data.get('blockers_encountered', [])),
+                summary_data.get('next_week_focus', ''),
+                summary_data.get('tasks_completed', 0),
+                summary_data.get('ai_confidence', 0.8),
+                now.isoformat(), now.isoformat(), now.isoformat()
+            ))
+            self.conn.commit()
+            return summary_id
+        except sqlite3.Error as e:
+            print(f"Error creating weekly summary: {e}")
+            return ""
+    
+    def get_weekly_summaries(self, project_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent weekly summaries for a project."""
+        cursor = self.conn.execute("""
+            SELECT * FROM weekly_summaries 
+            WHERE project_id = ?
+            ORDER BY week_ending DESC
+            LIMIT ?
+        """, (project_id, limit))
+        
+        summaries = []
+        for row in cursor.fetchall():
+            summaries.append({
+                "id": row['id'],
+                "project_id": row['project_id'],
+                "week_ending": row['week_ending'],
+                "hours_invested": row['hours_invested'],
+                "sessions_count": row['sessions_count'],
+                "summary": row['summary'],
+                "key_accomplishments": json.loads(row['key_accomplishments']),
+                "decisions_made": json.loads(row['decisions_made']),
+                "blockers_encountered": json.loads(row['blockers_encountered']),
+                "next_week_focus": row['next_week_focus'],
+                "tasks_completed": row['tasks_completed'],
+                "ai_confidence": row['ai_confidence'],
+                "generated_at": row['generated_at']
+            })
+        return summaries
+    
+    # ===== UPLOADED FILES =====
+    
+    def create_uploaded_file(self, filename: str, original_filename: str, content_type: str, 
+                           file_size: int, file_path: str, file_hash: str = None, 
+                           project_id: str = None, project_context: str = None) -> str:
+        """Create a new uploaded file record."""
+        try:
+            file_id = str(uuid.uuid4())
+            now = datetime.now()
+            
+            self.conn.execute("""
+                INSERT INTO uploaded_files
+                (id, project_id, filename, original_filename, content_type, file_size,
+                 file_path, file_hash, project_context, uploaded_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                file_id, project_id, filename, original_filename, content_type,
+                file_size, file_path, file_hash, project_context,
+                now.isoformat(), now.isoformat()
+            ))
+            self.conn.commit()
+            return file_id
+        except sqlite3.Error as e:
+            print(f"Error creating uploaded file: {e}")
+            return ""
+    
+    def get_uploaded_files(self, project_id: str = None) -> List[Dict[str, Any]]:
+        """Get uploaded files, optionally filtered by project."""
+        if project_id:
+            cursor = self.conn.execute("""
+                SELECT * FROM uploaded_files 
+                WHERE project_id = ?
+                ORDER BY uploaded_at DESC
+            """, (project_id,))
+        else:
+            cursor = self.conn.execute("""
+                SELECT * FROM uploaded_files 
+                ORDER BY uploaded_at DESC
+            """)
+        
+        files = []
+        for row in cursor.fetchall():
+            files.append({
+                "id": row['id'],
+                "project_id": row['project_id'],
+                "filename": row['filename'],
+                "original_filename": row['original_filename'],
+                "content_type": row['content_type'],
+                "file_size": row['file_size'],
+                "file_path": row['file_path'],
+                "file_hash": row['file_hash'],
+                "project_context": row['project_context'],
+                "processed": bool(row['processed']),
+                "uploaded_at": row['uploaded_at']
+            })
+        return files
+    
+    def link_file_to_project(self, file_id: str, project_id: str, project_context: str = None) -> bool:
+        """Link an uploaded file to a project."""
+        try:
+            self.conn.execute("""
+                UPDATE uploaded_files 
+                SET project_id = ?, project_context = ?
+                WHERE id = ?
+            """, (project_id, project_context, file_id))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error linking file to project: {e}")
             return False
     
     # ===== UTILITY METHODS =====
