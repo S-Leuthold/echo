@@ -28,6 +28,7 @@ import {
 import { ProjectType, ProjectRoadmap, ProjectRoadmapPhase } from '@/types/projects';
 import { UploadedFile } from '@/components/projects/FileUploadZone';
 import { useProjects } from './useProjects';
+import { useConversation } from './useConversation';
 
 // Service imports
 import { HybridProjectParser } from '@/services/hybrid-project-parser';
@@ -118,33 +119,14 @@ function createInitialBriefState(): BriefState {
   };
 }
 
-/**
- * Creates initial conversation state
- */
-function createInitialConversationState(): ConversationState {
-  return {
-    messages: [
-      {
-        id: 'initial',
-        type: 'ai-response',
-        content: "Let's create your project! Tell me what you're working on. You can describe it here or upload any relevant files - requirements, sketches, notes, anything that gives context.",
-        timestamp: new Date(),
-        confidence: 1.0,
-        dismissible: false
-      }
-    ],
-    current_input: '',
-    is_processing: false,
-    error: null
-  };
-}
+// Conversation state creation moved to useConversation hook
 
 /**
- * Creates initial hybrid wizard state
+ * Creates initial hybrid wizard state (conversation now managed by useConversation)
  */
-function createInitialState(): HybridWizardState {
+function createInitialState(conversation: ConversationState): HybridWizardState {
   return {
-    conversation: createInitialConversationState(),
+    conversation,
     brief: createInitialBriefState(),
     ai_responses: [],
     phase: 'gathering',
@@ -162,8 +144,22 @@ export const useHybridProjectState = (
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
   const { createProject: createProjectAPI } = useProjects();
 
-  // Main state
-  const [state, setState] = useState<HybridWizardState>(createInitialState);
+  // Current analysis cache (to build upon previous analysis)
+  const currentAnalysisRef = useRef<ConversationAnalysis | null>(null);
+
+  // Conversation management (extracted to separate hook)
+  const conversationHook = useConversation(
+    {
+      enableRealTimeAnalysis: fullConfig.enableRealTimeAnalysis,
+      analysisDebounceDelay: fullConfig.analysisDebounceDelay
+    },
+    currentAnalysisRef.current
+  );
+
+  // Main state (conversation now managed by useConversation)
+  const [state, setState] = useState<HybridWizardState>(
+    () => createInitialState(conversationHook.conversation)
+  );
 
   // Service instances (using refs to maintain identity across renders)
   const parserRef = useRef(new HybridProjectParser({
@@ -178,43 +174,26 @@ export const useHybridProjectState = (
     maxResponsesPerSession: fullConfig.maxResponsesPerSession
   }));
 
-  // Current analysis cache (to build upon previous analysis)
-  const currentAnalysisRef = useRef<ConversationAnalysis | null>(null);
+  // Sync conversation state from the conversation hook
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      conversation: conversationHook.conversation
+    }));
+  }, [conversationHook.conversation]);
 
   /**
-   * Submits a new message and triggers AI analysis
+   * Submits a new message and triggers AI analysis (using conversation hook)
    */
   const submitMessage = useCallback(async (message: string) => {
-    if (!message.trim() || state.conversation.is_processing) return;
+    if (!message.trim()) return;
 
     try {
-      // Add user message to conversation
-      const userMessage: ConversationMessage = {
-        id: `user-${Date.now()}`,
-        type: 'user-input',
-        content: message,
-        timestamp: new Date()
-      };
+      // Use conversation hook to submit message and get analysis
+      const analysis = await conversationHook.submitMessage(message, state.brief.uploaded_files);
 
-      setState(prev => ({
-        ...prev,
-        conversation: {
-          ...prev.conversation,
-          messages: [...prev.conversation.messages, userMessage],
-          current_input: '',
-          is_processing: true,
-          processing_step: 'Analyzing your input...'
-        }
-      }));
-
-      // Analyze conversation with AI
-      if (fullConfig.enableRealTimeAnalysis) {
-        const analysis = await parserRef.current.analyzeConversation(
-          message,
-          state.brief.uploaded_files,
-          currentAnalysisRef.current || undefined
-        );
-
+      if (analysis) {
+        // Update current analysis cache
         currentAnalysisRef.current = analysis;
 
         // Update brief fields based on analysis
@@ -236,39 +215,18 @@ export const useHybridProjectState = (
           }));
         }
 
-        // Add AI confirmation message
-        const aiMessage: ConversationMessage = {
-          id: `ai-${Date.now()}`,
-          type: 'ai-response',
-          content: generateAnalysisConfirmation(analysis),
-          timestamp: new Date(),
-          confidence: analysis.confidence
-        };
-
+        // Update wizard phase and project readiness
         setState(prev => ({
           ...prev,
-          conversation: {
-            ...prev.conversation,
-            messages: [...prev.conversation.messages, aiMessage],
-            is_processing: false,
-            processing_step: undefined
-          },
           phase: determineWizardPhase(analysis, prev.brief),
           can_create_project: canCreateProject(analysis)
         }));
       }
     } catch (error) {
       console.error('Message submission failed:', error);
-      setState(prev => ({
-        ...prev,
-        conversation: {
-          ...prev.conversation,
-          is_processing: false,
-          error: 'Failed to process your message. Please try again.'
-        }
-      }));
+      conversationHook.setError('Failed to process your message. Please try again.');
     }
-  }, [state.conversation.is_processing, state.brief.uploaded_files, fullConfig.enableRealTimeAnalysis]);
+  }, [conversationHook, state.brief.uploaded_files]);
 
   /**
    * Handles file uploads and integrates them into analysis
@@ -344,21 +302,11 @@ export const useHybridProjectState = (
             suggestions: [] // Could be populated based on trigger type
           };
 
-          // Add AI response to conversation
-          const conversationMessage: ConversationMessage = {
-            id: `ai-active-${Date.now()}`,
-            type: 'ai-response',
-            content: responseMessage,
-            timestamp: new Date(),
-            dismissible: true
-          };
+          // Add AI response to conversation using conversation hook
+          conversationHook.addAIMessage(responseMessage, 0.8, true);
 
           setState(prev => ({
             ...prev,
-            conversation: {
-              ...prev.conversation,
-              messages: [...prev.conversation.messages, conversationMessage]
-            },
             ai_responses: [...prev.ai_responses, aiResponse]
           }));
         }
@@ -518,24 +466,22 @@ export const useHybridProjectState = (
   }, [state.can_create_project, state.brief, createProjectAPI]);
 
   /**
-   * Clears conversation history
+   * Clears conversation history (using conversation hook)
    */
   const clearConversation = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      conversation: createInitialConversationState()
-    }));
+    conversationHook.clearConversation();
     currentAnalysisRef.current = null;
-  }, []);
+  }, [conversationHook]);
 
   /**
-   * Resets the entire wizard state
+   * Resets the entire wizard state (conversation managed by hook)
    */
   const resetWizard = useCallback(() => {
-    setState(createInitialState());
+    conversationHook.clearConversation();
+    setState(prev => createInitialState(prev.conversation)); // Keep current conversation from hook
     currentAnalysisRef.current = null;
     triggerAnalyzerRef.current.resetSession();
-  }, []);
+  }, [conversationHook]);
 
   /**
    * Updates wizard configuration
@@ -601,19 +547,7 @@ export const useHybridProjectState = (
 /**
  * Utility functions
  */
-function generateAnalysisConfirmation(analysis: ConversationAnalysis): string {
-  const parts = ["Got it! I've updated the project brief."];
-  
-  if (analysis.project_name) {
-    parts.push(`Project: "${analysis.project_name}"`);
-  }
-  
-  if (analysis.missing_information && analysis.missing_information.length > 0) {
-    parts.push(`To improve my understanding, could you tell me more about: ${analysis.missing_information.join(', ')}?`);
-  }
-  
-  return parts.join(' ');
-}
+// generateAnalysisConfirmation moved to useConversation hook
 
 function determineWizardPhase(
   analysis: ConversationAnalysis, 

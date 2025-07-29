@@ -143,21 +143,4 @@ test.describe('Hybrid Wizard Visual Regression', () => {
   });
 });
 
-// Mobile-specific tests
-test.describe('Hybrid Wizard Mobile Visual Regression', () => {
-  test.use({ viewport: { width: 375, height: 667 } }); // iPhone SE size
-
-  test('should capture baseline: mobile wizard layout', async ({ page }) => {
-    await page.goto('/projects');
-    await page.waitForSelector('h1:has-text("Projects")', { timeout: 10000 });
-    
-    // Open wizard on mobile
-    await page.click('button:has-text("Create New Project")');
-    await page.waitForSelector('text="New with AI"', { timeout: 5000 });
-    await page.click('text="New with AI"');
-    await page.waitForSelector('h2:has-text("Create New Project")', { timeout: 10000 });
-    
-    // Take mobile screenshot
-    await expect(page).toHaveScreenshot('hybrid-wizard-mobile.png');
-  });
-});
+// Note: Removed mobile tests since this is a desktop application
