@@ -1,220 +1,214 @@
 # Echo
 
-<p align="center">
-  <img src="dev/logo.png" alt="Echo Logo" width="200"/>
-</p>
+**AI-Powered Productivity & Planning System**
 
-<p align="center">
-  <strong>Intelligent Daily Planning & Productivity System</strong><br>
-  AI-powered scheduling with real-time analytics and session management
-</p>
+Echo is a sophisticated productivity platform that combines intelligent AI-driven scheduling with comprehensive analytics and project management. Built with modern web technologies and powered by Claude 4 and OpenAI models, Echo provides a seamless workflow from planning to execution and reflection.
 
-## Overview
+## Core Features
 
-Echo is a comprehensive productivity system that combines intelligent LLM-powered scheduling with robust time tracking and analytics. It features a sophisticated React TypeScript evening ritual interface and Python CLI for seamless daily planning and execution.
+### Intelligent Planning
+- **AI-Generated Schedules**: Claude Opus 4-powered daily planning with context awareness
+- **Four-Panel Intelligence**: Executive summaries, email categorization, session insights, and deadline tracking
+- **Email Integration**: Microsoft Graph API integration with OAuth 2.0 authentication
+- **Smart Time Allocation**: Energy-based scheduling with anchor, flex, and fixed block types
 
-> 📚 **Documentation Updated**: All documentation has been refreshed to reflect the current React TypeScript frontend with evening ritual wizard, complete API reference, and updated configuration system. See [docs/README.md](docs/README.md) for the complete documentation index.
+### Project Management
+- **Adaptive Coaching**: Conversational AI project creation with domain-specific expertise
+- **Portfolio Analytics**: Activity heatmaps, progress tracking, and momentum analysis
+- **AI Roadmaps**: Automated milestone generation and project timeline planning
+- **File Integration**: Document uploads and association with projects
 
-## Key Features
+### Session Intelligence
+- **Real-Time Tracking**: Live progress monitoring with session state management
+- **Scaffold Generation**: AI-powered session context and goal setting
+- **Note-Taking**: Structured session documentation with anti-hallucination measures
+- **Analytics Integration**: Time categorization and productivity scoring
 
-**AI-Powered Planning**
-- LLM-generated daily schedules based on priorities, energy levels, and constraints
-- Email integration with Microsoft Graph API for action item extraction
-- Smart time block allocation (anchor, flex, and fixed blocks)
-- Real-time plan status detection and adaptive recommendations
+### Advanced Analytics
+- **Comprehensive Metrics**: Category breakdowns, productivity patterns, and trend analysis
+- **Visualization**: Interactive charts, heatmaps, and timeline views
+- **Export Capabilities**: CSV/JSON data export for external analysis
+- **Insight Generation**: AI-powered pattern recognition and recommendations
 
-**Modern Web Interface**
-- Status-aware Today page with live progress tracking
-- Interactive planning interface with email context
-- Real-time session management and note-taking
-- Comprehensive analytics dashboard with time allocation insights
+## Technical Architecture
 
-**Advanced Analytics**
-- Detailed time ledger with category and project breakdown  
-- Daily statistics with productivity scoring
-- Pattern recognition from journal entries and reflection data
-- CSV export for trend analysis and reporting
+### Backend (Python + FastAPI)
+- **FastAPI Framework**: High-performance async API server
+- **Modular Design**: Router-based architecture with clear separation of concerns
+- **AI Integration**: Multi-model approach with Claude 4, Sonnet 4, and OpenAI
+- **Data Layer**: SQLite databases with YAML configuration management
 
-**Session Management**
-- Work session tracking with external tool integration
-- Session notes with auto-save functionality
-- Anti-hallucination logging that prevents LLM data fabrication
-- Structured session summaries for project documentation
+### Frontend (Next.js + TypeScript)
+- **Modern Stack**: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui components
+- **Responsive Design**: Optimized for desktop and mobile experiences
+- **Real-Time Updates**: Live progress tracking and session management
+- **Type Safety**: End-to-end TypeScript with Zod validation
 
-**Email Integration**
-- Microsoft Outlook integration via Graph API with OAuth 2.0
-- Automatic response tracking and action item extraction
-- Priority filtering by important senders and urgent keywords
-- Email-aware planning with contextual scheduling recommendations
-
-## Architecture
-
-### Core Components
-- **Python Backend**: FastAPI server with comprehensive planning and analytics APIs
-- **Web Interface**: Modern Next.js application with TypeScript and real-time updates
-- **LLM Integration**: Two-stage planning system (Planner → Enricher) with strategic reasoning
-- **Data Models**: Structured time blocks, projects, sessions, and journal entries
-
-### Technology Stack
-- **Backend**: Python 3.11+, FastAPI, OpenAI API, Microsoft Graph API
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, shadcn/ui components  
-- **Data**: YAML configuration, JSON persistence, CSV analytics export
-- **Authentication**: Microsoft OAuth 2.0 for email integration
+### AI Models
+- **Claude Opus 4**: Strategic planning and complex reasoning tasks
+- **Claude Sonnet 4**: Structured processing and conversation management
+- **OpenAI API**: Data extraction and specialized intelligence tasks
 
 ## Quick Start
 
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- OpenAI API key
-- Microsoft Azure app registration (for email features)
+- API keys for OpenAI and Anthropic
+- Microsoft Azure app registration (optional, for email features)
 
 ### Installation
 
-1. **Clone and setup Python backend:**
+1. **Backend Setup**
    ```bash
-   git clone https://github.com/your-repo/echo.git
+   git clone <repository-url>
    cd echo
    python -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-2. **Setup web interface:**
+2. **Frontend Setup**
    ```bash
-   cd echo-application
+   cd frontend
    npm install
    ```
 
-3. **Configure environment:**
+3. **Configuration**
    ```bash
-   # Copy sample configuration
-   cp config/sample_config.yaml config/user_config.yaml
-   
-   # Add to .env file:
+   # Create environment file
    export OPENAI_API_KEY="your-openai-key"
-   export ECHO_GRAPH_CLIENT_ID="your-azure-client-id"
-   export ECHO_GRAPH_CLIENT_SECRET="your-azure-client-secret"
+   export ANTHROPIC_API_KEY="your-anthropic-key"
+   export ECHO_GRAPH_CLIENT_ID="your-azure-client-id"  # Optional
+   export ECHO_GRAPH_CLIENT_SECRET="your-azure-secret"  # Optional
+   
+   # Configure user settings
+   cp config/sample_config.yaml config/user_config.yaml
+   # Edit config/user_config.yaml with your preferences
    ```
 
-4. **Start the system:**
+4. **Launch System**
    ```bash
    # Terminal 1: Start API server
    python api_server.py
    
-   # Terminal 2: Start web interface  
-   cd echo-application && npm run dev
+   # Terminal 2: Start web interface
+   cd frontend && npm run dev
    ```
 
-5. **Access the application:**
-   - Web interface: http://localhost:3000
-   - API documentation: http://localhost:8000/docs
+5. **Access Application**
+   - Web Interface: http://localhost:3000
+   - API Documentation: http://localhost:8000/docs
 
-## Usage
+## Usage Workflow
 
-### Daily Planning Workflow
+### Daily Planning
+1. **Morning Context**: Review four-panel intelligence briefing with email, sessions, and deadlines
+2. **Plan Generation**: Create AI-powered schedule based on priorities and energy levels
+3. **Session Execution**: Start work sessions with scaffolded context and real-time tracking
+4. **Evening Reflection**: Complete structured review and generate insights for tomorrow
 
-**Morning:**
-- Access Today page to see live schedule and current focus
-- Review email action items integrated into planning context
-- Start work sessions with real-time progress tracking
+### Project Management
+1. **Conversational Creation**: Use adaptive coaching wizard for natural project setup
+2. **AI Enhancement**: Generate roadmaps, milestones, and progress tracking
+3. **Activity Monitoring**: Track engagement through heatmaps and analytics
+4. **Portfolio Analysis**: Review metrics and momentum across all projects
 
-**During Work:**
-- Track sessions with integrated note-taking
-- Monitor real-time progress indicators and time remaining
-- Switch between tasks with session state management
-
-**Evening:**
-- Complete structured reflection with guided prompts
-- Review analytics dashboard for productivity insights  
-- Generate tomorrow's plan using reflection data and email context
-
-### CLI Commands
-
-```bash
-# Email and planning
-python -m echo.cli oauth-login          # Authenticate with Microsoft
-python -m echo.cli email-summary        # Get email action items
-python -m echo.cli plan                 # Generate AI-powered daily plan
-python -m echo.cli morning              # Morning check-in workflow
-python -m echo.cli end-day              # Evening reflection and planning
-
-# Analytics and insights
-python -m echo.cli analytics            # View time allocation analytics
-python -m echo.cli insights             # Generate productivity insights
-python -m echo.cli session history      # View session history
-
-# Testing and development
-python -m echo.cli test-connection      # Test email integration
-python -m echo.cli check-token-status   # Verify OAuth tokens
-python -m pytest tests/ -v             # Run test suite
-```
+### Analytics & Insights
+1. **Time Tracking**: Automatic categorization of work sessions and activities
+2. **Pattern Recognition**: AI analysis of productivity trends and energy patterns
+3. **Export & Analysis**: Export data for external reporting and trend analysis
+4. **Optimization**: Receive AI-powered recommendations for workflow improvements
 
 ## Configuration
 
-Echo uses a flexible YAML configuration system:
+Echo uses a flexible YAML-based configuration system:
 
 ```yaml
-# config/user_config.yaml
-schedule:
-  wake_time: "06:00"
+defaults:
+  wake_time: "05:30"
   sleep_time: "22:00"
-  
+  work_hours_start: "09:00"
+  work_hours_end: "17:00"
+
+weekly_schedule:
+  monday:
+    anchors:
+      - time: "05:30"
+        task: "Morning Routine"
+    fixed:
+      - time: "14:00"
+        task: "Team Meeting"
+
 projects:
-  echo:
-    name: "Echo Development"
+  - name: "Echo Development"
     status: "active"
-    focus_areas: ["frontend", "backend", "analytics"]
+    type: "software"
+    focus_areas: ["frontend", "backend", "ai-integration"]
 
 email:
   important_senders:
     - "manager@company.com"
-    - "client@company.com"
   urgent_keywords:
     - "urgent"
-    - "deadline" 
+    - "deadline"
     - "asap"
 ```
 
+## API Reference
+
+The system provides a comprehensive REST API with the following endpoints:
+
+- **Planning**: `/plan-v2`, `/context-briefing`, `/today`
+- **Projects**: `/projects`, `/projects/{id}`, `/projects/analyze-conversation`
+- **Conversations**: `/conversations`, `/conversations/{id}/message`
+- **Analytics**: `/analytics`, `/analytics/export`
+- **Session Intelligence**: `/scaffolds/generate`, `/scaffolds/block/{id}`
+- **Email**: `/email/summary`, `/email/process`
+
+Full API documentation available at `/docs` when running the server.
+
 ## Testing
 
-Run the comprehensive test suite:
-
 ```bash
-# Run all tests with coverage
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage
 python -m pytest tests/ --cov=echo --cov-report=html
 
-# Run specific components
-python -m pytest tests/test_analytics.py -v
-python -m pytest tests/test_planning.py -v
+# Frontend tests
+cd frontend && npm test
+
+# End-to-end tests
+cd frontend && npx playwright test
 ```
 
-## Development Status
+## Development
 
-**Current Version**: Production-ready core system with comprehensive web interface
+### Project Structure
+```
+echo/
+├── echo/                    # Python backend modules
+├── frontend/                # Next.js web application
+├── config/                  # Configuration files
+├── data/                    # SQLite databases
+├── tests/                   # Test suites
+├── docs/                    # Documentation
+└── api_server.py           # FastAPI entry point
+```
 
-**Recently Completed:**
-- Status-aware Today page with real-time progress tracking
-- Complete backend integration with caching optimization
-- Session management infrastructure with note-taking
-- Email integration with Microsoft Graph API
-- LLM-powered planning with two-stage architecture
-
-**Roadmap:**
-- Mobile-responsive design enhancements
-- Advanced analytics visualizations
-- Team collaboration features
-- Calendar sync integrations
-
-## Contributing
-
+### Contributing
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)  
-3. Run tests (`python -m pytest tests/ -v`)
-4. Commit changes (`git commit -m 'Add amazing feature'`)
-5. Push to branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+2. Create a feature branch
+3. Implement changes with tests
+4. Run the full test suite
+5. Submit a pull request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**Echo** - Intelligent productivity through AI-powered planning and analytics.
