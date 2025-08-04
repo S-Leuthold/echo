@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tailwind v4 semantic colors - no :root needed */
+  --color-background: #0B0A0F;
+  --color-foreground: #FAF7F2;
+  --color-card: #1A1621;
+  --color-card-foreground: #FAF7F2;
+  --color-popover: #1A1621;
+  --color-popover-foreground: #FAF7F2;
+  --color-primary: #E6A86C;
+  --color-primary-foreground: #0B0A0F;
+  --color-secondary: #4A3F5C;
+  --color-secondary-foreground: #FAF7F2;
+  --color-muted: #2D2438;
+  --color-muted-foreground: #C4B5A0;
+  --color-accent: #E6A86C;
+  --color-accent-foreground: #0B0A0F;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FAF7F2;
+  --color-border: #3D3349;
+  --color-input: #2D2438;
+  --color-ring: #E6A86C;
+  
+  --color-sidebar: #0F0F12;
+  --color-sidebar-foreground: #FAF7F2;
+  --color-sidebar-primary: #E6A86C;
+  --color-sidebar-primary-foreground: #0B0A0F;
+  --color-sidebar-accent: #E6A86C;
+  --color-sidebar-accent-foreground: #0B0A0F;
+  --color-sidebar-border: #3D3349;
+  --color-sidebar-ring: #E6A86C;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Fix dropdown backgrounds for Tailwind v4 compatibility */
+  [data-radix-select-content] {
+    background-color: var(--color-card) !important;
+    border: 1px solid var(--color-border) !important;
+  }
+  
+  [data-radix-select-item] {
+    background-color: transparent;
+  }
+  
+  [data-radix-select-item]:hover {
+    background-color: var(--color-accent) !important;
+    color: var(--color-accent-foreground) !important;
+  }
+  
+  /* Category background colors for calendar blocks (legacy - kept for compatibility) */
+  .bg-deep-work-active { background-color: #2F7439; }
+  .bg-shallow-work-active { background-color: #B8C5A1; }
+  .bg-meetings-active { background-color: #D65555; }
+  .bg-personal-active { background-color: #CBC4FF; }
+  .bg-health-active { background-color: #EDCF5A; }
+  .bg-meals-active { background-color: #F49F56; }
+  .bg-transit-active { background-color: #8590A0; }
+  .bg-planning-active { background-color: #7C7FF5; }
+  .bg-research-active { background-color: #F060A9; }
+  .bg-admin-active { background-color: #B8C5A1; }
+  .bg-work-active { background-color: #B8C5A1; }
+  .bg-exercise-active { background-color: #EDCF5A; }
+  .bg-learning-active { background-color: #2F7439; }
+  .bg-writing-active { background-color: #2F7439; }
+  .bg-social-active { background-color: #CBC4FF; }
+  .bg-rest-active { background-color: #8590A0; }
+  
+  /* Category border colors for outline-based styling */
+  .border-deep-work-active { border-color: #2F7439; }
+  .border-shallow-work-active { border-color: #B8C5A1; }
+  .border-meetings-active { border-color: #D65555; }
+  .border-personal-active { border-color: #CBC4FF; }
+  .border-health-active { border-color: #EDCF5A; }
+  .border-meals-active { border-color: #F49F56; }
+  .border-transit-active { border-color: #8590A0; }
+  .border-planning-active { border-color: #7C7FF5; }
+  .border-research-active { border-color: #F060A9; }
+  .border-admin-active { border-color: #B8C5A1; }
+  .border-work-active { border-color: #B8C5A1; }
+  .border-exercise-active { border-color: #EDCF5A; }
+  .border-learning-active { border-color: #2F7439; }
+  .border-writing-active { border-color: #2F7439; }
+  .border-social-active { border-color: #CBC4FF; }
+  .border-rest-active { border-color: #8590A0; }
+  
+  /* Category text colors for accent elements */
+  .text-deep-work-active { color: #2F7439; }
+  .text-shallow-work-active { color: #B8C5A1; }
+  .text-meetings-active { color: #D65555; }
+  .text-personal-active { color: #CBC4FF; }
+  .text-health-active { color: #EDCF5A; }
+  .text-meals-active { color: #F49F56; }
+  .text-transit-active { color: #8590A0; }
+  .text-planning-active { color: #7C7FF5; }
+  .text-research-active { color: #F060A9; }
+  .text-admin-active { color: #B8C5A1; }
+  .text-work-active { color: #B8C5A1; }
+  .text-exercise-active { color: #EDCF5A; }
+  .text-learning-active { color: #2F7439; }
+  .text-writing-active { color: #2F7439; }
+  .text-social-active { color: #CBC4FF; }
+  .text-rest-active { color: #8590A0; }
+  
+  /* Horizontal scroll container styling */
+  .horizontal-scroll-container {
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--color-muted);
+    border-radius: 3px;
+  }
+
+  .horizontal-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent);
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .horizontal-scroll-container {
+      scroll-behavior: auto;
+    }
+  }
+  
+  /* Scroll indicator container */
+  .scroll-indicator-container {
+    position: relative;
+  }
+  
+  /* Left scroll indicator */
+  .scroll-indicator-container::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, var(--color-background), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  /* Right scroll indicator */
+  .scroll-indicator-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to left, var(--color-background), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+  }
+  
+  /* Show left indicator when scrolled */
+  .scroll-indicator-container.scrolled-left::before {
+    opacity: 1;
+  }
+  
+  /* Hide right indicator when at end */
+  .scroll-indicator-container.scrolled-right::after {
+    opacity: 0;
+  }
+}

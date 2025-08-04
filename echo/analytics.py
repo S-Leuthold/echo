@@ -207,7 +207,11 @@ def calculate_daily_stats(blocks: List[Block], config: Config) -> DailyStats:
 # DATA STORE MANAGEMENT
 # ==============================================================================
 
+<<<<<<< HEAD
 TIME_LEDGER_FILE = Path("logs/time_ledger.csv")
+=======
+TIME_LEDGER_FILE = Path("runtime/logs/time_ledger.csv")
+>>>>>>> feature/adaptive-coaching-foundation
 
 
 def ensure_time_ledger_exists() -> None:

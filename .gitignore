@@ -5,22 +5,64 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
 
 # Virtual Environment
 .venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Secrets - DO NOT COMMIT
 .env
+.env.local
+.env.production
 gcal_token.pickle
 gcal_credentials.json
+*.token
 
-# Test Logs 
-
-/logs
-
-# Other
-
-echo-application/node_modules.token
-api_server.log
+# Logs
 *.log
-__pycache__/
+logs/
+runtime/logs/
+frontend/dev_server.log
+frontend/nextjs.log
+frontend/api_server.log
+
+# Runtime generated files
+runtime/plans/
+runtime/exports/
+
+# Frontend/Node
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# macOS
+.DS_Store
+
+# Session tracking
+sessions/
+.current-session
+
+# Test outputs
+test-baseline.txt
+test-*.txt
+
+# Backup files
+*_backup.py
+*_original_backup.py
+*.bak.token

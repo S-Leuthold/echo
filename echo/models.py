@@ -39,6 +39,14 @@ __all__ = [
     "JournalEntry",
     "EveningReflection",
     "JournalPlanningContext",
+<<<<<<< HEAD
+=======
+    "ConversationStage",
+    "ConversationMessage",
+    "ConversationState",
+    "DomainDetection",
+    "ExpertPersona",
+>>>>>>> feature/adaptive-coaching-foundation
 ]
 
 
@@ -135,6 +143,230 @@ class JournalPlanningContext:
             "energy_prediction": self.energy_prediction,
             "mood_prediction": self.mood_prediction,
         }
+<<<<<<< HEAD
+=======
+
+
+class ConversationStage(str, Enum):
+    """
+    The stages of the adaptive expert coaching conversation flow.
+    Each stage has different AI behavior and user interaction patterns.
+    """
+    DISCOVERY = "discovery"           # Natural conversation to understand project
+    CONFIRMATION = "confirmation"     # Project summary validation and domain detection
+    EXPERT_COACHING = "expert_coaching"  # Domain-specific strategic guidance
+
+
+@dataclass
+class ConversationMessage:
+    """
+    Represents a single message in the conversation history.
+    Used for context building and conversation flow management.
+    """
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: datetime = field(default_factory=datetime.now)
+    metadata: Dict[str, Any] = field(default_factory=dict)  # Additional context like confidence scores
+    
+    def to_dict(self) -> Dict:
+        """Serializes the ConversationMessage into a JSON-safe dictionary."""
+        return {
+            "role": self.role,
+            "content": self.content,
+            "timestamp": self.timestamp.isoformat(),
+            "metadata": self.metadata,
+        }
+
+
+@dataclass
+class DomainDetection:
+    """
+    Results of domain detection analysis for expert persona selection.
+    Contains confidence scores and reasoning for transparent decision-making.
+    """
+    domain: str  # Detected domain (e.g., "academic_writing", "software_development")
+    confidence: float  # Confidence score (0.0 to 1.0)
+    alternative_domains: List[tuple[str, float]] = field(default_factory=list)  # (domain, confidence) pairs
+    reasoning: str = ""  # Explanation of detection logic for transparency
+    signals_detected: Dict[str, Any] = field(default_factory=dict)  # Raw analysis signals
+    
+    def to_dict(self) -> Dict:
+        """Serializes the DomainDetection into a JSON-safe dictionary."""
+        return {
+            "domain": self.domain,
+            "confidence": self.confidence,
+            "alternative_domains": self.alternative_domains,
+            "reasoning": self.reasoning,
+            "signals_detected": self.signals_detected,
+        }
+
+
+@dataclass
+class ExpertPersona:
+    """
+    Configuration for a domain-specific expert persona.
+    Contains prompts, methodologies, and behavioral patterns for authentic expertise.
+    """
+    domain: str  # Domain identifier (e.g., "academic_writing")
+    name: str    # Expert name and credentials
+    expertise_areas: List[str] = field(default_factory=list)
+    methodology_framework: str = ""  # Core methodology approach
+    communication_style: str = ""   # Tone and approach description
+    risk_awareness: List[str] = field(default_factory=list)  # Common failure modes
+    assessment_questions: List[str] = field(default_factory=list)  # Diagnostic questions
+    system_prompt: str = ""  # Base system prompt for Claude
+    
+    def to_dict(self) -> Dict:
+        """Serializes the ExpertPersona into a JSON-safe dictionary."""
+        return {
+            "domain": self.domain,
+            "name": self.name,
+            "expertise_areas": self.expertise_areas,
+            "methodology_framework": self.methodology_framework,
+            "communication_style": self.communication_style,
+            "risk_awareness": self.risk_awareness,
+            "assessment_questions": self.assessment_questions,
+            "system_prompt": self.system_prompt,
+        }
+
+
+@dataclass
+class ConversationState:
+    """
+    Comprehensive conversation state for adaptive expert coaching.
+    Manages conversation context, persona transitions, and project understanding.
+    
+    Following Anthropic best practices for multi-turn conversation management
+    with explicit state tracking and context preservation.
+    """
+    # Conversation identification and tracking
+    conversation_id: str
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+    
+    # Conversation flow management
+    current_stage: ConversationStage = ConversationStage.DISCOVERY
+    messages: List[ConversationMessage] = field(default_factory=list)
+    stage_transitions: List[Dict[str, Any]] = field(default_factory=list)  # History of stage changes
+    
+    # Project understanding (built incrementally)
+    project_summary: Optional[str] = None
+    extracted_data: Dict[str, Any] = field(default_factory=dict)  # Structured project data
+    confidence_score: float = 0.0  # Overall confidence in project understanding
+    missing_information: List[str] = field(default_factory=list)  # What still needs clarification
+    
+    # Domain detection and persona management
+    domain_detection: Optional[DomainDetection] = None
+    current_persona: Optional[str] = None  # Domain identifier for active persona
+    persona_switched_at: Optional[datetime] = None
+    user_corrections: List[Dict[str, Any]] = field(default_factory=list)  # User corrections to AI understanding
+    
+    # Context building for expert coaching
+    user_expertise_level: Optional[str] = None  # "beginner", "intermediate", "expert"
+    key_constraints: List[str] = field(default_factory=list)  # Timeline, resource, scope constraints
+    success_criteria: List[str] = field(default_factory=list)  # How user defines success
+    risk_factors: List[str] = field(default_factory=list)  # Identified risks and challenges
+    
+    # File context and additional materials
+    uploaded_files: List[Dict[str, Any]] = field(default_factory=list)  # File references and summaries
+    external_context: Dict[str, Any] = field(default_factory=dict)  # Additional context from integrations
+    
+    # Conversation analytics
+    total_exchanges: int = 0  # Number of user-assistant message pairs
+    avg_response_time: float = 0.0  # Average AI response time for performance tracking
+    user_satisfaction_indicators: Dict[str, Any] = field(default_factory=dict)  # Engagement metrics
+    
+    def add_message(self, role: str, content: str, metadata: Dict[str, Any] = None) -> None:
+        """Add a new message to the conversation history."""
+        message = ConversationMessage(
+            role=role,
+            content=content,
+            metadata=metadata or {}
+        )
+        self.messages.append(message)
+        self.updated_at = datetime.now()
+        
+        if role == "user":
+            self.total_exchanges += 1
+    
+    def transition_stage(self, new_stage: ConversationStage, reason: str = "") -> None:
+        """Transition to a new conversation stage with tracking."""
+        old_stage = self.current_stage
+        self.current_stage = new_stage
+        self.updated_at = datetime.now()
+        
+        # Record the transition for analysis
+        self.stage_transitions.append({
+            "from": old_stage.value,
+            "to": new_stage.value,
+            "timestamp": self.updated_at.isoformat(),
+            "reason": reason,
+            "message_count": len(self.messages)
+        })
+    
+    def set_persona(self, domain: str) -> None:
+        """Switch to a specific expert persona."""
+        self.current_persona = domain
+        self.persona_switched_at = datetime.now()
+        self.updated_at = datetime.now()
+    
+    def should_trigger_confirmation(self) -> bool:
+        """Determine if ready for project summary and persona switch."""
+        return (
+            len(self.messages) >= 3 and
+            self.project_summary is not None and
+            self.confidence_score > 0.7 and
+            self.current_stage == ConversationStage.DISCOVERY
+        )
+    
+    def get_conversation_history_for_llm(self, include_metadata: bool = False) -> List[Dict[str, Any]]:
+        """Format conversation history for Claude API calls."""
+        history = []
+        for message in self.messages:
+            msg_dict = {
+                "role": message.role,
+                "content": message.content
+            }
+            if include_metadata and message.metadata:
+                msg_dict["metadata"] = message.metadata
+            history.append(msg_dict)
+        return history
+    
+    def update_project_understanding(self, summary: str, data: Dict[str, Any], confidence: float) -> None:
+        """Update the AI's understanding of the project."""
+        self.project_summary = summary
+        self.extracted_data.update(data)
+        self.confidence_score = confidence
+        self.updated_at = datetime.now()
+    
+    def to_dict(self) -> Dict:
+        """Serializes the ConversationState into a JSON-safe dictionary."""
+        return {
+            "conversation_id": self.conversation_id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "current_stage": self.current_stage.value,
+            "messages": [msg.to_dict() for msg in self.messages],
+            "stage_transitions": self.stage_transitions,
+            "project_summary": self.project_summary,
+            "extracted_data": self.extracted_data,
+            "confidence_score": self.confidence_score,
+            "missing_information": self.missing_information,
+            "domain_detection": self.domain_detection.to_dict() if self.domain_detection else None,
+            "current_persona": self.current_persona,
+            "persona_switched_at": self.persona_switched_at.isoformat() if self.persona_switched_at else None,
+            "user_corrections": self.user_corrections,
+            "user_expertise_level": self.user_expertise_level,
+            "key_constraints": self.key_constraints,
+            "success_criteria": self.success_criteria,
+            "risk_factors": self.risk_factors,
+            "uploaded_files": self.uploaded_files,
+            "external_context": self.external_context,
+            "total_exchanges": self.total_exchanges,
+            "avg_response_time": self.avg_response_time,
+            "user_satisfaction_indicators": self.user_satisfaction_indicators,
+        }
+>>>>>>> feature/adaptive-coaching-foundation
 
 
 @dataclass
@@ -251,3 +483,7 @@ class Config:
     projects: Dict[str, Dict[str, Any]]
     profiles: Dict[str, Dict[str, Any]]
     email: Dict[str, Any] = field(default_factory=dict)
+<<<<<<< HEAD
+=======
+    reminders: List[Dict[str, Any]] = field(default_factory=list)
+>>>>>>> feature/adaptive-coaching-foundation

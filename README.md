@@ -11,7 +11,9 @@
 
 ## Overview
 
-Echo is a comprehensive productivity system that combines intelligent LLM-powered scheduling with robust time tracking and analytics. It provides both a Python CLI and a modern web interface for seamless daily planning and execution.
+Echo is a comprehensive productivity system that combines intelligent LLM-powered scheduling with robust time tracking and analytics. It features a sophisticated React TypeScript evening ritual interface and Python CLI for seamless daily planning and execution.
+
+> 📚 **Documentation Updated**: All documentation has been refreshed to reflect the current React TypeScript frontend with evening ritual wizard, complete API reference, and updated configuration system. See [docs/README.md](docs/README.md) for the complete documentation index.
 
 ## Key Features
 
