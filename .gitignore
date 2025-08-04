@@ -41,6 +41,11 @@ frontend/api_server.log
 runtime/plans/
 runtime/exports/
 
+# Database files (should be generated locally)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
 # Frontend/Node
 node_modules/
 frontend/node_modules/
@@ -61,6 +66,12 @@ sessions/
 # Test outputs
 test-baseline.txt
 test-*.txt
+*.test.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
 
 # Backup files
 *_backup.py
