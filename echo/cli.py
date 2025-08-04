@@ -386,7 +386,7 @@ def run_plan_with_email(args):
             print(f"{status_icon} {block.start.strftime('%H:%M')} - {block.end.strftime('%H:%M')} | {block.label}")
         
         # Save plan to file with unified planning metadata
-        plan_file = Path(f"plans/{date.today().isoformat()}-unified-plan.json")
+        plan_file = Path(f"runtime/plans/{date.today().isoformat()}-unified-plan.json")
         plan_file.parent.mkdir(exist_ok=True)
         
         plan_data = {
@@ -636,7 +636,7 @@ def run_end_of_day(args):
                     print(f"{status_icon} {block.start.strftime('%H:%M')} - {block.end.strftime('%H:%M')} | {block.label}")
                 
                 # Save tomorrow's plan
-                tomorrow_plan_file = Path(f"plans/{(date.today() + timedelta(days=1)).isoformat()}-tomorrow-plan.json")
+                tomorrow_plan_file = Path(f"runtime/plans/{(date.today() + timedelta(days=1)).isoformat()}-tomorrow-plan.json")
                 tomorrow_plan_file.parent.mkdir(exist_ok=True)
                 
                 plan_data = {

@@ -63,8 +63,8 @@ class SemanticDomainDetector:
     def _load_domain_signals(self) -> None:
         """Load domain signal configurations."""
         
-        # Scientific Software Development Signals  
-        self.SCIENTIFIC_SOFTWARE_SIGNALS = {
+        # Software Development Signals  
+        self.SOFTWARE_SIGNALS = {
             'keywords': {
                 'app': ['software_development', 'mobile_development'],
                 'software': ['software_development'],
@@ -346,7 +346,15 @@ class SemanticDomainDetector:
                 alternative_domains=alternatives,
                 reasoning=reasoning,
                 signals_detected={
-                    signal_type.value: [s for s in signals if s.signal_type == signal_type]
+                    signal_type.value: [
+                        {
+                            'content': s.content,
+                            'confidence': s.confidence,
+                            'context': s.context,
+                            'domains': s.domains
+                        }
+                        for s in signals if s.signal_type == signal_type
+                    ]
                     for signal_type in SignalType
                 }
             )

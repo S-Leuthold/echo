@@ -1,150 +1,179 @@
 # 📚 Echo Documentation Index
 
-Welcome to the Echo documentation! This index helps you find the right documentation for your needs.
+Welcome to the Echo documentation! This comprehensive index helps you find the right documentation for your needs.
 
 ## 🚀 Quick Start
 
-- **[Main README](../README.md)** - Project overview, installation, and basic usage
-- **[Getting Started](../CLAUDE.md)** - Development workflow and common commands
+- **[Project Overview](../README.md)** - Main project introduction, installation, and usage
+- **[Project Structure](../STRUCTURE.md)** - Complete directory layout and technology stack
+- **[Developer Guide](../.claude/CLAUDE.md)** - Development workflow, session management, and commands
 
-## 🏗️ System Architecture
+## 🏗️ Architecture & Design
 
-- **[Architecture Overview](../dev/09_architecture_overview.md)** - Complete system design and data flow
-- **[Current Status](../dev/10_current_status.md)** - Latest development status and feature completeness
-- **[Vision & Principles](../dev/01_vision_and_princuples.md)** - Project philosophy and design principles
+### System Architecture
+- **[Architecture Overview](../ARCHITECTURE.md)** - Complete system design, data flows, and component interactions
+- **[API Reference](../API_REFERENCE.md)** - Comprehensive API documentation with 26+ endpoints
+- **[Technical Debt Tracker](../TECHNICAL_DEBT.md)** - Systematic tracking of improvement opportunities
+
+### Project Philosophy  
+- **[Vision & Principles](development/01_vision_and_princuples.md)** - Core project philosophy and design principles
+- **[Product Requirements](development/02_echo_prd.md)** - Comprehensive product specification and requirements
 
 ## 🛠️ Development
 
-### Frontend Development
-- **[React Application](../echo-application/README.md)** - Complete Next.js TypeScript frontend documentation
-- **[Component Library](../echo-application/README.md#key-components)** - UI component reference
-- **[Configuration Wizard](../echo-application/README.md#weekly-calendar-interface)** - Visual config editor
+### Getting Started
+- **[Contributing Guide](../CONTRIBUTING.md)** - Development guidelines, code style, and PR process
+- **[Testing Strategy](../TESTING.md)** - Comprehensive testing approach with coverage targets
+- **[Deployment Guide](../DEPLOYMENT.md)** - Production deployment across multiple platforms
 
-### Backend Development
-- **[API Reference](api_reference.md)** - Complete FastAPI endpoint documentation
-- **[Email Integration](ENHANCED_EMAIL_INTEGRATION.md)** - Microsoft Graph API integration
-- **[Token Management](TOKEN_MANAGEMENT.md)** - OAuth setup and token handling
+### Development Documentation
+- **[Journaling Architecture](development/06_journaling_architecture.md)** - Evening reflection and planning workflows
+- **[Session Logging Architecture](development/07_session_logging_architecture.md)** - Session intelligence and tracking systems
+- **[Meeting Intelligence Architecture](development/08_meeting_summarizer_architecture.md)** - Live transcription and AI-powered meeting summarization
 
-### Configuration System
-- **[Configuration Guide](../config/README.md)** - Comprehensive config system documentation
-- **[Config Schema](../config/config_schema.md)** - Technical schema reference
-- **[Best Practices](../config/README.md#configuration-best-practices)** - Configuration optimization tips
+## 🔧 Setup & Configuration
 
-## 🔧 Setup Guides
+### Core Setup
+- **[OAuth Setup Guide](oauth_setup.md)** - Microsoft Graph API authentication (recommended)
+- **[Configuration System](../config/README.md)** - Complete configuration guide
+- **[Configuration Schema](../config/config_schema.md)** - Technical schema reference
 
-### Email Integration
-- **[OAuth Setup](oauth_setup.md)** - Microsoft Graph API OAuth configuration (recommended)
-- **[IMAP Setup](imap_setup.md)** - Alternative IMAP email integration
-- **[Token Management](TOKEN_MANAGEMENT.md)** - OAuth token troubleshooting
-
-### Development Environment
-- **[Python Backend Setup](../README.md#installation)** - FastAPI server installation
-- **[React Frontend Setup](../echo-application/README.md#getting-started)** - Next.js development environment
-- **[Testing](../README.md#testing)** - Running the test suite
+### Environment Setup
+- **[Environment Variables](../config/README.md#environment-variables)** - Required environment configuration
+- **[Development Environment](../CONTRIBUTING.md#development-setup)** - Local development setup
+- **[Production Deployment](../DEPLOYMENT.md)** - Production environment configuration
 
 ## 📊 Feature Documentation
 
-### Core Features
-- **[Evening Ritual Wizard](../echo-application/README.md#evening-ritual-wizard)** - Multi-step planning workflow
-- **[Daily Planning](../README.md#daily-planning)** - AI-powered schedule generation
-- **[Analytics System](../README.md#analytics)** - Time tracking and productivity insights
-- **[Journaling & Reflection](../README.md#journaling)** - Evening reflection and pattern recognition
+### Core Features (Current)
+- **AI-Powered Planning** - LLM-generated daily schedules with context awareness
+- **Project Management** - Full CRUD operations with AI roadmaps and analytics
+- **Session Intelligence** - Work session tracking with scaffolds and insights
+- **Adaptive Coaching** - Conversational project creation with domain detection
+- **Analytics Dashboard** - Time tracking, productivity scoring, and pattern recognition
+- **Four-Panel Intelligence** - Executive summary, email insights, session notes, commitments
 
-### Advanced Features
-- **[Session Tracking](../README.md#session-management)** - Work session management
-- **[Project Management](../README.md#project-management)** - Project context and tracking
-- **[LLM Insights](../dev/10_current_status.md#llm-generated-insights-phase-2c)** - AI-powered productivity analysis
-- **[Context Intelligence](api_reference.md#context-intelligence)** - Daily briefing system
+### Advanced Features (Planned)
+- **Meeting Intelligence** - Live transcription, AI summarization, project integration
+- **Calendar Synchronization** - Two-way sync with external calendar systems
+- **Mobile Applications** - Native mobile apps for session management
+- **Team Collaboration** - Multi-user project collaboration features
 
-## 🎯 User Guides
+## 🎯 User Workflows
 
 ### Daily Workflow
-- **[Evening Planning](../echo-application/README.md#evening-ritual-wizard)** - Complete evening ritual workflow
-- **[Morning Execution](../README.md#morning-workflow)** - Morning check-in and plan validation
-- **[Day Tracking](../README.md#session-management)** - Session management and time tracking
+1. **Morning Check-in** - Review context briefing and daily schedule
+2. **Session Management** - Track work sessions with intelligent scaffolding
+3. **Evening Reflection** - Structured journaling and next-day planning
+4. **Analytics Review** - Weekly insights and productivity patterns
 
-### Configuration Management
-- **[Initial Setup](../config/README.md#getting-started)** - First-time configuration
-- **[Weekly Schedule](../config/README.md#weekly-schedule)** - Anchor and time block management
-- **[Project Setup](../config/README.md#projects-system)** - Project configuration and tracking
-- **[Profile Management](../config/README.md#profiles-system)** - Situational configuration overrides
+### Project Workflow
+1. **Project Creation** - AI-assisted project setup via hybrid wizard
+2. **Roadmap Generation** - AI-powered milestone and timeline creation
+3. **Progress Tracking** - Activity heatmaps and momentum analysis
+4. **Weekly Summaries** - AI-generated project progress reports
 
 ## 🔧 Technical Reference
 
 ### API Documentation
-- **[REST API Reference](api_reference.md)** - Complete endpoint documentation
-- **[Request/Response Formats](api_reference.md#core-endpoints)** - API data structures
-- **[Error Handling](api_reference.md#error-handling)** - Error codes and troubleshooting
-- **[Integration Examples](api_reference.md#integration-examples)** - Code examples
+- **[Complete API Reference](../API_REFERENCE.md)** - All 26+ endpoints with examples
+- **[Authentication](../API_REFERENCE.md#authentication)** - API authentication and security
+- **[Error Handling](../API_REFERENCE.md#error-responses)** - Error codes and troubleshooting
+- **[Rate Limiting & Performance](../API_REFERENCE.md#rate-limiting)** - API usage guidelines
 
-### Data Models
-- **[Configuration Schema](../config/config_schema.md)** - YAML configuration structure
-- **[API Models](api_reference.md#core-endpoints)** - Request/response data models
-- **[Database Schema](../dev/09_architecture_overview.md#data-storage)** - Data storage format
+### Data Models & Architecture
+- **[System Architecture](../ARCHITECTURE.md)** - Component design and data flow patterns
+- **[Database Schema](../ARCHITECTURE.md#data-layer)** - SQLite database design
+- **[Configuration Models](../config/config_schema.md)** - YAML configuration structure
+- **[API Data Models](../API_REFERENCE.md)** - Request/response formats
 
-## 🚨 Troubleshooting
+## 🚨 Troubleshooting & Support
 
 ### Common Issues
-- **[Configuration Errors](../config/README.md#troubleshooting)** - Config validation and fixes
-- **[Email Integration](TOKEN_MANAGEMENT.md)** - OAuth token troubleshooting
-- **[API Errors](api_reference.md#error-handling)** - Backend error resolution
-- **[Performance Issues](../dev/10_current_status.md#performance-metrics)** - Optimization guide
+- **[Technical Debt Items](../TECHNICAL_DEBT.md)** - Known issues and remediation status
+- **[Configuration Troubleshooting](../config/README.md#troubleshooting)** - Config validation and fixes
+- **[OAuth Issues](oauth_setup.md#troubleshooting)** - Authentication troubleshooting
+- **[Performance Issues](../TECHNICAL_DEBT.md#performance-issues)** - Performance optimization guide
 
-### Support Resources
-- **[Known Issues](../echo-application/KNOWN_ISSUES.md)** - Tracked bugs and workarounds
-- **[Development TODOs](../dev/05_todos.md)** - Current development priorities
-- **[Testing Guide](../README.md#testing)** - Running and debugging tests
+### Development Support
+- **[Testing Guide](../TESTING.md)** - Running tests and debugging
+- **[Deployment Troubleshooting](../DEPLOYMENT.md#troubleshooting)** - Production deployment issues
+- **[Code Quality Guidelines](../CONTRIBUTING.md#code-style-guidelines)** - Development standards
 
-## 📋 Reference Documentation
+## 📋 Reference Materials
 
 ### Development Resources
-- **[Architecture Diagrams](../dev/09_architecture_overview.md)** - System architecture visuals
-- **[Data Flow](../dev/09_architecture_overview.md#data-flow)** - Information flow patterns
-- **[Technology Stack](../echo-application/README.md#core-technologies)** - Complete tech stack
-- **[Dependencies](../README.md#dependencies)** - Required packages and versions
+- **[Architecture Diagrams](../ARCHITECTURE.md)** - System design visualizations
+- **[Technology Stack](../STRUCTURE.md#technology-stack)** - Complete technology overview
+- **[Dependencies](../STRUCTURE.md#key-commands)** - Required packages and versions
+- **[Development Commands](../.claude/CLAUDE.md#common-development-commands)** - Frequently used commands
 
 ### Historical Documentation
-- **[Product Requirements](../dev/02_echo_prd.md)** - Original product specification
-- **[Ideas & Concepts](../dev/03_Ideas.md)** - Brainstorming and feature concepts
-- **[UI Concepts](../dev/04_ui_concept.md)** - Original interface design ideas
+- **[Archived Documentation](../../archive/docs/)** - Historical development files
+  - Legacy architecture documents
+  - Development history and migration logs
+  - Superseded documentation
+  - Previous design concepts
 
-## 🏆 Success Stories
+## 🏆 Success Metrics & Analytics
 
-### Implementation Examples
-- **[Email Workflow](ENHANCED_EMAIL_INTEGRATION.md#workflow-integration)** - Real-world email integration
-- **[Planning Examples](../README.md#examples)** - Sample planning scenarios
-- **[Configuration Examples](../config/README.md#advanced-configuration)** - Advanced config patterns
+### Current Status
+- **26+ API endpoints** fully implemented and documented
+- **80% test coverage target** established with comprehensive testing strategy
+- **Production-ready deployment** with Docker, cloud platforms, and monitoring
+- **13 tracked technical debt items** with prioritized remediation plan
 
-## 📚 Documentation Maintenance
-
-### Contributing to Documentation
-- **[Style Guide](../README.md#contributing)** - Documentation standards
-- **[Update Process](../CLAUDE.md)** - How to update documentation
-- **[Review Process](../dev/10_current_status.md)** - Documentation review workflow
-
-### Documentation Status
-- **Last Updated**: July 2025
-- **Current Version**: v2.1
-- **Coverage**: 95% complete
-- **Maintenance**: Active
-
----
+### Quality Indicators
+- **Comprehensive documentation** across all major components
+- **Type-safe development** with TypeScript frontend and Pydantic backend
+- **AI-first design** with Claude Opus 4 and Sonnet 4 strategic integration
+- **Security-focused** with OAuth 2.0, input validation, and error sanitization
 
 ## 🗂️ Quick Navigation
 
 | Need | Go To |
 |------|-------|
-| **Getting Started** | [Main README](../README.md) |
-| **Install Echo** | [Installation Guide](../README.md#installation) |
-| **Set Up Email** | [OAuth Setup](oauth_setup.md) |
-| **Configure Schedule** | [Config Guide](../config/README.md) |
-| **Use Evening Ritual** | [Frontend Guide](../echo-application/README.md) |
-| **API Integration** | [API Reference](api_reference.md) |
-| **Troubleshoot Issues** | [Troubleshooting](../config/README.md#troubleshooting) |
-| **Contribute Code** | [Architecture Guide](../dev/09_architecture_overview.md) |
+| **Getting Started** | [Project Overview](../README.md) |
+| **Install Echo** | [Structure Guide](../STRUCTURE.md#key-commands) |
+| **Development Setup** | [Contributing Guide](../CONTRIBUTING.md#development-setup) |
+| **API Integration** | [API Reference](../API_REFERENCE.md) |
+| **System Architecture** | [Architecture Guide](../ARCHITECTURE.md) |
+| **Deploy to Production** | [Deployment Guide](../DEPLOYMENT.md) |
+| **Configure OAuth** | [OAuth Setup](oauth_setup.md) |
+| **Run Tests** | [Testing Guide](../TESTING.md) |
+| **Report Issues** | [Technical Debt Tracker](../TECHNICAL_DEBT.md) |
+| **Contribute Code** | [Contributing Guide](../CONTRIBUTING.md) |
+
+## 📚 Documentation Maintenance
+
+### Documentation Standards
+- **Update Protocol**: Follow [Claude documentation checklist](../.claude/CLAUDE.md#documentation-update-protocol)
+- **Style Guidelines**: See [Contributing Guide](../CONTRIBUTING.md#documentation-standards)
+- **Review Process**: All documentation changes require validation
+- **Version Control**: Documentation versioned alongside code
+
+### Current Status
+- **Last Updated**: August 2025
+- **Documentation Version**: v3.0
+- **Coverage**: 100% of active features documented
+- **Maintenance**: Active with session-by-session updates
+- **Quality**: Production-ready with comprehensive coverage
 
 ---
 
-**Documentation Version**: v2.1  
-**Last Updated**: January 2025  
-**Maintained By**: Echo Development Team
+## 🎯 Documentation Philosophy
+
+Echo's documentation follows the principle of **progressive disclosure**:
+- **Quick Start** for immediate productivity
+- **Architecture** for system understanding  
+- **Reference** for detailed implementation
+- **Troubleshooting** for problem resolution
+
+All documentation is maintained as **living documents** that evolve with the codebase, ensuring accuracy and usefulness for both new contributors and ongoing development.
+
+---
+
+**Documentation Version**: v3.0  
+**Last Updated**: August 4, 2025  
+**Maintained By**: Echo Development Team  
+**Documentation Protocol**: Session-based updates per [CLAUDE.md](../.claude/CLAUDE.md)

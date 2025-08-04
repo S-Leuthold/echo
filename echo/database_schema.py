@@ -21,6 +21,22 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
 
+def safe_json_parse(value: Any, default: Any = None) -> Any:
+    """Safely parse JSON, handling cases where value is already parsed."""
+    if value is None:
+        return default
+    
+    # If it's already the expected type, return it
+    if isinstance(value, (dict, list)):
+        return value
+    
+    # Try to parse as JSON
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return default
+
+
 @dataclass
 class SessionScaffold:
     """
@@ -1076,25 +1092,25 @@ class SessionDatabase:
             "created_at": row['created_at'],
             "updated_at": row['updated_at'],
             "current_stage": row['current_stage'],
-            "messages": json.loads(row['messages']),
-            "stage_transitions": json.loads(row['stage_transitions']),
+            "messages": safe_json_parse(row['messages'], []),
+            "stage_transitions": safe_json_parse(row['stage_transitions'], []),
             "project_summary": row['project_summary'],
-            "extracted_data": json.loads(row['extracted_data']),
+            "extracted_data": safe_json_parse(row['extracted_data'], {}),
             "confidence_score": row['confidence_score'],
-            "missing_information": json.loads(row['missing_information']),
-            "domain_detection": json.loads(row['domain_detection']) if row['domain_detection'] else None,
+            "missing_information": safe_json_parse(row['missing_information'], []),
+            "domain_detection": safe_json_parse(row['domain_detection']) if row['domain_detection'] else None,
             "current_persona": row['current_persona'],
             "persona_switched_at": row['persona_switched_at'],
-            "user_corrections": json.loads(row['user_corrections']),
+            "user_corrections": safe_json_parse(row['user_corrections'], []),
             "user_expertise_level": row['user_expertise_level'],
-            "key_constraints": json.loads(row['key_constraints']),
-            "success_criteria": json.loads(row['success_criteria']),
-            "risk_factors": json.loads(row['risk_factors']),
-            "uploaded_files": json.loads(row['uploaded_files']),
-            "external_context": json.loads(row['external_context']),
+            "key_constraints": safe_json_parse(row['key_constraints'], []),
+            "success_criteria": safe_json_parse(row['success_criteria'], []),
+            "risk_factors": safe_json_parse(row['risk_factors'], []),
+            "uploaded_files": safe_json_parse(row['uploaded_files'], []),
+            "external_context": safe_json_parse(row['external_context'], {}),
             "total_exchanges": row['total_exchanges'],
             "avg_response_time": row['avg_response_time'],
-            "user_satisfaction_indicators": json.loads(row['user_satisfaction_indicators']),
+            "user_satisfaction_indicators": safe_json_parse(row['user_satisfaction_indicators'], {}),
             "created_project_id": row['created_project_id'],
             "conversation_completed": bool(row['conversation_completed'])
         }

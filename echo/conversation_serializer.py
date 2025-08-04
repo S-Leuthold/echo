@@ -27,6 +27,22 @@ from echo.models import (
 )
 
 
+def safe_json_parse(value: Any, default: Any = None) -> Any:
+    """Safely parse JSON, handling cases where value is already parsed."""
+    if value is None:
+        return default
+    
+    # If it's already the expected type, return it
+    if isinstance(value, (dict, list)):
+        return value
+    
+    # Try to parse as JSON
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return default
+
+
 class ConversationSerializer:
     """
     Handles serialization and deserialization of conversation states across
@@ -159,7 +175,11 @@ class ConversationSerializer:
         # Parse messages
         messages = []
         if record.get('messages'):
-            message_dicts = json.loads(record['messages'])
+            # Check if messages is already a list (not serialized)
+            if isinstance(record['messages'], list):
+                message_dicts = record['messages']
+            else:
+                message_dicts = json.loads(record['messages'])
             for msg_dict in message_dicts:
                 messages.append(ConversationMessage(
                     role=msg_dict['role'],
@@ -171,7 +191,11 @@ class ConversationSerializer:
         # Parse domain detection
         domain_detection = None
         if record.get('domain_detection'):
-            dd_dict = json.loads(record['domain_detection'])
+            # Check if already parsed
+            if isinstance(record['domain_detection'], dict):
+                dd_dict = record['domain_detection']
+            else:
+                dd_dict = json.loads(record['domain_detection'])
             domain_detection = DomainDetection(
                 domain=dd_dict['domain'],
                 confidence=dd_dict['confidence'],
@@ -186,24 +210,24 @@ class ConversationSerializer:
             updated_at=datetime.fromisoformat(record['updated_at']),
             current_stage=ConversationStage(record['current_stage']),
             messages=messages,
-            stage_transitions=json.loads(record.get('stage_transitions', '[]')),
+            stage_transitions=safe_json_parse(record.get('stage_transitions'), []),
             project_summary=record.get('project_summary'),
-            extracted_data=json.loads(record.get('extracted_data', '{}')),
+            extracted_data=safe_json_parse(record.get('extracted_data'), {}),
             confidence_score=record.get('confidence_score', 0.0),
-            missing_information=json.loads(record.get('missing_information', '[]')),
+            missing_information=safe_json_parse(record.get('missing_information'), []),
             domain_detection=domain_detection,
             current_persona=record.get('current_persona'),
             persona_switched_at=datetime.fromisoformat(record['persona_switched_at']) if record.get('persona_switched_at') else None,
-            user_corrections=json.loads(record.get('user_corrections', '[]')),
+            user_corrections=safe_json_parse(record.get('user_corrections'), []),
             user_expertise_level=record.get('user_expertise_level'),
-            key_constraints=json.loads(record.get('key_constraints', '[]')),
-            success_criteria=json.loads(record.get('success_criteria', '[]')),
-            risk_factors=json.loads(record.get('risk_factors', '[]')),
-            uploaded_files=json.loads(record.get('uploaded_files', '[]')),
-            external_context=json.loads(record.get('external_context', '{}')),
+            key_constraints=safe_json_parse(record.get('key_constraints'), []),
+            success_criteria=safe_json_parse(record.get('success_criteria'), []),
+            risk_factors=safe_json_parse(record.get('risk_factors'), []),
+            uploaded_files=safe_json_parse(record.get('uploaded_files'), []),
+            external_context=safe_json_parse(record.get('external_context'), {}),
             total_exchanges=record.get('total_exchanges', 0),
             avg_response_time=record.get('avg_response_time', 0.0),
-            user_satisfaction_indicators=json.loads(record.get('user_satisfaction_indicators', '{}'))
+            user_satisfaction_indicators=safe_json_parse(record.get('user_satisfaction_indicators'), {})
         )
     
     @staticmethod

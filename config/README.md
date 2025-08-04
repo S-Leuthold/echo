@@ -97,6 +97,184 @@ Named configuration overrides for different life contexts:
 - **Temporary changes**: Override any part of your default config
 - **Quick switching**: Activate profiles via CLI commands
 
+## 🌍 Environment Variables
+
+Echo uses environment variables for system configuration, API keys, and feature flags. These are managed through a `.env` file in the project root.
+
+### Core Setup
+
+1. **Copy the example file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit with your values:**
+   ```bash
+   # Required for basic operation
+   ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+   OPENAI_API_KEY=sk-your-openai-key-here
+   SECRET_KEY=your-secret-key-here
+   ```
+
+3. **Generate secure keys:**
+   ```bash
+   # Generate SECRET_KEY
+   openssl rand -hex 32
+   ```
+
+### Environment Variable Categories
+
+#### 🔑 **Required Variables (Core Functionality)**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Claude API key for planning engine | `sk-ant-api03-xxx` |
+| `OPENAI_API_KEY` | OpenAI API key for email intelligence | `sk-xxx` |
+| `SECRET_KEY` | Session encryption key | `openssl rand -hex 32` |
+
+#### 📧 **Email Integration (Microsoft Graph)**
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `ECHO_GRAPH_CLIENT_ID` | Azure App Registration Client ID | Yes |
+| `ECHO_GRAPH_CLIENT_SECRET` | Azure App Registration Secret | Yes |
+| `ECHO_GRAPH_TENANT_ID` | Azure AD Tenant ID | Optional |
+| `ECHO_GRAPH_REDIRECT_URI` | OAuth callback URL | Optional |
+
+#### 🏗️ **System Configuration**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_HOST` | `127.0.0.1` | API server host |
+| `API_PORT` | `8000` | API server port |
+| `ECHO_ENV` | `development` | Environment mode |
+| `ECHO_DEBUG` | `true` | Enable debug logging |
+| `ECHO_LOG_LEVEL` | `INFO` | Logging verbosity |
+
+#### 📂 **Data & Storage**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONFIG_PATH` | `config/user_config.yaml` | Main config file |
+| `DATA_DIR` | `data` | Database directory |
+| `LOG_DIR` | `runtime/logs` | Log files directory |
+| `DATABASE_URL` | `sqlite:///data/session_intelligence.db` | Main database |
+
+#### 🔒 **Security & CORS**
+
+| Variable | Description | Production Value |
+|----------|-------------|------------------|
+| `ALLOWED_ORIGINS` | CORS allowed origins | `https://your-domain.com` |
+| `ALLOWED_METHODS` | HTTP methods | `GET,POST,PUT,DELETE` |
+| `JWT_SECRET` | JWT signing secret | Generated secure key |
+| `TOKEN_EXPIRY_HOURS` | OAuth token refresh | `24` |
+
+#### 🚀 **Performance & Caching**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REQUEST_TIMEOUT` | `30` | API timeout (seconds) |
+| `MAX_CONCURRENT_REQUESTS` | `10` | Concurrent request limit |
+| `RATE_LIMIT_PER_MINUTE` | `100` | API rate limiting |
+| `REDIS_URL` | `redis://localhost:6379` | Cache backend |
+| `ENABLE_CACHING` | `false` | Enable response caching |
+
+#### 🧪 **Development & Testing**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HOT_RELOAD` | `true` | Enable hot reload |
+| `API_DOCS` | `true` | Enable /docs endpoint |
+| `MOCK_EMAIL_DATA` | `false` | Use mock email data |
+| `MOCK_LLM_RESPONSES` | `false` | Use mock AI responses |
+| `TEST_DATABASE_URL` | `sqlite:///data/test.db` | Test database |
+
+#### 🎛️ **Feature Flags**
+
+| Feature | Variable | Status |
+|---------|----------|--------|
+| Email Integration | `ENABLE_EMAIL_INTEGRATION` | ✅ Active |
+| Project Management | `ENABLE_PROJECT_MANAGEMENT` | ✅ Active |
+| Analytics | `ENABLE_ANALYTICS` | ✅ Active |
+| Session Intelligence | `ENABLE_SESSION_INTELLIGENCE` | ✅ Active |
+| Meeting Intelligence | `ENABLE_MEETING_INTELLIGENCE` | 🚧 Planned |
+| Calendar Sync | `ENABLE_CALENDAR_SYNC` | 🚧 Planned |
+| Team Collaboration | `ENABLE_TEAM_COLLABORATION` | 🚧 Future |
+
+### Environment-Specific Configuration
+
+#### Development Environment
+```bash
+ECHO_ENV=development
+ECHO_DEBUG=true
+API_HOST=127.0.0.1
+HOT_RELOAD=true
+API_DOCS=true
+```
+
+#### Production Environment
+```bash
+ECHO_ENV=production
+ECHO_DEBUG=false
+API_HOST=0.0.0.0
+ALLOWED_ORIGINS=https://your-domain.com
+SECRET_KEY=your-secure-key
+```
+
+#### Testing Environment
+```bash
+ECHO_ENV=testing
+MOCK_EMAIL_DATA=true
+MOCK_LLM_RESPONSES=true
+TEST_DATABASE_URL=sqlite:///data/test.db
+```
+
+### Security Best Practices
+
+1. **Never commit `.env` files** - they contain sensitive information
+2. **Use strong, unique keys** - generate with `openssl rand -hex 32`
+3. **Rotate keys regularly** - especially in production environments
+4. **Limit CORS origins** - only allow necessary domains in production
+5. **Use environment-specific values** - different configs for dev/staging/prod
+
+### Troubleshooting Environment Variables
+
+#### Common Issues
+
+**Missing API Keys:**
+```bash
+# Error: ANTHROPIC_API_KEY not found
+export ANTHROPIC_API_KEY=sk-ant-api03-your-key
+# Or add to .env file
+```
+
+**CORS Errors:**
+```bash
+# Add frontend URL to allowed origins
+ALLOWED_ORIGINS=http://localhost:3000,https://your-domain.com
+```
+
+**Database Connection Errors:**
+```bash
+# Ensure data directory exists
+mkdir -p data
+# Check DATABASE_URL format
+DATABASE_URL=sqlite:///data/session_intelligence.db
+```
+
+#### Validation Commands
+
+```bash
+# Check environment loading
+python -c "from echo.config import validate_config; validate_config()"
+
+# Test API connection
+curl http://localhost:8000/health
+
+# Verify email integration
+python -m echo.cli check-token-status
+```
+
 ### 5. Email Integration
 ```yaml
 email:

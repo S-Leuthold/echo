@@ -423,6 +423,222 @@ async def get_project_stats():
 
 # ===== HYBRID WIZARD ENDPOINTS =====
 
+@router.post("/projects/analyze-academic-conversation")
+async def analyze_academic_conversation(request: ConversationAnalysisRequest):
+    """
+    Analyze user conversation with academic domain intelligence using AcademicProjectParser.
+    This endpoint provides real-time analysis with academic domain detection.
+    """
+    try:
+        logger.info(f"Analyzing academic conversation message: {request.message[:100]}...")
+        
+        # Import the academic domain detector and models
+        from echo.academic_domain_detector import AcademicDomainDetector
+        from echo.models import ConversationMessage
+        
+        # Create academic domain detector
+        detector = AcademicDomainDetector()
+        
+        # Build conversation messages for domain detection
+        conversation_messages = []
+        for msg in request.conversation_history[-5:]:  # Last 5 messages for context
+            conversation_messages.append(ConversationMessage(
+                role=msg.role,
+                content=msg.content,
+                timestamp=datetime.fromisoformat(msg.timestamp) if hasattr(msg, 'timestamp') and msg.timestamp else datetime.now()
+            ))
+        conversation_messages.append(ConversationMessage(
+            role='user',
+            content=request.message,
+            timestamp=datetime.now()
+        ))
+        
+        # Detect academic domain
+        uploaded_files = [f.filename for f in request.uploaded_files] if request.uploaded_files else []
+        domain_detection = detector.detect_domain(
+            conversation_messages,
+            uploaded_files,
+            context={}
+        )
+        
+        # Get Claude client for regular analysis
+        claude_client = get_claude_client()
+        if not claude_client:
+            raise HTTPException(status_code=500, detail="Claude client not available")
+        
+        # Build conversation context
+        conversation_context = ""
+        for msg in conversation_messages:
+            conversation_context += f"{msg.role}: {msg.content}\n"
+        
+        # Add file context if files uploaded
+        file_context = ""
+        if request.uploaded_files:
+            file_context = "\n\nUploaded files context:\n"
+            for file in request.uploaded_files:
+                file_context += f"- {file.filename} ({file.content_type}): {file.project_context or 'No description'}\n"
+        
+        # Enhanced academic analysis prompt
+        academic_prompt = f"""
+You are an AI project consultant specializing in academic research projects. Based on the conversation, extract structured project information with academic focus.
+
+Academic Domain: {domain_detection.domain} (confidence: {domain_detection.confidence:.2f})
+Domain Analysis: {domain_detection.reasoning}
+
+Conversation history:
+{conversation_context}
+{file_context}
+
+Current analysis (if any): {request.current_analysis}
+
+Please analyze this academic conversation and return structured JSON with the following format:
+
+{{
+    "project_name": "extracted academic project name or null",
+    "project_type": "research|writing|analysis|software or null", 
+    "description": "academic project description",
+    "objective": "research objective or hypothesis",
+    "deliverables": ["research paper", "data analysis", "software tool", "etc"],
+    "methodology": "research methodology if mentioned",
+    "research_stage": "planning|data-collection|analysis|writing|review",
+    "tools_mentioned": ["R", "Python", "LaTeX", "etc"],
+    "confidence": 0.0-1.0
+}}
+
+Guidelines:
+- Focus on academic terminology and research context
+- Extract methodology, tools, and research stage when mentioned
+- Be specific about research deliverables and outcomes
+- Consider the academic domain context: {domain_detection.domain}
+"""
+
+        # Call Claude for enhanced academic analysis
+        message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            temperature=0.3,
+            messages=[{
+                "role": "user", 
+                "content": academic_prompt
+            }]
+        )
+        
+        if not message.content or len(message.content) == 0:
+            raise ValueError("Empty response from Claude")
+        
+        response_text = message.content[0].text.strip()
+        
+        # Parse JSON response
+        try:
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_start = response_text.find("{")
+                if json_start == -1:
+                    raise ValueError("No JSON found in Claude response")
+                
+                brace_count = 0
+                json_end = json_start
+                for i, char in enumerate(response_text[json_start:], json_start):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_end = i + 1
+                            break
+                
+                json_text = response_text[json_start:json_end]
+            
+            import json
+            analysis = json.loads(json_text)
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse academic analysis: {e}")
+            # Create fallback analysis
+            analysis = {
+                "project_name": None,
+                "project_type": "research", 
+                "description": "Academic research project",
+                "objective": None,
+                "deliverables": [],
+                "methodology": None,
+                "research_stage": "planning",
+                "tools_mentioned": [],
+                "confidence": 0.5
+            }
+        
+        logger.info(f"Academic analysis completed with {analysis.get('confidence', 0.5):.2f} confidence")
+        logger.info(f"Detected academic domain: {domain_detection.domain} ({domain_detection.confidence:.2f})")
+        
+        # Convert to API response format
+        return {
+            "project_name": {
+                "value": analysis.get("project_name"),
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Extracted from academic conversation analysis"
+            },
+            "project_type": {
+                "value": analysis.get("project_type"),
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Academic project classification"
+            },
+            "description": {
+                "value": analysis.get("description"),
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Generated from conversation content"
+            },
+            "objective": {
+                "value": analysis.get("objective"),
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Derived from project discussion"
+            },
+            "current_state": {
+                "value": f"Academic project in {analysis.get('research_stage', 'planning')} phase",
+                "confidence": 0.8,
+                "reasoning": "Initial project creation state"
+            },
+            "key_deliverables": {
+                "value": analysis.get("deliverables", []),
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Extracted research outputs and deliverables"
+            },
+            "academic_domain": {
+                "value": {
+                    "domain": domain_detection.domain,
+                    "confidence": domain_detection.confidence,
+                    "reasoning": domain_detection.reasoning,
+                    "alternative_domains": domain_detection.alternative_domains
+                },
+                "confidence": domain_detection.confidence,
+                "reasoning": "Academic domain classification using multi-signal analysis"
+            },
+            "academic_context": {
+                "value": {
+                    "methodology": analysis.get("methodology"),
+                    "tools_mentioned": analysis.get("tools_mentioned", []),
+                    "research_stage": analysis.get("research_stage"),
+                    "file_types_detected": uploaded_files
+                },
+                "confidence": analysis.get("confidence", 0.5),
+                "reasoning": "Academic methodology and tools detection"
+            },
+            "response_trigger": {
+                "should_respond": True,
+                "trigger_type": "clarification",
+                "response_focus": "academic project details and methodology"
+            },
+            "overall_confidence": max(analysis.get("confidence", 0.5), domain_detection.confidence)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in academic conversation analysis: {e}")
+        # Fall back to regular analysis
+        return await analyze_conversation(request)
+
+
 @router.post("/projects/analyze-conversation")
 async def analyze_conversation(request: ConversationAnalysisRequest):
     """
@@ -946,45 +1162,68 @@ async def create_hybrid_project(request: HybridProjectCreateRequest):
 
 # ===== ADAPTIVE EXPERT COACHING CONVERSATION ENDPOINTS =====
 
-@router.post("/conversations/start")
-async def start_conversation(user_id: Optional[str] = None):
+@router.post("/conversations")
+async def create_conversation(request: dict = {}):
     """
-    Start a new adaptive expert coaching conversation.
+    Create a new adaptive expert coaching conversation.
     
+    Args:
+        request: Optional initial context (user_id, project_type, etc.)
+        
     Returns:
-        Conversation ID and initial state for project creation workflow
+        New conversation ID and initial state
     """
     try:
         from echo.conversation_state_manager import create_conversation_manager
         
+        # Get conversation manager
         manager = create_conversation_manager()
+        
+        # Start new conversation
+        user_id = request.get("user_id", "default_user")
         conversation_state = manager.start_conversation(user_id=user_id)
         
         logger.info(f"Started new conversation: {conversation_state.conversation_id}")
         
         return {
+            "id": conversation_state.conversation_id,
             "conversation_id": conversation_state.conversation_id,
             "stage": conversation_state.current_stage.value,
-            "message": "Hi! I'm here to help you create a strategic project plan. Tell me about what you'd like to work on, and I'll guide you through developing a comprehensive project strategy.",
-            "created_at": conversation_state.created_at.isoformat()
+            "created_at": conversation_state.created_at.isoformat(),
+            "message": "Hello! I'm here to help you create a structured project plan. Tell me about what you're planning to work on - what's the project about and what do you hope to achieve?"
         }
         
     except Exception as e:
-        logger.error(f"Error starting conversation: {e}")
+        logger.error(f"Error creating conversation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/conversations/start")
+async def start_conversation(user_id: Optional[str] = None):
+    """
+    Start a new adaptive expert coaching conversation (legacy endpoint).
+    
+    Returns:
+        Conversation ID and initial state for project creation workflow
+    """
+    # Delegate to new endpoint
+    return await create_conversation({"user_id": user_id} if user_id else {})
 
 
 @router.post("/conversations/{conversation_id}/message")
 async def send_message(conversation_id: str, request: dict):
     """
-    Send a message in the adaptive expert coaching conversation.
+    Send a message to an ongoing conversation for hybrid project creation.
+    
+    This endpoint integrates with the adaptive coaching service to provide
+    intelligent, context-aware responses through the three-phase conversation system.
     
     Args:
         conversation_id: Unique conversation identifier
-        request: Message request with user input
+        request: Message request with user input and optional metadata
         
     Returns:
-        AI response with updated conversation state
+        AI response with updated conversation state and coaching guidance
     """
     try:
         from echo.conversation_state_manager import create_conversation_manager
@@ -994,27 +1233,46 @@ async def send_message(conversation_id: str, request: dict):
         if not user_message.strip():
             raise HTTPException(status_code=400, detail="Message cannot be empty")
         
-        # Get conversation manager and coaching service
-        manager = create_conversation_manager()
-        coaching_service = AdaptiveCoachingService()
+        # Get conversation manager and coaching service instances
+        try:
+            manager = create_conversation_manager()
+            coaching_service = AdaptiveCoachingService(manager)
+        except Exception as init_error:
+            logger.error(f"Error initializing services: {init_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Service initialization failed: {str(init_error)}")
         
-        # Add user message to conversation
-        conversation_state = manager.add_user_message(
+        # Verify conversation exists
+        try:
+            conversation_state = manager.get_conversation(conversation_id)
+            if not conversation_state:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+            logger.info(f"Retrieved conversation state for {conversation_id}")
+        except HTTPException:
+            raise
+        except Exception as get_error:
+            logger.error(f"Error getting conversation: {get_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve conversation: {str(get_error)}")
+        
+        # Add user message to conversation history
+        manager.add_user_message(
             conversation_id, 
             user_message,
             metadata=request.get("metadata", {})
         )
         
-        if not conversation_state:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        
         # Process message through adaptive coaching service
-        coaching_response = await coaching_service.process_user_message(
-            conversation_id,
-            user_message
-        )
+        try:
+            logger.info(f"Processing user message for conversation {conversation_id}")
+            coaching_response = await coaching_service.process_user_message(
+                conversation_id,
+                user_message
+            )
+            logger.info(f"Successfully processed message, response type: {type(coaching_response)}")
+        except Exception as process_error:
+            logger.error(f"Error in process_user_message: {process_error}", exc_info=True)
+            raise
         
-        # Add assistant response to conversation
+        # Add assistant response to conversation history
         manager.add_assistant_message(
             conversation_id,
             coaching_response.message,
@@ -1022,26 +1280,45 @@ async def send_message(conversation_id: str, request: dict):
                 "stage": coaching_response.stage.value if coaching_response.stage else None,
                 "confidence": coaching_response.confidence,
                 "detected_domain": coaching_response.detected_domain,
-                "reasoning": getattr(coaching_response, 'reasoning', None)
+                "reasoning": coaching_response.reasoning if hasattr(coaching_response, 'reasoning') else None
             }
         )
         
-        logger.info(f"Processed message in conversation {conversation_id}")
+        # Get updated conversation state for response
+        updated_state = manager.get_conversation(conversation_id)
+        
+        logger.info(f"Processed message in conversation {conversation_id}, stage: {coaching_response.stage}")
+        
+        # Extract project data for the live brief
+        extracted_data = updated_state.extracted_data or {}
         
         return {
             "message": coaching_response.message,
-            "stage": coaching_response.stage.value if coaching_response.stage else conversation_state.current_stage.value,
+            "stage": coaching_response.stage.value if coaching_response.stage else updated_state.current_stage.value,
             "confidence": coaching_response.confidence,
             "detected_domain": coaching_response.detected_domain,
-            "project_summary": conversation_state.project_summary,
-            "missing_information": conversation_state.missing_information,
-            "conversation_id": conversation_id
+            "project_summary": updated_state.project_summary,
+            "missing_information": updated_state.missing_information,
+            "conversation_id": conversation_id,
+            "should_transition": coaching_response.should_transition,
+            "current_persona": updated_state.current_persona,
+            # Add project data for live brief updates
+            "project_name": extracted_data.get("project_name", ""),
+            "project_type": extracted_data.get("project_type", "other"),
+            "description": extracted_data.get("description", updated_state.project_summary or ""),
+            "requirements": extracted_data.get("requirements", []),
+            "key_deliverables": extracted_data.get("key_deliverables", []),
+            "extracted_data": extracted_data,
+            "total_exchanges": len(updated_state.messages) // 2  # Approximate exchange count
         }
         
     except HTTPException:
         raise
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in conversation {conversation_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"JSON decode error: {str(e)}")
     except Exception as e:
-        logger.error(f"Error processing message in conversation {conversation_id}: {e}")
+        logger.error(f"Error processing message in conversation {conversation_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1084,19 +1361,21 @@ async def stream_message(conversation_id: str, request: dict):
             """Generate Server-Sent Events for streaming response."""
             
             # Send initial acknowledgment
-            yield f"data: {json.dumps({
+            initial_data = {
                 'type': 'message_received',
                 'conversation_id': conversation_id,
                 'user_message': user_message,
                 'timestamp': datetime.now().isoformat()
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(initial_data)}\n\n"
             
             # Send thinking indicator
-            yield f"data: {json.dumps({
+            thinking_data = {
                 'type': 'thinking',
                 'message': 'Analyzing your message...',
                 'timestamp': datetime.now().isoformat()
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(thinking_data)}\n\n"
             
             # Simulate processing delay (in real implementation, this would be Claude API time)
             await asyncio.sleep(0.5)
@@ -1110,21 +1389,23 @@ async def stream_message(conversation_id: str, request: dict):
                 
                 # Send stage update if changed
                 if coaching_response.should_transition:
-                    yield f"data: {json.dumps({
+                    stage_data = {
                         'type': 'stage_transition',
                         'new_stage': coaching_response.stage.value if coaching_response.stage else None,
                         'reason': 'Conversation progressed to next stage',
                         'timestamp': datetime.now().isoformat()
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(stage_data)}\n\n"
                 
                 # Send domain detection if available
                 if coaching_response.detected_domain:
-                    yield f"data: {json.dumps({
+                    domain_data = {
                         'type': 'domain_detected',
                         'domain': coaching_response.detected_domain,
                         'confidence': coaching_response.confidence,
                         'timestamp': datetime.now().isoformat()
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(domain_data)}\n\n"
                 
                 # Stream the response message (simulate typing effect)
                 response_words = coaching_response.message.split()
@@ -1135,12 +1416,13 @@ async def stream_message(conversation_id: str, request: dict):
                     
                     # Send partial message every few words
                     if i % 3 == 0 or i == len(response_words) - 1:
-                        yield f"data: {json.dumps({
+                        partial_data = {
                             'type': 'partial_response',
                             'message': current_message.strip(),
                             'is_complete': i == len(response_words) - 1,
                             'timestamp': datetime.now().isoformat()
-                        })}\n\n"
+                        }
+                        yield f"data: {json.dumps(partial_data)}\n\n"
                         
                         # Small delay for typing effect
                         if i < len(response_words) - 1:
@@ -1160,7 +1442,7 @@ async def stream_message(conversation_id: str, request: dict):
                 
                 # Send final completion event
                 updated_state = manager.get_conversation(conversation_id)
-                yield f"data: {json.dumps({
+                completion_data = {
                     'type': 'response_complete',
                     'conversation_id': conversation_id,
                     'stage': coaching_response.stage.value if coaching_response.stage else updated_state.current_stage.value,
@@ -1170,17 +1452,19 @@ async def stream_message(conversation_id: str, request: dict):
                     'missing_information': updated_state.missing_information,
                     'total_exchanges': updated_state.total_exchanges,
                     'timestamp': datetime.now().isoformat()
-                })}\n\n"
+                }
+                yield f"data: {json.dumps(completion_data)}\n\n"
                 
                 logger.info(f"Completed streaming response for conversation {conversation_id}")
                 
             except Exception as e:
                 # Send error event
-                yield f"data: {json.dumps({
+                error_data = {
                     'type': 'error',
                     'error': str(e),
                     'timestamp': datetime.now().isoformat()
-                })}\n\n"
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
                 
                 logger.error(f"Error in streaming response: {e}")
         
@@ -1357,11 +1641,12 @@ async def test_streaming():
         """Generate test events for streaming validation."""
         
         # Send connection established
-        yield f"data: {json.dumps({
+        connection_data = {
             'type': 'connection_established',
             'message': 'Stream connection successful',
             'timestamp': datetime.now().isoformat()
-        })}\n\n"
+        }
+        yield f"data: {json.dumps(connection_data)}\n\n"
         
         # Send a series of test events
         test_events = [
