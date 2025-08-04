@@ -3,6 +3,7 @@
 
 # Default Schedule Settings
 defaults:
+<<<<<<< HEAD
   wake_time: "07:00"
   sleep_time: "22:00"
 
@@ -57,11 +58,139 @@ profiles:
 # Email Integration Settings
 email:
   # Microsoft Graph API Configuration
+=======
+  wake_time: 05:25
+  sleep_time: '22:00'
+weekly_schedule:
+  monday:
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'Good to start the day off with some non-fiction. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'Rub a dub dub. '
+    - time: "08:15\u201308:45"
+      category: exercise
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
+    fixed: []
+    flex: []
+  tuesday:
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'Good to start the day off with some non-fiction. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'Rub a dub dub. '
+    - time: "08:15\u201308:45"
+      category: exercise
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
+    fixed: []
+    flex: []
+  wednesday:
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'Good to start the day off with some non-fiction. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'Rub a dub dub. '
+    - time: "08:15\u201308:45"
+      category: exercise
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
+    fixed: []
+    flex: []
+  thursday:
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'Good to start the day off with some non-fiction. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'Rub a dub dub. '
+    - time: "08:15\u201308:45"
+      category: exercise
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
+    fixed: []
+    flex: []
+  friday:
+    anchors:
+    - time: "05:30\u201306:00"
+      category: personal
+      task: Morning Reading
+      description: 'Good to start the day off with some non-fiction. '
+    - time: "07:10\u201307:40"
+      category: meals
+      task: Breakfast
+      description: 'Make and eat breakfast, make smoothies for Hunter and I. '
+    - time: "07:40\u201308:15"
+      category: personal
+      task: Morning Routine
+      description: 'Rub a dub dub. '
+    - time: "08:15\u201308:45"
+      category: exercise
+      task: Commute to Guild Row
+      description: Ride my little bike to work.
+    fixed: []
+    flex: []
+  saturday:
+    anchors: []
+    fixed: []
+    flex: []
+  sunday:
+    anchors: []
+    fixed: []
+    flex: []
+projects:
+  echo:
+    name: Echo Development
+    status: active
+    current_focus: Email integration testing
+  personal:
+    name: Personal Projects
+    status: active
+    current_focus: General productivity
+profiles:
+  default:
+    name: Default Profile
+    overrides: {}
+email:
+>>>>>>> feature/adaptive-coaching-foundation
   graph_api:
     client_id: ${ECHO_GRAPH_CLIENT_ID}
     client_secret: ${ECHO_GRAPH_CLIENT_SECRET}
     redirect_uri: ${ECHO_GRAPH_REDIRECT_URI}
     scopes:
+<<<<<<< HEAD
       - "Mail.Read"
       - "Mail.ReadWrite"
       - "User.Read"
@@ -99,3 +228,45 @@ email:
     - "presentation"
     - "expire"
     - "token"
+=======
+    - Mail.Read
+    - Mail.ReadWrite
+    - User.Read
+  important_senders:
+  - ceo@company.com
+  - manager@company.com
+  - client@company.com
+  - professor@colostate.edu
+  - advisor@colostate.edu
+  - sam.leuthold@colostate.edu
+  - samleuthold@colostate.edu
+  urgent_keywords:
+  - urgent
+  - asap
+  - deadline
+  - important
+  - critical
+  - emergency
+  - immediate
+  action_keywords:
+  - please
+  - can you
+  - need
+  - review
+  - send
+  - schedule
+  - meeting
+  - respond
+  - reply
+  - follow up
+  - accepted
+  - presentation
+  - expire
+  - token
+reminders:
+  - title: "Chase Credit Card Bill Due"
+    description: "Monthly Chase credit card payment due tomorrow"
+    date: "2025-07-25"
+    urgency: "normal"
+    category: "bill"
+>>>>>>> feature/adaptive-coaching-foundation

@@ -67,12 +67,23 @@ def load_config() -> Config:
         # Load email configuration
         email_config = config_data.get("email", {})
         
+<<<<<<< HEAD
+=======
+        # Load reminders
+        reminders = config_data.get("reminders", [])
+        
+>>>>>>> feature/adaptive-coaching-foundation
         return Config(
             defaults=defaults,
             weekly_schedule=weekly_schedule,
             projects=projects,
             profiles=profiles,
+<<<<<<< HEAD
             email=email_config
+=======
+            email=email_config,
+            reminders=reminders
+>>>>>>> feature/adaptive-coaching-foundation
         )
         
     except Exception as e:

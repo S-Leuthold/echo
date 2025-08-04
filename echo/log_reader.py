@@ -138,4 +138,46 @@ def parse_log_file(log_file: Path) -> List['Block']:
                 except Exception as e:
                     print(f"Warning: Could not parse line: {line} - {e}")
     
+<<<<<<< HEAD
     return blocks
+=======
+    return blocks
+
+def get_recent_session_insights(days: int = 3) -> List[dict]:
+    """Get insights from recent session logs for context briefing."""
+    import json
+    from datetime import datetime, timedelta
+    
+    sessions_dir = LOG_DIR / "sessions"
+    if not sessions_dir.exists():
+        return []
+    
+    # Get recent session files from the last N days
+    cutoff_date = datetime.now() - timedelta(days=days)
+    recent_sessions = []
+    
+    for session_file in sessions_dir.glob("*.json"):
+        try:
+            # Parse date from filename: YYYY-MM-DD-session-HHMM-project.json
+            date_part = session_file.stem.split('-session-')[0]  # Get YYYY-MM-DD part
+            file_date = datetime.strptime(date_part, "%Y-%m-%d")
+            
+            if file_date >= cutoff_date:
+                with open(session_file, 'r') as f:
+                    session_data = json.load(f)
+                    recent_sessions.append({
+                        'date': date_part,
+                        'goal': session_data.get('goal', ''),
+                        'completed_tasks': session_data.get('completed_tasks', []),
+                        'summary': session_data.get('summary', ''),
+                        'next_steps': session_data.get('next_steps', []),
+                        'project': session_data.get('project', 'Unknown')
+                    })
+        except Exception as e:
+            # Skip files that can't be parsed
+            continue
+    
+    # Sort by date, most recent first
+    recent_sessions.sort(key=lambda x: x['date'], reverse=True)
+    return recent_sessions[:10]  # Return max 10 recent sessions
+>>>>>>> feature/adaptive-coaching-foundation

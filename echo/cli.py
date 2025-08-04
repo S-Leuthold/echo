@@ -28,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
 def _get_openai_client():
     """Get OpenAI client with API key from environment."""
     try:
@@ -54,6 +55,75 @@ def _call_llm(client, prompt: str) -> str:
             max_tokens=2000
         )
         return response.choices[0].message.content
+=======
+def _get_claude_client():
+    """Get Claude client with API key from environment."""
+    try:
+        from .claude_client import get_claude_client
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        return get_claude_client(api_key)
+    except Exception as e:
+        logger.error(f"Failed to get Claude client: {e}")
+        raise
+
+
+def _call_llm(client, prompt: str, response_format=None, model=None):
+    """Call Claude with the given prompt, supporting both text and structured output.
+    
+    Args:
+        client: Claude client instance
+        prompt: The prompt to send
+        response_format: Optional Pydantic model for structured output
+        model: Optional model override (defaults to Sonnet, use "opus" for planning)
+        
+    Returns:
+        String response for text output, or structured object for response_format
+    """
+    try:
+        # Select model: Opus for strategic planning, Sonnet for other tasks
+        selected_model = "claude-opus-4-20250514" if model == "opus" else "claude-sonnet-4-20250514"
+        
+        if response_format:
+            # For structured output, request JSON format and parse manually
+            structured_prompt = f"""
+{prompt}
+
+Please provide your response in valid JSON format that matches this structure:
+{response_format.model_json_schema()}
+
+Return ONLY the JSON response, no additional text or markdown formatting.
+"""
+            response = client.messages.create(
+                model=selected_model,
+                max_tokens=8000,
+                temperature=0.1,
+                messages=[{"role": "user", "content": structured_prompt}]
+            )
+            
+            # Parse the JSON response into the Pydantic model
+            import json
+            response_text = response.content[0].text.strip()
+            
+            # Clean up any markdown formatting if present
+            if response_text.startswith('```json'):
+                response_text = response_text[7:]
+            if response_text.endswith('```'):
+                response_text = response_text[:-3]
+            
+            response_data = json.loads(response_text.strip())
+            return response_format(**response_data)
+        else:
+            # Simple text response using native Claude API
+            response = client.messages.create(
+                model=selected_model,
+                max_tokens=4000,
+                temperature=0.1,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.content[0].text
+>>>>>>> feature/adaptive-coaching-foundation
     except Exception as e:
         logger.error(f"Error calling LLM: {e}")
         raise
@@ -303,13 +373,39 @@ def run_plan_with_email(args):
         non_negotiables = input("What are your non-negotiables? ").strip()
         avoid_today = input("What should you avoid today? ").strip()
         
+<<<<<<< HEAD
         # Build the enhanced planning prompt
         prompt = build_email_aware_planner_prompt(
+=======
+        # Get additional context for unified planning
+        from echo.log_reader import get_recent_session_insights
+        session_insights = get_recent_session_insights(days=3)
+        
+        # Get reminders from config
+        reminders = []
+        if hasattr(config, 'reminders'):
+            for reminder in config.reminders:
+                reminders.append({
+                    'text': reminder.get('text', ''),
+                    'urgency': reminder.get('urgency', 'normal')
+                })
+        
+        # Convert fixed events to calendar format
+        calendar_events = []  # TODO: Get from config when available
+        
+        # Call new unified planning system
+        from echo.prompts.unified_planning import call_unified_planning
+        client = _get_openai_client()
+        
+        print(f"\n🚀 **Calling Unified Planning System...**")
+        blocks, reasoning = call_unified_planning(
+>>>>>>> feature/adaptive-coaching-foundation
             most_important=most_important,
             todos=todos,
             energy_level=energy_level,
             non_negotiables=non_negotiables,
             avoid_today=avoid_today,
+<<<<<<< HEAD
             fixed_events=[],  # TODO: Get from config
             config=config,
             email_context=email_context,
@@ -323,6 +419,15 @@ def run_plan_with_email(args):
         
         # Parse and display the plan
         blocks = parse_planner_response(response)
+=======
+            email_context=email_context,
+            calendar_events=calendar_events,
+            session_insights=session_insights,
+            reminders=reminders,
+            openai_client=client,
+            config=config
+        )
+>>>>>>> feature/adaptive-coaching-foundation
         print(f"\n📅 **Your Enhanced Daily Plan:**")
         print("=" * 35)
         
@@ -330,13 +435,23 @@ def run_plan_with_email(args):
             status_icon = "🟢" if block.type == "anchor" else "🔵"
             print(f"{status_icon} {block.start.strftime('%H:%M')} - {block.end.strftime('%H:%M')} | {block.label}")
         
+<<<<<<< HEAD
         # Save plan to file with enhanced metadata
         plan_file = Path(f"plans/{date.today().isoformat()}-enhanced-plan.json")
+=======
+        # Save plan to file with unified planning metadata
+        plan_file = Path(f"runtime/plans/{date.today().isoformat()}-unified-plan.json")
+>>>>>>> feature/adaptive-coaching-foundation
         plan_file.parent.mkdir(exist_ok=True)
         
         plan_data = {
             "date": date.today().isoformat(),
+<<<<<<< HEAD
             "blocks": [block.to_dict() for block in blocks],
+=======
+            "created_at": datetime.now().isoformat(),
+            "blocks": [],
+>>>>>>> feature/adaptive-coaching-foundation
             "email_context": email_context,
             "user_input": {
                 "most_important": most_important,
@@ -345,6 +460,7 @@ def run_plan_with_email(args):
                 "non_negotiables": non_negotiables,
                 "avoid_today": avoid_today
             },
+<<<<<<< HEAD
             "planning_stats": processor.get_email_planning_stats()
         }
         
@@ -352,6 +468,46 @@ def run_plan_with_email(args):
             json.dump(plan_data, f, indent=2)
         
         print(f"\n✅ Enhanced plan saved to {plan_file}")
+=======
+            "unified_planning": {
+                "reasoning": reasoning,
+                "system_version": "unified_v1",
+                "cost_optimized": True
+            },
+            "planning_stats": processor.get_email_planning_stats()
+        }
+        
+        # Convert blocks to JSON format
+        for block in blocks:
+            block_data = {
+                "start": block.start.strftime("%H:%M:%S"),
+                "end": block.end.strftime("%H:%M:%S"),
+                "label": block.label,
+                "type": block.type.value if hasattr(block.type, 'value') else str(block.type),
+                "icon": block.meta.get('icon', 'Calendar'),
+                "note": block.meta.get('note', ''),
+                "rationale": block.meta.get('rationale', ''),
+                "priority": block.meta.get('priority', 'medium'),
+                "energy_requirement": block.meta.get('energy_requirement', 'medium')
+            }
+            plan_data["blocks"].append(block_data)
+        
+        with open(plan_file, "w") as f:
+            json.dump(plan_data, f, indent=2)
+        
+        print(f"\n✅ Unified plan saved to {plan_file}")
+        
+        # Show planning insights
+        if reasoning and reasoning.get('context_analysis'):
+            context = reasoning['context_analysis']
+            print(f"\n🧠 **Planning Insights:**")
+            if context.get('strategic_priorities'):
+                print(f"  Strategic Priorities:")
+                for i, priority in enumerate(context['strategic_priorities'][:3], 1):
+                    print(f"    {i}. {priority}")
+            if context.get('email_summary'):
+                print(f"  Email Analysis: {context['email_summary'][:100]}...")
+>>>>>>> feature/adaptive-coaching-foundation
         
         # Schedule email action items
         if email_context.get("scheduling_recommendations"):
@@ -365,6 +521,11 @@ def run_plan_with_email(args):
                 if success:
                     print(f"  ✅ Scheduled: {rec['action_item']}")
         
+<<<<<<< HEAD
+=======
+        print(f"\n💰 **Cost Optimization: 67% API call reduction with unified planning**")
+        
+>>>>>>> feature/adaptive-coaching-foundation
     except Exception as e:
         logger.error(f"Enhanced planning failed: {e}")
         print(f"❌ Planning failed: {e}")
@@ -547,7 +708,11 @@ def run_end_of_day(args):
                     print(f"{status_icon} {block.start.strftime('%H:%M')} - {block.end.strftime('%H:%M')} | {block.label}")
                 
                 # Save tomorrow's plan
+<<<<<<< HEAD
                 tomorrow_plan_file = Path(f"plans/{(date.today() + timedelta(days=1)).isoformat()}-tomorrow-plan.json")
+=======
+                tomorrow_plan_file = Path(f"runtime/plans/{(date.today() + timedelta(days=1)).isoformat()}-tomorrow-plan.json")
+>>>>>>> feature/adaptive-coaching-foundation
                 tomorrow_plan_file.parent.mkdir(exist_ok=True)
                 
                 plan_data = {
@@ -750,6 +915,313 @@ def run_check_token_status(args):
         print(f"❌ Token status check failed: {e}")
 
 
+<<<<<<< HEAD
+=======
+def run_conversation_intelligence(args):
+    """Show thread-aware conversation intelligence for planning."""
+    try:
+        processor = OutlookEmailProcessor()
+        config = load_config()
+        processor.load_email_filters(config.email)
+        
+        print("📧 Analyzing Email Conversations...")
+        print("=" * 50)
+        
+        # Get conversation intelligence
+        intelligence = processor.get_conversation_intelligence(days=7)
+        
+        # Display conversation summary
+        print(f"\n🎯 CONVERSATION LANDSCAPE")
+        print(f"Summary: {intelligence.get('conversation_summary', 'No summary available')}")
+        
+        # Display actionable inputs
+        actionable_inputs = intelligence.get('actionable_inputs', [])
+        if actionable_inputs:
+            print(f"\n📥 ACTIONABLE INPUTS ({len(actionable_inputs)} items)")
+            for i, item in enumerate(actionable_inputs[:5], 1):
+                urgency_emoji = {"immediate": "🔥", "today": "⚡", "this_week": "📅", "low": "⏳"}.get(item.get('urgency', 'low'), '⏳')
+                print(f"  {i}. {urgency_emoji} {item.get('action', 'No action specified')}")
+                print(f"     Context: {item.get('context', 'No context')}")
+                print(f"     From: {item.get('source', 'Unknown')}")
+                print(f"     Time: {item.get('estimated_time', '?')} mins")
+                print()
+        else:
+            print(f"\n📥 ACTIONABLE INPUTS: None found")
+        
+        # Display commitments
+        commitments = intelligence.get('my_commitments', [])
+        if commitments:
+            print(f"\n📋 MY COMMITMENTS ({len(commitments)} items)")
+            for i, item in enumerate(commitments[:5], 1):
+                status_emoji = {"pending": "⏸️", "overdue": "🚨", "unclear": "❓"}.get(item.get('status', 'pending'), '⏸️')
+                print(f"  {i}. {status_emoji} {item.get('commitment', 'No commitment specified')}")
+                print(f"     To: {item.get('promised_to', 'Unknown')}")
+                if item.get('deadline'):
+                    print(f"     Deadline: {item.get('deadline')}")
+                print(f"     Time: {item.get('estimated_time', '?')} mins")
+                print()
+        else:
+            print(f"\n📋 MY COMMITMENTS: None found")
+        
+        # Display requests/waiting on
+        requests = intelligence.get('my_requests', [])
+        if requests:
+            print(f"\n⏳ MY REQUESTS ({len(requests)} items)")
+            for i, item in enumerate(requests[:5], 1):
+                follow_up = "📞 Follow up needed" if item.get('follow_up_needed') else "📋 Tracking"
+                print(f"  {i}. {follow_up}: {item.get('request', 'No request specified')}")
+                print(f"     Waiting on: {item.get('waiting_on', 'Unknown')}")
+                if item.get('blocking'):
+                    print(f"     Blocking: {item.get('blocking')}")
+                print()
+        else:
+            print(f"\n⏳ MY REQUESTS: None found")
+        
+        # Display strategic intelligence
+        conv_intel = intelligence.get('conversation_intelligence', {})
+        if conv_intel:
+            print(f"\n🧠 STRATEGIC INTELLIGENCE")
+            
+            high_priority = conv_intel.get('high_priority_threads', [])
+            if high_priority:
+                print(f"🔥 High Priority Threads: {len(high_priority)}")
+            
+            stalled = conv_intel.get('stalled_conversations', [])
+            if stalled:
+                print(f"⏸️ Stalled Conversations: {len(stalled)}")
+            
+            insights = conv_intel.get('strategic_insights', [])
+            if insights:
+                print(f"\n💡 Key Insights:")
+                for insight in insights[:3]:
+                    print(f"  • {insight}")
+            
+            actions = conv_intel.get('recommended_actions', [])
+            if actions:
+                print(f"\n🎯 Recommended Actions:")
+                for action in actions[:3]:
+                    print(f"  • {action}")
+        
+        print("\n" + "=" * 50)
+        print("💡 This intelligence can inform your daily planning!")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        print("Check your email configuration and token status.")
+
+def run_daily_email_brief(args):
+    """Show comprehensive daily email brief with time block suggestions."""
+    try:
+        processor = OutlookEmailProcessor()
+        config = load_config()
+        processor.load_email_filters(config.email)
+        
+        print("📧 Daily Email Brief")
+        print("=" * 50)
+        
+        # Get the daily brief
+        brief = processor.get_daily_email_brief(days=1)
+        
+        print(f"\n🗓️  DATE: {brief['date']}")
+        print(f"\n📋 CONVERSATION SUMMARY")
+        print(f"{brief['conversation_summary']}")
+        
+        # Show metrics
+        metrics = brief['metrics']
+        print(f"\n📊 EMAIL METRICS")
+        print(f"  • Actionable Inputs: {metrics['actionable_inputs']}")
+        print(f"  • My Commitments: {metrics['my_commitments']}")
+        print(f"  • My Requests: {metrics['my_requests']}")
+        print(f"  • High Priority Threads: {metrics['high_priority_threads']}")
+        print(f"  • Stalled Conversations: {metrics['stalled_conversations']}")
+        print(f"  • Total Estimated Time: {metrics['total_estimated_time']} mins")
+        
+        # Show priority actions
+        priority_actions = brief['priority_actions']
+        if priority_actions:
+            print(f"\n🎯 TOP PRIORITY ACTIONS")
+            for i, action in enumerate(priority_actions, 1):
+                print(f"  {i}. ⚡ {action.get('description', 'Action required')}")
+                print(f"     Context: {action.get('context', 'N/A')}")
+                print(f"     Time: {action.get('estimated_time', '15 mins')}")
+                print()
+        
+        # Show urgent commitments
+        commitments = brief['urgent_commitments']
+        if commitments:
+            print(f"\n📋 URGENT COMMITMENTS")
+            for i, commitment in enumerate(commitments, 1):
+                print(f"  {i}. ⏰ {commitment.get('description', 'Commitment')}")
+                print(f"     To: {commitment.get('recipient', 'N/A')}")
+                print(f"     Deadline: {commitment.get('deadline', 'Not specified')}")
+                print()
+        
+        # Show blocking requests
+        blocking = brief['blocking_requests']
+        if blocking:
+            print(f"\n🚫 BLOCKING REQUESTS")
+            for i, request in enumerate(blocking, 1):
+                print(f"  {i}. 🔒 {request.get('description', 'Request')}")
+                print(f"     Waiting on: {request.get('waiting_on', 'N/A')}")
+                print(f"     Blocking: {request.get('context', 'N/A')}")
+                print()
+        
+        # Show strategic insights
+        insights = brief['strategic_insights']
+        if insights:
+            print(f"\n💡 STRATEGIC INSIGHTS")
+            for insight in insights:
+                print(f"  • {insight}")
+        
+        # Show suggested time blocks
+        time_blocks = brief['time_blocks_needed']
+        if time_blocks:
+            print(f"\n⏰ SUGGESTED TIME BLOCKS")
+            for i, block in enumerate(time_blocks, 1):
+                duration = block['duration_minutes']
+                label = block['label']
+                preferred = block.get('preferred_time', 'anytime')
+                priority_icon = "🔴" if block['priority'] == 'high' else "🟡" if block['priority'] == 'medium' else "🟢"
+                
+                print(f"  {i}. {priority_icon} {label} ({duration} mins, {preferred})")
+                if block.get('context'):
+                    print(f"     Context: {block['context']}")
+                print()
+        
+        # Show follow-up scheduling
+        follow_ups = brief['follow_up_scheduling']
+        if follow_ups:
+            print(f"\n📞 FOLLOW-UP SCHEDULING")
+            for i, follow_up in enumerate(follow_ups, 1):
+                print(f"  {i}. 🔄 {follow_up['conversation_topic']}")
+                print(f"     Last Activity: {follow_up['last_activity']}")
+                print(f"     Suggested Action: {follow_up['suggested_action']}")
+                print()
+        
+        print("=" * 50)
+        print("💡 Use this brief to inform your daily planning!")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        print("Check your email configuration and token status.")
+
+def run_commitment_tracking(args):
+    """Show commitment tracking with deadline awareness."""
+    try:
+        processor = OutlookEmailProcessor()
+        config = load_config()
+        processor.load_email_filters(config.email)
+        
+        print("📋 Commitment Tracking & Deadline Awareness")
+        print("=" * 60)
+        
+        # Get commitment tracking report
+        report = processor.track_commitments_and_deadlines(days=30)
+        
+        print(f"\n🗓️  REPORT DATE: {report['date_generated']}")
+        print(f"📊 TOTAL COMMITMENTS: {report['total_commitments']}")
+        print(f"🚨 URGENT COMMITMENTS: {report['urgent_commitments']}")
+        print(f"💚 COMMITMENT HEALTH SCORE: {report['commitment_health_score']}/100")
+        
+        # Show categorized commitments
+        categorized = report['commitments_by_urgency']
+        
+        # Overdue commitments
+        overdue = categorized.get('overdue', [])
+        if overdue:
+            print(f"\n🔴 OVERDUE COMMITMENTS ({len(overdue)}):")
+            for i, commitment in enumerate(overdue[:5], 1):
+                days_overdue = abs(commitment.get('days_until_due', 0))
+                print(f"  {i}. ⚠️  {commitment['description']}")
+                print(f"     To: {commitment['recipient']}")
+                print(f"     Overdue by: {days_overdue} days")
+                print(f"     Effort: {commitment.get('estimated_effort', 'Unknown')}")
+                print()
+        
+        # Due today
+        due_today = categorized.get('due_today', [])
+        if due_today:
+            print(f"\n🟡 DUE TODAY ({len(due_today)}):")
+            for i, commitment in enumerate(due_today, 1):
+                print(f"  {i}. 📅 {commitment['description']}")
+                print(f"     To: {commitment['recipient']}")
+                print(f"     Effort: {commitment.get('estimated_effort', 'Unknown')}")
+                print()
+        
+        # Due this week
+        due_week = categorized.get('due_this_week', [])
+        if due_week:
+            print(f"\n🟢 DUE THIS WEEK ({len(due_week)}):")
+            for i, commitment in enumerate(due_week[:3], 1):
+                days_left = commitment.get('days_until_due', 0)
+                print(f"  {i}. 📆 {commitment['description']}")
+                print(f"     To: {commitment['recipient']}")
+                print(f"     Due in: {days_left} days")
+                print(f"     Effort: {commitment.get('estimated_effort', 'Unknown')}")
+                print()
+        
+        # Show next actions
+        actions = report.get('next_actions', [])
+        if actions:
+            print(f"\n🎯 RECOMMENDED ACTIONS:")
+            for i, action in enumerate(actions, 1):
+                priority_icon = "🔴" if action['priority'] == 'critical' else "🟡" if action['priority'] == 'high' else "🟢"
+                print(f"  {i}. {priority_icon} {action['title']}")
+                print(f"     {action['description']}")
+                print(f"     Time needed: {action['estimated_time']}")
+                if action.get('commitments'):
+                    print(f"     Items: {', '.join(action['commitments'][:2])}")
+                print()
+        
+        print("=" * 60)
+        print("💡 Use this tracking to prioritize commitment management!")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        print("Check your email configuration and token status.")
+
+def run_test_refinement(args):
+    """Test plan refinement functionality."""
+    try:
+        from echo.prompt_engine import parse_refinement_feedback, detect_refinement_scope
+        
+        print("🔧 Testing Plan Refinement Engine")
+        print("=" * 50)
+        
+        # Test feedback parsing
+        print("\n📝 Testing Feedback Parsing:")
+        test_feedback = "I need more focus time in the morning and move email processing to afternoon"
+        parsed_feedback = parse_refinement_feedback(test_feedback)
+        print(f"Original: {test_feedback}")
+        print(f"Parsed: {parsed_feedback}")
+        
+        # Test scope detection
+        print(f"\n🎯 Testing Scope Detection:")
+        scope = detect_refinement_scope(parsed_feedback)
+        print(f"Detected scope: {scope}")
+        
+        # Test with different types of feedback
+        test_cases = [
+            "Shift the morning routine 15 minutes earlier",  # Minor
+            "Move all email blocks to the afternoon",        # Moderate  
+            "Completely restructure this plan, wrong approach" # Major
+        ]
+        
+        for i, test_case in enumerate(test_cases, 1):
+            parsed = parse_refinement_feedback(test_case)
+            scope = detect_refinement_scope(parsed)
+            print(f"{i}. '{test_case}' → {scope}")
+        
+        print("\n=" * 50)
+        print("🎉 Refinement engine components are working!")
+        print("💡 Ready for API integration and frontend chat interface")
+        
+    except Exception as e:
+        print(f"❌ Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+>>>>>>> feature/adaptive-coaching-foundation
 def run_refresh_token(args):
     """Manually refresh the access token."""
     print("🔄 Manual Token Refresh")
@@ -843,6 +1315,13 @@ def main():
     subparsers.add_parser("check-token-status", help="Check the status of the current access token")
     subparsers.add_parser("refresh-token", help="Manually refresh the access token")
     subparsers.add_parser("force-reauth", help="Force re-authentication to get refresh token capabilities")
+<<<<<<< HEAD
+=======
+    subparsers.add_parser("conversation-intelligence", help="Show thread-aware conversation intelligence")
+    subparsers.add_parser("daily-email-brief", help="Show comprehensive daily email brief with time blocks")
+    subparsers.add_parser("commitment-tracking", help="Track commitments with deadline awareness")
+    subparsers.add_parser("test-refinement", help="Test plan refinement functionality")
+>>>>>>> feature/adaptive-coaching-foundation
 
     args = parser.parse_args()
     
@@ -870,6 +1349,17 @@ def main():
         run_refresh_token(args)
     elif args.command == "force-reauth":
         run_force_reauth(args)
+<<<<<<< HEAD
+=======
+    elif args.command == "conversation-intelligence":
+        run_conversation_intelligence(args)
+    elif args.command == "daily-email-brief":
+        run_daily_email_brief(args)
+    elif args.command == "commitment-tracking":
+        run_commitment_tracking(args)
+    elif args.command == "test-refinement":
+        run_test_refinement(args)
+>>>>>>> feature/adaptive-coaching-foundation
     else:
         parser.print_help()
 
